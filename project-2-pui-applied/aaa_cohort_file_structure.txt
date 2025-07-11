@@ -1,0 +1,53 @@
+Classes ‘data.table’ and 'data.frame':	0 obs. of  49 variables:
+ $ patid                : chr 
+ $ pracid               : int 
+ $ gender               : int 
+ $ fup_start            : 'Date' num(0) 
+ $ fup_end              : 'Date' num(0) 
+ $ age                  : num 
+ $ ethnicity            : Factor w/ 9 levels "bangladeshi",..: 
+ $ hypertension         : Factor w/ 2 levels "Absent","Present": 
+ $ ra                   : Factor w/ 2 levels "Absent","Present": 
+ $ af                   : Factor w/ 2 levels "Absent","Present": 
+ $ ckd                  : Factor w/ 2 levels "Absent","Present": 
+ $ smi                  : Factor w/ 2 levels "Absent","Present": 
+ $ fhcvd                : Factor w/ 2 levels "Absent","Present": 
+ $ migraine             : Factor w/ 2 levels "Absent","Present": 
+ $ sle                  : Factor w/ 2 levels "Absent","Present": 
+ $ diabetes             : Factor w/ 3 levels "Absent","Type1",..: 
+ $ impotence            : Factor w/ 2 levels "Absent","Present": 
+ $ cortico              : Factor w/ 2 levels "Absent","Present": 
+ $ antipsy              : Factor w/ 2 levels "Absent","Present": 
+ $ smoking              : Factor w/ 3 levels "Non-smoker","Ex-smoker",..: 
+ $ cvd_time             : num 
+ $ cvd_indicator        : num 
+ $ cvd_time_prim        : num 
+ $ cvd_indicator_prim   : num 
+ $ cvd_time_hes         : num 
+ $ cvd_indicator_hes    : num 
+ $ cvd_time_death       : num 
+ $ cvd_indicator_death  : num 
+ $ statins              : Factor w/ 2 levels "Absent","Present": 
+ $ antihypertensives    : Factor w/ 2 levels "Absent","Present": 
+ $ copd                 : Factor w/ 2 levels "Absent","Present": 
+ $ int_dis              : Factor w/ 2 levels "Absent","Present": 
+ $ downs                : Factor w/ 2 levels "Absent","Present": 
+ $ oral_cancer          : Factor w/ 2 levels "Absent","Present": 
+ $ brain_cancer         : Factor w/ 2 levels "Absent","Present": 
+ $ lung_cancer          : Factor w/ 2 levels "Absent","Present": 
+ $ blood_cancer         : Factor w/ 2 levels "Absent","Present": 
+ $ pre_eclampsia        : Factor w/ 2 levels "Absent","Present": 
+ $ postnatal_depression : Factor w/ 2 levels "Absent","Present": 
+ $ bmi                  : num 
+ $ sbp                  : num 
+ $ sbp_var              : num 
+ $ cholhdl_ratio        : num 
+ $ nonhdl               : num 
+ $ bmi_alltime          : num 
+ $ sbp_alltime          : num 
+ $ sbp_var_alltime      : num 
+ $ cholhdl_ratio_alltime: num 
+ $ IMD                  : num 
+ - attr(*, "sorted")= chr "patid"
+ - attr(*, ".internal.selfref")=<externalptr> 
+NULL
