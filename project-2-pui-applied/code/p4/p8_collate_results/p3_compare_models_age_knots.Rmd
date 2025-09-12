@@ -1,0 +1,178 @@
+---
+title: "Compare models with 3 knots for age, and 4 knots for age"
+author: "Alex Pate"
+date: "2025-05-14"
+output: 
+  html_document:
+    number_sections: TRUE
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+```
+
+This document compares the results from the model evaluation, when three or four knots were included in the spline for the age variables. 
+
+We can see there is improvement in the calibration when we have four knots instead of three.
+
+# Model with 3 knots for age, calendar time not included as a variable in model
+
+```{r, echo = FALSE}
+age_knots <- 3
+caltime <- FALSE
+```
+
+## Calibration plots
+
+### Calibration in the entire cohort
+
+Female:
+
+```{r, echo = FALSE, out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_MxM_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE, out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_MxM_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+### Calibration by age
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_age_cat_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_age_cat_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+### Calibration by ethnicity
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_ethnicity_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_ethnicity_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+### Calibration by region
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_region_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_region_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+## Discrimination
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_4knots_discrimination_forestplot_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_4knots_discrimination_forestplot_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+# Model with 4 knots for age, calendar time not included as a variable in model
+
+```{r, echo = FALSE,  out.width = "100%"}
+age_knots <- 4
+caltime <- FALSE
+```
+
+## Calibration plots
+
+### Calibration in the entire cohort
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_MxM_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_MxM_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+### Calibration by age
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_age_cat_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_age_cat_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+### Calibration by ethnicity
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_ethnicity_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_ethnicity_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+### Calibration by region
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_region_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_calib_ph_d1v1_region_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+## Discrimination
+
+Female:
+
+```{r, echo = FALSE,  out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_4knots_discrimination_forestplot_", 2, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```
+
+Male:
+
+```{r, echo = FALSE,  out.width = "100%"}
+# knitr::include_graphics(paste("../../../figures/p4/prototype3_4knots_discrimination_forestplot_", 1, "_nk", age_knots, "_caltime", as.numeric(caltime), ".png", sep = ""))
+```

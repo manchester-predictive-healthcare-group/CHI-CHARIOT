@@ -1,0 +1,67 @@
+---
+title: "Non-linear effect of age when interacted with other variables, model with 3 knots for age (40, 57.5, 75)"
+author: "Alex Pate"
+date: "17/01/2023"
+output: 
+  html_document
+---
+
+Hazard ratio as age increases, interacted with each of the other predictor variables. *In this document, the spline for age had knots at 40, 55 and 70.*
+
+```{r, echo=FALSE, results = 'asis', dpi = 36}
+library(knitr)
+
+### Get list of variable names
+var.binary <- readRDS("../../../data/p4/var_binary.rds")
+var.poly <- readRDS("../../../data/p4/var_poly.rds")
+var.cont <- readRDS("../../../data/p4/var_cont.rds")
+
+### Define object, which will determine the models we present data for
+savename <- "_"
+```
+
+# Section 1 - Interaction with binary variables
+
+```{r,  echo = FALSE, out.width = "25%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_assess_nonlinear", savename, var.binary, ".png", sep = ""))
+```
+
+# Section 2 - Interaction with polytomous variables
+
+*Female Hazard Ratios*
+
+```{r,  echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_assess_nonlinear", savename, "2_", var.poly, ".png", sep = ""))
+```
+
+*Male Hazard Ratios*
+
+```{r,  echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_assess_nonlinear", savename, "1_", var.poly, ".png", sep = ""))
+```
+
+# Section 3 - Interaction with continuous variables
+
+These plots show how the hazrd ratio of the variable of interst changes relative to a reference value, for a discrete range of ages. The reference value is 25 for BMI, 120 for SBP, 5 for SBP variability, and 3 for cholesterol/HDL ratio. Plotting from the 2.5th to p7.5th percentile.
+
+Alternatively, I could plot how the hazard ratio comparing two fixed values (say 40 vs 25, 30 vs 25, and 20 vs 25) changes as age increases. This would arguably be more 'similar' to the other plots, but I think less informative.
+
+*Female Hazard Ratios*
+
+```{r,  echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_assess_nonlinear", savename, "2_", var.cont, ".png", sep = ""))
+```
+
+*Male Hazard Ratios*
+
+```{r,  echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_assess_nonlinear", savename, "1_", var.cont, ".png", sep = ""))
+```
+
+# Section 4 - Hazard ratio for age
+
+Hazard ratio is assessed at the mean of all other continuous variables, and the reference value for all categorical variables. the hazard ratio is relative to someone age 40.
+
+```{r,  echo = FALSE, out.width = "100%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/prototype3_assess_nonlinear", savename, "age.png", sep = ""))
+```

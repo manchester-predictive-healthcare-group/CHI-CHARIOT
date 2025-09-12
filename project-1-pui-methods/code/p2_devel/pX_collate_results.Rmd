@@ -1,0 +1,132 @@
+---
+title: "Collate all results"
+author: "Alex Pate"
+date: "2025-05-14"
+output: 
+  html_document:
+    number_sections: TRUE
+    toc: TRUE
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+```
+
+* Model 0 = Non-causal model
+* Model 1 = fix effect for antihypertensive use at baseline and during followup.
+* Model 2 = fix effect for antihypertensive use at baseline and during followup, and model SBP unexposed to antihypertensive treatment.
+* Model 3 = fix effect for BMI, SBP and Non-HDL cholesterol at baseline, fix effect for change in statin or antihypertensive use during followup.
+* Model 4 = fix effect for change in statin or antihypertensive use during followup (model sbp/bmi/non-hdl cholesterol flexibly, intervention layer would follow.)
+* Model 5 = fix effect for SBP at baseline, fix effect for change in statin or antihypertensive use during followup.
+* Model 6 = fix effect for BMI at baseline, fix effect for change in statin or antihypertensive use during followup.
+* Model 7 = fix effect for Non-HDL cholesterol at baseline, fix effect for change in statin or antihypertensive use during followup.
+
+```{r, echo = FALSE}
+###
+### Calibration
+###
+
+### Write function to extract results
+create_row_calibration <- function(gender, model, dp){
+  
+  ### Read in relevant data
+  ICI <- readRDS(paste("../../data/calib_ph_ICI_", gender, "_model", model, ".rds", sep = ""))
+  E50 <- readRDS(paste("../../data/calib_ph_E50_", gender, "_model", model, ".rds", sep = ""))
+  E90 <- readRDS(paste("../../data/calib_ph_E90_", gender, "_model", model, ".rds", sep = ""))
+  
+  ### Combine into vector and round
+  calibration_entire_cohort <- c("ICI" = ICI, "E50" = E50, "E90" = E90)
+  calibration_entire_cohort <- round(calibration_entire_cohort, dp)
+  
+  return(calibration_entire_cohort)
+  
+}
+
+### Create tables
+calib_table_female <- do.call("rbind", lapply(0:7, function(x){create_row_calibration(2, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(model = 0:7) |>
+  dplyr::relocate(model)
+calib_table_male <- do.call("rbind", lapply(0:7, function(x){create_row_calibration(1, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(model = 0:7) |>
+  dplyr::relocate(model)
+
+###
+### Discrimination
+###
+
+### Write function to extract results
+create_row_discrimination <- function(gender, model, dp){
+  
+  ### Read in relevant data
+  discrim_row <- readRDS(paste("../../data/discrim_", gender, "_model", model, ".rds", sep = ""))
+  
+  ### Retain relevant variables and round
+  discrim_row <- discrim_row[c("index", "index_lower", "index_upper")]
+  discrim_row <- round(discrim_row, dp)
+  
+  return(discrim_row)
+  
+}
+
+### Create tables
+discrim_table_female <- do.call("rbind", lapply(0:7, function(x){create_row_discrimination(2, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(model = 0:7) |>
+  dplyr::relocate(model)
+discrim_table_male <- do.call("rbind", lapply(0:7, function(x){create_row_discrimination(1, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(model = 0:7) |>
+  dplyr::relocate(model)
+```
+
+# Calibration
+
+## Female
+
+```{r, echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 0, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 1, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 2, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 3, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 4, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 5, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 6, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 2, "_model", 7, ".png", sep = ""))
+```
+
+```{r, echo = FALSE}
+knitr::kable(calib_table_female)
+```
+
+## Male
+
+```{r, echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 0, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 1, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 2, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 3, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 4, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 5, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 6, ".png", sep = ""))
+knitr::include_graphics(paste("../../figures/calib_ph_", 1, "_model", 7, ".png", sep = ""))
+```
+
+```{r, echo = FALSE}
+knitr::kable(calib_table_male)
+```
+
+# Discrimination
+
+## Female
+
+```{r, echo = FALSE}
+knitr::kable(discrim_table_female)
+```
+
+## Male
+
+```{r, echo = FALSE}
+knitr::kable(discrim_table_male)
+```

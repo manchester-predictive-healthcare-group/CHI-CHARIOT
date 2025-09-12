@@ -1,0 +1,152 @@
+---
+title: "Baseline Table 1 at start of follow up"
+author: "Alex Pate"
+date: "04/01/2024"
+output: word_document
+---
+
+```{r, echo = FALSE}
+### Clear workspace
+rm(list=ls())
+# Sys.time()
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+# sapply(R.func.sources, source)
+
+### Read in cohort
+cohort <- readRDS("../../../data/p4/cohort_prototype3.rds")
+
+###
+### Calculate incidence rates for outcome
+###
+
+### Primary + Secondary + ONS
+outcome.table <- cohort |>
+  dplyr::filter(gender %in% c(1,2)) |>
+  dplyr::group_by(factor(gender, labels = c("Male", "Female"))) |>
+  dplyr::summarise(sum_t = sum(cvd_time/365.25), sum_i = sum(cvd_indicator)) |>
+  dplyr::mutate(rate = 1000*sum_i/sum_t)
+colnames(outcome.table) <- c("Gender", "total follow up (years)", "n events", "rate (per 1000 years)")
+print("PRIMARY CARE + SECONDARY CARE + ONS")
+outcome.table
+
+### Primary
+outcome.table <- cohort |>
+  dplyr::filter(gender %in% c(1,2)) |>
+  dplyr::group_by(factor(gender, labels = c("Male", "Female"))) |>
+  dplyr::summarise(sum_t = sum(cvd_time_prim/365.25), sum_i = sum(cvd_indicator_prim)) |>
+  dplyr::mutate(rate = 1000*sum_i/sum_t)
+colnames(outcome.table) <- c("Gender", "total follow up (years)", "n events", "rate (per 1000 years)")
+print("PRIMARY CARE")
+outcome.table
+
+### Secondary
+outcome.table <- cohort |>
+  dplyr::filter(gender %in% c(1,2)) |>
+  dplyr::group_by(factor(gender, labels = c("Male", "Female"))) |>
+  dplyr::summarise(sum_t = sum(cvd_time_hes/365.25), sum_i = sum(cvd_indicator_hes)) |>
+  dplyr::mutate(rate = 1000*sum_i/sum_t)
+colnames(outcome.table) <- c("Gender", "total follow up (years)", "n events", "rate (per 1000 years)")
+print("SECONDARY CARE")
+outcome.table
+
+### ONS
+outcome.table <- cohort |>
+  dplyr::filter(gender %in% c(1,2)) |>
+  dplyr::group_by(factor(gender, labels = c("Male", "Female"))) |>
+  dplyr::summarise(sum_t = sum(cvd_time_death/365.25), sum_i = sum(cvd_indicator_death)) |>
+  dplyr::mutate(rate = 1000*sum_i/sum_t)
+colnames(outcome.table) <- c("Gender", "total follow up (years)", "n events", "rate (per 1000 years)")
+print("ONS DEATH")
+outcome.table
+
+
+###
+### Read in incidence rate tables by year and age
+###
+incidence_year_female <- readRDS("../../../../../Aurum_Jun2021_extract/data/extraction/cohort_baseline/incidence_by_year_female.rds")
+incidence_year_male <- readRDS("../../../../../Aurum_Jun2021_extract/data/extraction/cohort_baseline/incidence_by_year_male.rds")
+
+incidence_age <- readRDS("../../../../../Aurum_Jun2021_extract/data/extraction/cohort_baseline/incidence_by_age.rds")
+incidence_age_female <- readRDS("../../../../../Aurum_Jun2021_extract/data/extraction/cohort_baseline/incidence_by_age_female.rds")
+incidence_age_male <- readRDS("../../../../../Aurum_Jun2021_extract/data/extraction/cohort_baseline/incidence_by_age_male.rds")
+```
+
+Incidence rates by year
+
+```{r incidence}
+### Print these
+print("Incidence by year female")
+incidence_year_female
+
+print("Incidence by year male")
+incidence_year_male
+```
+
+Incidence rates by age
+
+```{r age}
+### Print these
+print("Incidence by age, all")
+incidence_age
+
+print("Incidence by age female")
+incidence_age_female
+
+print("Incidence by age male")
+incidence_age_male
+```
+
+Create and print Table 1
+
+```{r table1}
+###
+### Create table 1
+###
+cohort.table1 <- dplyr::select(cohort, -c(patid, pracid
+                                          ,cvd_time, cvd_indicator
+                                          ,cvd_time_prim, cvd_indicator_prim
+                                          ,cvd_time_hes, cvd_indicator_hes
+                                          ,cvd_time_death, cvd_indicator_death
+                                          ,bmi_alltime, sbp_alltime, sbp_var_alltime, cholhdl_ratio_alltime
+                                          , fup_start, fup_end
+                                          #, ethnicity.hes, ethnicity.prim
+)) |>
+  dplyr::filter(gender %in% c(1,2)) |>
+  dplyr::mutate(gender = factor(gender, labels = c("Male", "Female")),
+                smoking = forcats::fct_na_value_to_level(smoking, level = "Missing"),
+                ethnicity = forcats::fct_na_value_to_level(ethnicity, level = "Missing")) |>
+  gtsummary::tbl_summary(by = gender,
+                         type = gtsummary::all_continuous() ~  "continuous2",
+                         missing = "no",
+                         statistic = gtsummary::all_continuous() ~ c("{median} ({p5}, {p25}, {p75}, {p95})",
+                                                                     "{N_miss} ({p_miss}%)")) |>
+  gtsummary::modify_table_body(
+    dplyr::mutate,
+    label = ifelse(label == "N missing (% missing)",
+                   "Missing",
+                   label)) |>
+  gtsummary::modify_caption("Baseline characteristics of individuals at the start of their follow up")
+
+
+### Print table to html file
+cohort.table1
+```
+
+Histogram of ages
+
+```{r hist_age}
+###
+### Get histogram of ages
+###
+print(hist(cohort$age))
+```
+
+Number of GP practices in cohort and distribution of individuals registered.
+
+```{r num_gp}
+length(unique(cohort$pracid))
+quantile(table(cohort$pracid))
+
+```

@@ -1,0 +1,13 @@
+module load apps/gcc/R/4.4.2
+Rscript p1_prototype3.R > p1_prototype3.out
+Rscript p1_prototype3_4knots.R > p1_prototype3_4knots.out
+Rscript p1_prototype3_4knots_caltime.R > p1_prototype3_4knots_caltime.out
+Rscript p2_prototype3_drop_in_all.R > p2_prototype3_drop_in_all.out
+Rscript p2_prototype3_drop_in_bmi.R > p2_prototype3_drop_in_bmi.out
+Rscript p2_prototype3_drop_in_nonhdl.R > p2_prototype3_drop_in_nonhdl.out
+Rscript p2_prototype3_drop_in_sbp.R > p2_prototype3_drop_in_sbp.out
+Rscript p2_prototype3_drop_in_smoking.R > p2_prototype3_drop_in_smoking.out
+Rscript p3_prototype3_assess_nonlinear.R > p3_prototype3_assess_nonlinear.out
+Rscript p3_prototype3_assess_nonlinear_4knots.R > p3_prototype3_assess_nonlinear_4knots.out
+Rscript p3_prototype3_assess_nonlinear_4knots_caltime.R > p3_prototype3_assess_nonlinear_4knots_caltime.out
+Rscript p3_prototype3_assess_nonlinear_render.R > p3_prototype3_assess_nonlinear_render.out
