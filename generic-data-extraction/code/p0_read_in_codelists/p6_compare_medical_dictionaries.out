@@ -1,0 +1,71 @@
+        R/create_directory_systems.R R/extract_age.R R/extract_bmi.R
+value   ?                            ?               ?              
+visible FALSE                        FALSE           FALSE          
+        R/extract_cholhdl_ratio_unexposed.R R/extract_cholhdl_ratio.R
+value   ?                                   ?                        
+visible FALSE                               FALSE                    
+        R/extract_diabetes.R R/extract_ethnicity.R R/extract_ho.R
+value   ?                    ?                     ?             
+visible FALSE                FALSE                 FALSE         
+        R/extract_IMD.R R/extract_impotence.R R/extract_postnatal_depression.R
+value   ?               ?                     ?                               
+visible FALSE           FALSE                 FALSE                           
+        R/extract_sbp_var.R R/extract_sbp.R R/extract_smoking.R
+value   ?                   ?               ?                  
+visible FALSE               FALSE           FALSE              
+        R/extract_test_unexposed.R R/extract_test_var_unexposed.R
+value   ?                          ?                             
+visible FALSE                      FALSE                         
+        R/extract_time_until_cvd.R R/extract_time_until.R R/functions.R
+value   ?                          ?                      ?            
+visible FALSE                      FALSE                  FALSE        
+        R/misc_internal_functions.R R/source_packages.R
+value   ?                           character,8        
+visible FALSE                       FALSE              
+[1] "medcodeid"             "Term"                  "OriginalReadCode"     
+[4] "CleansedReadCode"      "SnomedCTConceptId"     "SnomedCTDescriptionId"
+[7] "Release"               "EmisCodeCategoryId"   
+Warning message:
+In data.table::fread(file = paste(getwd(), "/codelists/CPRDAurumMedical.txt",  :
+  Found and resolved improper quoting out-of-sample. First healed line 11109: <<256925010	20000	61A1	61A1.00	"Morning after" pills given	102954005	256925010		17>>. If the fields are not quoted (e.g. field separator does not appear within any field), try quote="" to avoid this warning.
+[1] "medcodeid"             "Term"                  "OriginalReadCode"     
+[4] "CleansedReadCode"      "SnomedCTConceptId"     "SnomedCTDescriptionId"
+[7] "Release"               "EmisCodeCategoryId"   
+   medcodeid Observations OriginalReadCode CleansedReadCode
+      <char>       <char>           <char>           <char>
+1:    237011        40000            B7F10          B7F1000
+2:    302011         3000            G73y0          G73y000
+3:    574014        20000             S226          S226.00
+4:    602017         3000              S85          S85..00
+5:    603010            7          ESCTSU5             <NA>
+6:    653016       600000             1533          1533.00
+                               Term SnomedCTConceptId SnomedCTDescriptionId
+                             <char>            <char>                <char>
+1:                 Acoustic neuroma         126949007                237011
+2:   Diabetic peripheral angiopathy         127014009                302011
+3: Fracture of upper end of humerus         127286005                574014
+4:         Open wound of chest wall         127314000                602017
+5:              Sucking chest wound         127315004                603010
+6:                        Gravida 2         127365008                653016
+   Release EmisCodeCategoryId
+    <char>             <char>
+1:    <NA>                 32
+2:    <NA>                 32
+3:    <NA>                 32
+4:    <NA>                 32
+5:    <NA>                 32
+6:    <NA>                 27
+Classes ‘data.table’ and 'data.frame':	0 obs. of  10 variables:
+ $ patid       : chr 
+ $ obsid       : chr 
+ $ obsdate     : num 
+ $ enterdate   : num 
+ $ medcodeid   : chr 
+ $ value       : num 
+ $ numunitid   : int 
+ $ numrangelow : num 
+ $ numrangehigh: num 
+ $ probobsid   : chr 
+ - attr(*, ".internal.selfref")=<externalptr> 
+NULL
+Empty data.table (0 rows and 8 cols): medcodeid,Term,OriginalReadCode,CleansedReadCode,SnomedCTConceptId,SnomedCTDescriptionId...

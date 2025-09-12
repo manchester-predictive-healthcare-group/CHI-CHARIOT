@@ -1,0 +1,34 @@
+---
+title: "calibration and discrimination"
+author: "Alex Pate"
+date: "2025-05-14"
+output: 
+  html_document:
+    number_sections: TRUE
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+```
+
+This document contains instability plots for individuals risks. We compare when the spline for age had 3 knots (40, 57.5, 75) or 4 knots (25, 40, 57.5, 75). We expect that adding an extra knot at the lower age range will not lead to too much extra instability given the large number of data points in that area. For 4 knots, we have another model where calendar time is included as a predictor in the model.
+
+The instability plots are plotted for 3000 randomly selected individuals over 500 bootstrapped models. There is actually more variability than I thought there would be.
+
+**NB: Currently, analysis are still running, and for the model with 4 knots, there are only 70 bootstrapped models, I think this is why there appears to be less variation.**
+
+# Female
+
+```{r, echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default", fig.cap = "Left hand side: 3 knots, no calendar time; Middel: 4 knots, no calendar time, Right hand side: 4knots and calendar time"}
+knitr::include_graphics("../../../figures/p4/prototype3_stability_2_nk3_caltime0.png")
+knitr::include_graphics("../../../figures/p4/prototype3_stability_2_nk4_caltime0.png")
+knitr::include_graphics("../../../figures/p4/prototype3_stability_2_nk4_caltime1.png")
+```
+
+# Male
+
+```{r, echo = FALSE, out.width = "33%", fig.show = "hold", fig.align = "default", fig.cap = "Left hand side: 3 knots, no calendar time; Middel: 4 knots, no calendar time, Right hand side: 4knots and calendar time"}
+knitr::include_graphics("../../../figures/p4/prototype3_stability_1_nk3_caltime0.png")
+knitr::include_graphics("../../../figures/p4/prototype3_stability_1_nk4_caltime0.png")
+knitr::include_graphics("../../../figures/p4/prototype3_stability_1_nk4_caltime1.png")
+```

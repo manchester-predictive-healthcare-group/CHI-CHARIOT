@@ -1,0 +1,39 @@
+---
+title: "Results from temporal validation"
+author: "Alex Pate"
+date: "2025-05-14"
+output: 
+  html_document:
+    number_sections: TRUE
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/")
+```
+
+# Evaluation of the initial risk estimation layer at follow-up index dates
+
+Follow-up index dates are defined at 1/2/3/4/5 years after baseline. Calibration and discrimination are assessed at 5 and 10 years.
+
+## Calibration
+
+### Female
+
+```{r, echo = FALSE, out.width = "50%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_tfup", round(1*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_tfup", round(2*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_tfup", round(3*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_tfup", round(4*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_tfup", round(5*365.25), "_teval", c(5,10), ".png", sep = ""))
+```
+
+### Male
+
+```{r, echo = FALSE, out.width = "50%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_tfup", round(1*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_tfup", round(2*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_tfup", round(3*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_tfup", round(4*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_tfup", round(5*365.25), "_teval", c(5,10), ".png", sep = ""))
+```
+
