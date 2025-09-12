@@ -1,0 +1,5 @@
+module load apps/gcc/R/4.4.2
+Rscript p3_prototype3_assess_nonlinear.R > p3_prototype3_assess_nonlinear.out
+Rscript p3_prototype3_assess_nonlinear_4knots.R > p3_prototype3_assess_nonlinear_4knots.out
+Rscript p3_prototype3_assess_nonlinear_4knots_caltime.R > p3_prototype3_assess_nonlinear_4knots_caltime.out
+Rscript p3_prototype3_assess_nonlinear_render.R > p3_prototype3_assess_nonlinear_render.out

@@ -1,0 +1,37 @@
+[1] "2025-06-26 09:36:15 BST"
+[1] "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/Aurum_Jun2021_extract"
+        R/create_directory_systems.R R/extract_age.R R/extract_bmi.R
+value   ?                            ?               ?              
+visible FALSE                        FALSE           FALSE          
+        R/extract_cholhdl_ratio_unexposed.R R/extract_cholhdl_ratio.R
+value   ?                                   ?                        
+visible FALSE                               FALSE                    
+        R/extract_diabetes.R R/extract_ethnicity.R R/extract_height.R
+value   ?                    ?                     ?                 
+visible FALSE                FALSE                 FALSE             
+        R/extract_ho.R R/extract_IMD.R R/extract_impotence.R R/extract_nonhdl.R
+value   ?              ?               ?                     ?                 
+visible FALSE          FALSE           FALSE                 FALSE             
+        R/extract_postnatal_depression.R R/extract_sbp_var.R R/extract_sbp.R
+value   ?                                ?                   ?              
+visible FALSE                            FALSE               FALSE          
+        R/extract_smoking.R R/extract_test_unexposed.R
+value   ?                   ?                         
+visible FALSE               FALSE                     
+        R/extract_test_var_unexposed.R R/extract_test.R
+value   ?                              ?               
+visible FALSE                          FALSE           
+        R/extract_time_until_cvd.R R/extract_time_until.R
+value   ?                          ?                     
+visible FALSE                      FALSE                 
+        R/extract_triglycerides.R R/extract_weight.R R/functions.R
+value   ?                         ?                  ?            
+visible FALSE                     FALSE              FALSE        
+        R/misc_internal_functions.R R/source_packages.R
+value   ?                           character,8        
+visible FALSE                       FALSE              
+[1] "SAVED"
+Error in .checkTypos(e, names_x) : 
+  non-numeric argument to binary operator
+Calls: combine_query ... <Anonymous> -> .checkTypos -> stopf -> raise_condition -> signal
+Execution halted

@@ -1,0 +1,237 @@
+---
+title: "Results from temporal validation, a comparison for when calendar time is and isn't included in the validation"
+author: "Alex Pate"
+date: "2025-05-14"
+output: 
+  html_document:
+    number_sections: TRUE
+    toc: TRUE
+---
+
+This document compares the results from the temporal validation of the initial risk estimation layer, when calendar time was and was not included in the model. There are minor improvements to calibration when calendar time is included in the model, which is most evident through the calibration tables, with improvements in E90. We therefore opt to use the model with calendar time.
+
+```{r, echo = FALSE}
+### Set whether calendar time is adjusted for in the model or not (0 = no, 1 = yes)
+caltime_in <- 1
+
+### Set number of knots for age
+age_knots <- 4
+```
+
+```{r, echo = FALSE}
+###
+### Function to create calibration table for the initial risk estimation layer
+###
+create_calibration_table_initial <- function(caltime_in, gender_in){
+  
+  ### Set gender character version
+  gender_char <- c("male", "female")[gender_in]
+  
+  ### Read in size of temporal validation datasets
+  N <- readRDS("../../../data/p4/temporalv_N_initial.rds") |>
+    subset(gender == gender_in) |>
+    dplyr::pull(N)
+  
+  ### Extract ICI
+  ICI <- do.call("c", 
+                 lapply(c(5,10), function(y) {
+                   do.call("c", 
+                           lapply(round(365.25*(1:5)), function(x) {
+                             readRDS(paste("../../../data/p4/temporalv_initial_prototype3_calib_ph_ICI_d1v1_", gender_in, 
+                                           "_nk", age_knots, 
+                                           "_caltime", caltime_in,
+                                           "_tfup", x, 
+                                           "_teval", y, ".rds", sep = ""))}))
+                 })) |>
+    round(3)
+  
+  ### Extract E50
+  E50 <- do.call("c", 
+                 lapply(c(5,10), function(y) {
+                   do.call("c", 
+                           lapply(round(365.25*(1:5)), function(x) {
+                             readRDS(paste("../../../data/p4/temporalv_initial_prototype3_calib_ph_E50_d1v1_", gender_in, 
+                                           "_nk", age_knots, 
+                                           "_caltime", caltime_in,
+                                           "_tfup", x, 
+                                           "_teval", y, ".rds", sep = ""))}))
+                 })) |>
+    round(3)
+  
+  ### Extract E90
+  E90 <- do.call("c", 
+                 lapply(c(5,10), function(y) {
+                   do.call("c", 
+                           lapply(round(365.25*(1:5)), function(x) {
+                             readRDS(paste("../../../data/p4/temporalv_initial_prototype3_calib_ph_E90_d1v1_", gender_in, 
+                                           "_nk", age_knots, 
+                                           "_caltime", caltime_in,
+                                           "_tfup", x, 
+                                           "_teval", y, ".rds", sep = ""))}))
+                 })) |>
+    round(3)
+  
+  ### Create table
+  calib_table <- cbind(N, ICI, E50, E90) |>
+    as.data.frame() |>
+    dplyr::mutate(t_eval = c(rep(5,5), rep(10,5)),
+                  t_fup = rep(1:5, 2),
+                  gender = c("male", "female")[gender_in]) |>
+    dplyr::relocate(gender, t_eval, t_fup)
+  
+  return(calib_table)
+  
+}
+
+###
+### Function to create discrimination table for the initial risk estimation layer
+###
+create_discrim_table_initial <- function(caltime_in, gender_in){
+  
+  ### Read in size of temporal validation datasets
+  N <- readRDS("../../../data/p4/temporalv_N_initial.rds") |>
+    subset(gender == gender_in) |>
+    dplyr::pull(N)
+  
+  ### Get discrimination at t_eval == 5
+  discrim_teval5 <- do.call("rbind", lapply(1:5, function(x) {readRDS(paste("../../../data/p4/temporalv_initial_prototype3_discrim_d1v1_", gender_in, 
+                                                                            "_nk", 4,
+                                                                            "_caltime", caltime_in,
+                                                                            "_tfup", round(x*365.25), 
+                                                                            "_teval", 5, ".rds", sep = ""))})) |>
+    as.data.frame() |>
+    dplyr::mutate(t_fup = 1:5, t_eval = 5, gender = c("male", "female")[gender_in], N = N) |>
+    dplyr::relocate(gender, t_eval, t_fup, N) |>
+    dplyr::select(gender, t_eval, t_fup, N, index, index_lower, index_upper)
+  
+  ### Get discrimination for t_eval == 10
+  discrim_teval10 <- do.call("rbind", lapply(1:5, function(x) {readRDS(paste("../../../data/p4/temporalv_initial_prototype3_discrim_d1v1_", gender_in, 
+                                                                             "_nk", 4, 
+                                                                             "_caltime", caltime_in,
+                                                                             "_tfup", round(x*365.25), 
+                                                                             "_teval", 10, ".rds", sep = ""))})) |>
+    as.data.frame() |>
+    dplyr::mutate(t_fup = 1:5, t_eval = 10, gender = c("male", "female")[gender_in], N = N) |>
+    dplyr::relocate(gender, t_eval, t_fup, N) |>
+    dplyr::select(gender, t_eval, t_fup, N, index, index_lower, index_upper)
+  
+  
+  discrim_table <- rbind(discrim_teval5, discrim_teval10)
+  
+  return(discrim_table)
+}
+```
+
+```{r, echo = FALSE}
+###
+### Apply these functions to create tables
+###
+
+### Extract and combine calibration of initial risk estimation layer
+## Caltime not included
+calibration_table_initial_female <- create_calibration_table_initial(0, 2)
+calibration_table_initial_male <- create_calibration_table_initial(0, 1)
+calibration_table_initial_caltime0 <- rbind(calibration_table_initial_female, calibration_table_initial_male)
+
+## Caltime included
+calibration_table_initial_female <- create_calibration_table_initial(1, 2)
+calibration_table_initial_male <- create_calibration_table_initial(1, 1)
+calibration_table_initial_caltime1 <- rbind(calibration_table_initial_female, calibration_table_initial_male)
+
+### Extract and combine discrimination of initial risk estimation layer
+## Caltime not included
+discrim_table_initial_female <- create_discrim_table_initial(0, 2)
+discrim_table_initial_male <- create_discrim_table_initial(0, 1)
+discirm_table_initial_caltime0 <- rbind(discrim_table_initial_female, discrim_table_initial_male)
+discirm_table_initial_caltime0[,c("index","index_lower","index_upper")] <- round(discirm_table_initial_caltime0[,c("index","index_lower","index_upper")], 3)
+
+## Caltime included
+discrim_table_initial_female <- create_discrim_table_initial(1, 2)
+discrim_table_initial_male <- create_discrim_table_initial(1, 1)
+discirm_table_initial_caltime1 <- rbind(discrim_table_initial_female, discrim_table_initial_male)
+discirm_table_initial_caltime1[,c("index","index_lower","index_upper")] <- round(discirm_table_initial_caltime1[,c("index","index_lower","index_upper")], 3)
+```
+
+# Evaluation of the initial risk estimation layer at follow-up index dates
+
+Follow-up index dates are defined at 1/2/3/4/5 years after baseline. Calibration and discrimination are assessed at 5 and 10 years. 
+
+In plots, t_fup = number of days after baseline the index date is defined at, t_eval is denotes whether evaluating 5 or 10 year risk predictions.
+
+## Calibration
+
+### Female
+
+#### Calendar time not included in the model
+
+```{r, echo = FALSE, out.width = "50%", fig.show = "hold", fig.align = "default"}
+caltime_in <- 0
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(1*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(2*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(3*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(4*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(5*365.25), "_teval", c(5,10), ".png", sep = ""))
+```
+
+#### Calendar time included in the model
+
+```{r, echo = FALSE, out.width = "50%", fig.show = "hold", fig.align = "default"}
+caltime_in <- 1
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(1*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(2*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(3*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(4*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 2, "_nk", 4, "_caltime", caltime_in,"_tfup", round(5*365.25), "_teval", c(5,10), ".png", sep = ""))
+```
+
+### Male
+
+#### Calendar time not included in the model
+
+```{r, echo = FALSE, out.width = "50%", fig.show = "hold", fig.align = "default"}
+caltime_in <- 0
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(1*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(2*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(3*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(4*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(5*365.25), "_teval", c(5,10), ".png", sep = ""))
+```
+
+#### Calendar time included in the model
+
+```{r, echo = FALSE, out.width = "50%", fig.show = "hold", fig.align = "default"}
+caltime_in <- 1
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(1*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(2*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(3*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(4*365.25), "_teval", c(5,10), ".png", sep = ""))
+knitr::include_graphics(paste("../../../figures/p4/temporalv_initial_prototype3_calib_ph_d1v1_", 1, "_nk", 4, "_caltime", caltime_in,"_tfup", round(5*365.25), "_teval", c(5,10), ".png", sep = ""))
+```
+
+## Calibration tables
+
+### Calendar time not included in the model
+
+```{r}
+knitr::kable(calibration_table_initial_caltime0)
+```
+
+### Calendar time included in the model
+
+```{r}
+knitr::kable(calibration_table_initial_caltime1)
+```
+
+## Discrimination
+
+### Calendar time not included in the model
+
+```{r}
+knitr::kable(discirm_table_initial_caltime0)
+```
+
+### Calendar time included in the model
+
+```{r}
+knitr::kable(discirm_table_initial_caltime1)
+```

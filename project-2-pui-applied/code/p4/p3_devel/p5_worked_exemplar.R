@@ -1,0 +1,318 @@
+###
+### This program will mimic the example from the Million Heart Tool manuscript
+###
+
+### Clear workspace
+rm(list=ls())
+Sys.time()
+
+### Set wd
+setwd("")
+getwd()
+
+### Load libraries
+library(survival)
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+sapply(R.func.sources, source)
+
+### For now, read in rshiny stuff, but this will be switched to the worked example stuff when saved
+
+### Read in the rshiny models
+fit_prototype3 <- readRDS("code/p4/p7_rshiny/data/fit.prototype3.female.rds")
+means_prototype3 <- readRDS("code/p4/p7_rshiny/data/means.prototype3.female.rds")
+bhaz_prototype3 <- readRDS("code/p4/p7_rshiny/data/bhaz.prototype3.female.rds")
+
+### Read in pat file
+pat <- readRDS("code/p4/p7_rshiny/data/fake.pat.rds") |> dplyr::mutate(offset_ah_timevar_lnHR = 0,
+                                                                       offset_statins_timevar_lnHR = 0,
+                                                                       offset_smoking_timevar_dummy1_lnHR = 0,
+                                                                       offset_smoking_timevar_dummy2_lnHR = 0)
+
+### Give them some elevated risk factors
+pat$age <- 70
+pat$bmi <- 30
+pat$sbp <- 160
+pat$nonhdl <- 10
+pat$smoking[1] <- "Current"
+pat$ethnicity[1] <- "black caribbean"
+pat$IMD <- 10
+
+# ### Create female and male
+# pat_female <- pat
+# pat_male <- dplyr::mutate(pat, gender = 1)
+
+###
+### Estimate risk from initial risk estimation layer
+###
+
+### Estimate predicted survival probability
+pat$surv <- est_surv_offset_prototype3_mi_manual_offset(newdata = pat, 
+                                                        fit_list = fit_prototype3, 
+                                                        bhaz_list = bhaz_prototype3, 
+                                                        time = 10*365.25,
+                                                        means_statins = means_prototype3[["statins"]],
+                                                        means_ah = means_prototype3[["ah"]],
+                                                        means_smoking1 = means_prototype3[["smoking1"]],
+                                                        means_smoking2 = means_prototype3[["smoking2"]])
+pat$risk_visit0 <- 1 - pat$surv
+
+pat$risk_visit0
+
+###
+### The clinician engages in discussion
+### Treatment options are:
+### - start statins
+### - start antihypertensives
+### - stop smoking
+### - weight loss
+### - through combination of diet and exercise, each of sbp, nonhdl or bmi could be reduced
+###
+### Lets present the risks from each
+
+###
+### Read in odds ratios and slopes for the intervention layer
+###
+direct_OR_smoking_initiation <- readRDS("data/p4/direct_OR_smoking_initiation.rds")
+direct_OR_smoking_cessation <- readRDS("data/p4/direct_OR_smoking_cessation.rds")
+direct_OR_nonhdl <- readRDS("data/p4/direct_OR_nonhdl.rds")
+direct_OR_bmi <- readRDS("data/p4/direct_OR_bmi.rds")
+direct_OR_sbp <- readRDS("data/p4/direct_OR_sbp.rds")
+
+bmi_to_nonhdl <- readRDS("data/p4/slope_bmi_to_nondl.rds")
+bmi_to_sbp <- readRDS("data/p4/slope_bmi_to_sbp.rds")
+nonhdl_to_sbp <- readRDS("data/p4/slope_nonhdl_to_sbp.rds")
+smoking_cessation_to_bmi <- readRDS("data/p4/slope_smoking_cessation_to_bmi.rds")
+smoking_cessation_to_nonhdl <- readRDS("data/p4/slope_smoking_cessation_to_nonhdl.rds")
+smoking_cessation_to_sbp <- readRDS("data/p4/slope_smoking_cessation_to_sbp.rds")
+smoking_initiation_to_bmi <- readRDS("data/p4/slope_smoking_initiation_to_bmi.rds")
+smoking_initiation_to_nonhdl <- readRDS("data/p4/slope_smoking_initiation_to_nonhdl.rds")
+smoking_initiation_to_sbp <- readRDS("data/p4/slope_smoking_initiation_to_sbp.rds")
+
+### Function to apply odds ratio to a risk score
+convert_risk_odds <- function(p, OR){
+  
+  ### Get odds of risk score
+  odds <- p/(1-p)
+  
+  ### Calculate new odds
+  new_odds <- odds*OR
+  
+  ### Convert back onto risk scale
+  new_risk <- new_odds/(1+new_odds)
+  
+  return(new_risk)
+}
+
+###
+### Risk reduction from statins
+###
+
+### We expect an increase in BMI of 0.33
+### We expect a reduction in nonhdl of 1.3268
+### We expect a reduction in SBP of 2.62
+statins_OR_bmi <- direct_OR_bmi^0.33
+statins_OR_nonhdl <- direct_OR_nonhdl^-1.3268
+statins_OR_sbp <- direct_OR_sbp^-2.62
+statins_OR_bmi
+statins_OR_nonhdl
+statins_OR_sbp
+
+### The combined odds ratio is
+statins_OR_combined <- statins_OR_bmi*statins_OR_nonhdl*statins_OR_sbp
+statins_OR_combined
+
+### Reduce risk accordingly
+pat$risk_visit0_statins <- convert_risk_odds(pat$risk_visit0, statins_OR_combined)
+
+###
+### Risk reduction from antihypertensives
+###
+
+### We hypothesis a possible reduction in 5, 10 or 15 mmHg
+
+### The odds ratios are:
+ah_OR_sbp5 <- direct_OR_sbp^-5
+ah_OR_sbp10 <- direct_OR_sbp^-10
+ah_OR_sbp15 <- direct_OR_sbp^-15
+
+### Reduce risk accordingly
+pat$risk_visit0_ah5 <- convert_risk_odds(pat$risk_visit0, ah_OR_sbp5)
+pat$risk_visit0_ah10 <- convert_risk_odds(pat$risk_visit0, ah_OR_sbp10)
+pat$risk_visit0_ah15 <- convert_risk_odds(pat$risk_visit0, ah_OR_sbp15)
+
+###
+### Risk reduction from smoking cessation
+###
+
+### We expect the individual to stop smoking
+### We expect an increase in BMI of 0.66
+### We expect an increase in nonhdl of 0.068
+### We expect a reduction in SBP of 3.5
+smoking_cessation_OR_smoking <- direct_OR_smoking_cessation
+smoking_cessation_OR_bmi <- direct_OR_bmi^0.66
+smoking_cessation_OR_nonhdl <- direct_OR_nonhdl^0.068
+smoking_cessation_OR_sbp <- direct_OR_sbp^-3.5
+smoking_cessation_OR_bmi
+smoking_cessation_OR_nonhdl
+smoking_cessation_OR_sbp
+
+### The combined odds ratio is
+smoking_cessation_OR_combined <- smoking_cessation_OR_smoking*smoking_cessation_OR_bmi*smoking_cessation_OR_nonhdl*smoking_cessation_OR_sbp
+smoking_cessation_OR_combined
+
+### Reduce risk accordingly
+pat$risk_visit0_smoking_cessation <- convert_risk_odds(pat$risk_visit0, smoking_cessation_OR_combined)
+
+###
+### Risk reduction from weight loss
+###
+
+### We hypothesis a possible reduction of 5kg or 10kg
+
+### Assuming a height of 165cm, a BMI of 30 would be 81.675
+
+### A loss of 5kg would be a BMI of 76.675/1.65^2 = 28.16345
+### This is a reduction of:
+wl_5kg_change_in_bmi <- 28.16345 - 30
+wl_5kg_change_in_bmi
+
+### A loss of 10kg would be a BMI of 71.675/1.65^2 = 26.32691
+### This is a reduction of:
+wl_10kg_change_in_bmi <- 26.32691 - 30
+wl_10kg_change_in_bmi
+
+### According to the DAG, this will result in a drop in Non-HDL cholesterol:
+wl_5kg_change_in_nonhdl <- wl_5kg_change_in_bmi*bmi_to_nonhdl
+wl_5kg_change_in_nonhdl
+wl_10kg_change_in_nonhdl <- wl_10kg_change_in_bmi*bmi_to_nonhdl
+wl_10kg_change_in_nonhdl
+
+### And a drop in sbp:
+wl_5kg_change_in_sbp <- wl_5kg_change_in_bmi*bmi_to_sbp
+wl_5kg_change_in_sbp
+wl_10kg_change_in_sbp <- wl_10kg_change_in_bmi*bmi_to_sbp
+wl_10kg_change_in_sbp
+
+### The odds ratios are:
+
+### BMI
+wl_5kg_OR_bmi <- direct_OR_bmi^wl_5kg_change_in_bmi
+wl_10kg_OR_bmi <- direct_OR_bmi^wl_10kg_change_in_bmi
+
+### Non-HDL cholesterol
+wl_5kg_OR_nonhdl <- direct_OR_nonhdl^wl_5kg_change_in_nonhdl
+wl_10kg_OR_nonhdl <- direct_OR_nonhdl^wl_10kg_change_in_nonhdl
+
+### SBP
+wl_5kg_OR_sbp <- direct_OR_sbp^wl_5kg_change_in_sbp
+wl_10kg_OR_sbp <- direct_OR_sbp^wl_10kg_change_in_sbp
+
+### Overall is the product of these
+wl_5kg_OR <- wl_5kg_OR_bmi*wl_5kg_OR_nonhdl*wl_5kg_OR_sbp
+wl_10kg_OR <- wl_10kg_OR_bmi*wl_10kg_OR_nonhdl*wl_10kg_OR_sbp
+
+### Reduce risk accordingly
+pat$risk_visit0_wl5 <- convert_risk_odds(pat$risk_visit0, wl_5kg_OR)
+pat$risk_visit0_wl10 <- convert_risk_odds(pat$risk_visit0, wl_10kg_OR)
+
+###
+### Risk reduction from reducing all through a combination
+###
+combination_OR_smoking <- direct_OR_smoking_cessation
+combination_OR_bmi <- direct_OR_bmi^wl_10kg_change_in_bmi
+combination_OR_nonhdl <- direct_OR_nonhdl^-3
+combination_OR_sbp <- direct_OR_sbp^-20
+
+### The combined odds ratio is
+combination_OR_combined <- combination_OR_smoking*combination_OR_bmi*combination_OR_nonhdl*combination_OR_sbp
+combination_OR_combined
+
+### Reduce risk accordingly
+pat$risk_visit0_combination <- convert_risk_odds(pat$risk_visit0, combination_OR_combined)
+
+### 
+### Present all in table
+### 
+visit0_table <- dplyr::select(pat, 
+                              risk_visit0, 
+                              risk_visit0_statins, 
+                              risk_visit0_ah5, 
+                              risk_visit0_ah10, 
+                              risk_visit0_ah15, 
+                              risk_visit0_smoking_cessation, 
+                              risk_visit0_wl5,
+                              risk_visit0_wl10,
+                              risk_visit0_combination)
+knitr::kable(round(100*visit0_table, 2))
+
+### A decision is made for smoking cessation, and to reassess at follow-up visit 1
+
+#########################
+### Follow-up visit 1 ###
+#########################
+
+###
+### The individual has successfully cessated smoking and made some minor changes to diet, and plans to increase active tim
+### Due to the diet changes they have reduced their BMI by 2 and reduced their nonhdl cholesterol by 2.5. 
+### They struggled to increase their exercise levels and SBP has remained the same.
+###
+
+### First, we must re-estimate the baseline risk. The modifiable risk factors use the values from visit0, however we update
+### the other risk factors.
+pat_visit1 <- pat |>
+  dplyr::mutate(age = age + 1)
+
+### First we obtain risk if no intervention had been undertaken
+pat_visit1$risk_nointervention <- 1 - est_surv_offset_prototype3_mi_manual_offset(newdata = pat_visit1, 
+                                                                                         fit_list = fit_prototype3, 
+                                                                                         bhaz_list = bhaz_prototype3, 
+                                                                                         time = 10*365.25,
+                                                                                         means_statins = means_prototype3[["statins"]],
+                                                                                         means_ah = means_prototype3[["ah"]],
+                                                                                         means_smoking1 = means_prototype3[["smoking1"]],
+                                                                                         means_smoking2 = means_prototype3[["smoking2"]])
+
+###
+### Now we get a factual risk, based on the achieved levels in the modifiable risk factors
+###
+
+### A 5kg weight loss corresponds to a BMI of 76.675/1.65^2 = 28.16345
+
+### Calculate the odds ratios based on the change in each of the modifiable risk factors
+visit1_factual_OR_smoking <- direct_OR_smoking_cessation
+visit1_factual_OR_bmi <- direct_OR_bmi^(28.16345 - 30)
+visit1_factual_OR_nonhdl <- direct_OR_nonhdl^-2
+visit1_factual_OR_sbp <- direct_OR_sbp^0
+
+### Calculate combined OR
+visit1_factual_OR_combined <- visit1_factual_OR_smoking*visit1_factual_OR_bmi*visit1_factual_OR_nonhdl*visit1_factual_OR_sbp
+
+### Reduce risk accordingly
+pat_visit1$risk_factual <- convert_risk_odds(pat_visit1$risk_nointervention, visit1_factual_OR_combined)
+
+###
+### Given the patient has successfully reduced nonhdl through lifestyle, but struggled with sbp, we suggest antihypertensives
+###
+
+### We again hypothesise a reduction of 5, 10, 15, and have these values already derived, and also do a reduction of 20, 
+### so can apply them to the factual risk score
+ah_OR_sbp20 <- direct_OR_sbp^-20
+
+pat_visit1$risk_ah5 <- convert_risk_odds(pat_visit1$risk_factual, ah_OR_sbp5)
+pat_visit1$risk_ah10 <- convert_risk_odds(pat_visit1$risk_factual, ah_OR_sbp10)
+pat_visit1$risk_ah15 <- convert_risk_odds(pat_visit1$risk_factual, ah_OR_sbp15)
+pat_visit1$risk_ah20 <- convert_risk_odds(pat_visit1$risk_factual, ah_OR_sbp20)
+
+### 
+### Present all in table
+### 
+visit1_table <- dplyr::select(pat_visit1, 
+                              risk_nointervention,
+                              risk_factual,
+                              risk_ah5,
+                              risk_ah10,
+                              risk_ah15,
+                              risk_ah20)
+knitr::kable(round(100*visit1_table, 2))

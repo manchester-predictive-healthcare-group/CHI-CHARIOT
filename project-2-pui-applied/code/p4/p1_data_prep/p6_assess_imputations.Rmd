@@ -1,0 +1,46 @@
+---
+title: "calibration and discrimination"
+author: "Alex Pate"
+date: "2025-05-14"
+output: 
+  html_document:
+    number_sections: TRUE
+---
+
+In this document, we compare prototype 3, with models where the causal effect for BMI, SBP, non-HDL cholesterol and smoking status are 'dropped into' the model.
+
+# Female
+
+```{r, echo = FALSE}
+gender <- 2
+```
+
+## Convergence plots
+
+```{r}
+knitr::include_graphics(paste("../../../figures/p4/convergence_plot_prototype3", gender, ".png", sep = ""))
+```
+
+## Density plots
+
+```{r}
+knitr::include_graphics(paste("../../../figures/p4/density_plot_prototype3", gender, ".png", sep = ""))
+```
+
+# Male
+
+```{r, echo = FALSE}
+gender <- 1
+```
+
+## Convergence plots
+
+```{r}
+knitr::include_graphics(paste("../../../figures/p4/convergence_plot_prototype3", gender, ".png", sep = ""))
+```
+
+## Density plots
+
+```{r}
+knitr::include_graphics(paste("../../../figures/p4/density_plot_prototype3", gender, ".png", sep = ""))
+```
