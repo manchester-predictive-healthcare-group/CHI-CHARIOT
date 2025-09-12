@@ -1,1 +1,1 @@
-Please refer to the word document "Code guide and dictionary"
+Documentation for the code is contained with the supplementary material document within the manuscript files folder.
