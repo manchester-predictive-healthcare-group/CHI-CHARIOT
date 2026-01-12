@@ -15,8 +15,13 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd()
 getwd()
+
+### Load paralleisation packages
+library(foreach)
+library(doParallel)
+library(doFuture)
 
 ### Extract chain seed and gender from command line
 args <- commandArgs(trailingOnly = T)
@@ -34,6 +39,13 @@ str(cohort)
 
 ### Read in the db.qry of the prescriptions of interest (contains all prescription dates of interest)
 db_qry <- readRDS(paste("data/db_qry_", med, ".rds", sep = ""))
+
+### Split cohort into smaller chunks
+cohort_split <- split(cohort, cut(seq_len(nrow(cohort)), 10, labels = FALSE))
+
+### Split db_qry
+db_qry_split <- lapply(1:10, function(x) {db_qry[!is.na(fastmatch::fmatch(db_qry$patid, cohort_split[[x]]$patid)), ]})
+str(db_qry_split)
 
 ##############################################################
 ### Function to identify change of medication status times ###
@@ -148,7 +160,7 @@ get_cut_surv_times <- function(data, id, mst){
 
 ### Write a function covert the data
 convert_data <- function(df, cohort){
-
+  
   ### Group data
   df <- dplyr::arrange(df, patid) |>
     dplyr::group_by(patid)
@@ -180,22 +192,70 @@ convert_data <- function(df, cohort){
   cohort <- dplyr::group_by(cohort, patid) |>
     dplyr::select(-fup_start)
   
+  ### Reduce to relevant individuals
+  cohort <- cohort[!is.na(fastmatch::fmatch(cohort$patid, patids_df)), ]
+  
   ### Apply function to these individuals
-  cohort_split_times <- dplyr::group_modify(.data = cohort[!is.na(fastmatch::fmatch(cohort$patid, patids_df)), ], 
-                                                 .f = get_cut_surv_times, 
-                                                 mst = med_status_times)
+  cohort_split_times <- dplyr::group_modify(.data = cohort, 
+                                            .f = get_cut_surv_times, 
+                                            mst = med_status_times)
   print(paste("cohort_split_times", Sys.time()))
   
   return(cohort_split_times)
   
 }
 
-### Run function
+### Run function to get split times for people with statin/ah prescriptions during followup
 print(paste("start conversion", Sys.time()))
-df_converted <- convert_data(df = db_qry, cohort) |>
-  dplyr::arrange(patid, tstart)
+
+### Apply this functions over the 10 splits cohort datasets and db queries
+cl <- parallel::makeCluster(11)
+doParallel::registerDoParallel(cl)
+foreach::getDoParWorkers()
+cohort_pres_split_times <- (foreach(x = 1:10, .combine = list, .multicombine = TRUE, 
+                                    .packages = c("dplyr", "fastmatch"), 
+                                    .export = c("get_cut_surv_times", "get_change_status_times")) %dopar% {
+                                      convert_data(df = db_qry_split[[x]], cohort = cohort_split[[x]])
+                                    })
+stopCluster(cl)
 print(paste("end conversion", Sys.time()))
+str(cohort_pres_split_times)
+
+### Recombine
+print(paste("Recombine", Sys.time()))
+cohort_pres_split_times <- do.call("rbind", cohort_pres_split_times) |>
+  dplyr::arrange(patid, tstart)
+str(cohort_pres_split_times)
+
+###
+### For individuals with no prescriptions, just need to change variables names and set med_status = 0
+###
+
+### Get patids of patients that have prescriptions
+patids_pres <- unique(cohort_pres_split_times$patid)
+
+### Get cohort of individuals with no prescriptions
+cohort_nopres_split_times <- cohort[is.na(fastmatch::fmatch(cohort$patid, patids_pres)), ]
+
+### Create new required variables so structure is same as cohort_pres_split_times
+cohort_nopres_split_times <- 
+  dplyr::select(cohort_nopres_split_times, patid, cvd_time, cvd_indicator) |> 
+  dplyr::mutate(tstart = 0, 
+                med_status = 0)
+str(cohort_nopres_split_times)
+
+###
+### Combine the two datasets
+###
+cohort_split_times <- rbind(cohort_pres_split_times, cohort_nopres_split_times)
+cohort_split_times <- data.frame(cohort_split_times) |>
+  dplyr::arrange(patid, tstart)
+
 
 ### Save data
-saveRDS(df_converted, paste("data/cohort_split_times_", med, "_burnout", burnout, ".rds", sep = ""))
+saveRDS(cohort_split_times, paste("data/cohort_split_times_", med, "_burnout", burnout, ".rds", sep = ""))
+
+### Check this has same number of people as cohort
+testthat::expect_equal(length(unique(cohort_split_times$patid)), length(unique(cohort$patid)))
+testthat::expect_equal(sum(cohort_split_times$cvd_indicator), sum(cohort$cvd_indicator))
 print(paste("FINISHED", Sys.time()))

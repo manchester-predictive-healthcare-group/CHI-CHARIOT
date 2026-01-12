@@ -9,6 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir = )
 library(knitr)
 ```
 
@@ -27,16 +28,33 @@ library(knitr)
 ###
 
 ### Write function to extract results
-create_row_calibration <- function(gender, model, dp){
+create_row_calibration <- function(gender, model, dp, CI = 95){
   
   ### Read in relevant data
   ICI <- readRDS(paste("../../data/calib_ph_ICI_", gender, "_model", model, ".rds", sep = ""))
   E50 <- readRDS(paste("../../data/calib_ph_E50_", gender, "_model", model, ".rds", sep = ""))
   E90 <- readRDS(paste("../../data/calib_ph_E90_", gender, "_model", model, ".rds", sep = ""))
+  CI_data <- readRDS(paste("../../data/calib_ph_CI_ICI_E50_E90_", gender, "_model", model, ".rds", sep = ""))
+  
+  ### Calculate CIs
+  alpha <- (1-CI/100)/2
+  ICI_lower <- quantile(CI_data[,1], probs = alpha, na.rm = TRUE)
+  ICI_upper <- quantile(CI_data[,1], probs = 1-alpha, na.rm = TRUE)
+  ICI_median <- quantile(CI_data[,1], probs = 0.5, na.rm = TRUE)
+  
+  E50_lower <- quantile(CI_data[,2], probs = alpha, na.rm = TRUE)
+  E50_upper <- quantile(CI_data[,2], probs = 1-alpha, na.rm = TRUE)
+  E50_median <- quantile(CI_data[,2], probs = 0.5, na.rm = TRUE)
+  
+  E90_lower <- quantile(CI_data[,3], probs = alpha, na.rm = TRUE)
+  E90_upper <- quantile(CI_data[,3], probs = 1-alpha, na.rm = TRUE)
+  E90_median <- quantile(CI_data[,3], probs = 0.5, na.rm = TRUE)
   
   ### Combine into vector and round
-  calibration_entire_cohort <- c("ICI" = ICI, "E50" = E50, "E90" = E90)
-  calibration_entire_cohort <- round(calibration_entire_cohort, dp)
+  calibration_entire_cohort <- c("ICI" = paste0(round(ICI, dp), " (", round(ICI_lower, dp), ", ", round(ICI_upper, dp), ")"), 
+                                 "E50" = paste0(round(E50, dp), " (", round(E50_lower, dp), ", ", round(E50_upper, dp), ")"), 
+                                 "E90" = paste0(round(E90, dp), " (", round(E90_lower, dp), ", ", round(E90_upper, dp), ")")
+                                 )
   
   return(calibration_entire_cohort)
   
