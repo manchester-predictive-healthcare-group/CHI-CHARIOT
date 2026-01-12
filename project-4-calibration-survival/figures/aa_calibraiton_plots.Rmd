@@ -1,0 +1,183 @@
+---
+title: "Supplementary Figures"
+author: "Alex Pate"
+date: "2025-02-17"
+output: 
+  html_document
+---
+
+Associated manuscript: Calibration plots for clinical prediction models predicting a survival outcome, and the role of covariate dependent censoring.
+
+```{r, setup, include = FALSE}
+options(scipen = 999)
+```
+
+```{r, echo = FALSE, results = "asis"}
+### Define sample size
+m <- 1000000
+
+### Assign a counter for Table numbers
+counter <- 1
+```
+
+# Tables for main analysis 
+
+The main analysis had the following input parameters:
+
+* Stopped Cox (individuals in validation cohort censored at the time point calibration is being assessed
+* Coefficients 0.3/0.12
+* No unmeasured dependence
+* t = 0.25, time at which calibration assessed
+
+Note, these match Figures 1, 2, 3 and 4 from the main manuscript.
+
+```{r, echo = FALSE, results = "asis"}
+### Get tables plots for coefficient = 0.3
+for (t.eval in c(1)){
+  for (b in c("03")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+          
+cat("\n\n\n")
+        cat("**Figure S", counter, ".", DGM.cens, ": Calibration plots under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), ", and input parameters detailed in section introduction**", sep = "")
+        cat(" \n\n")
+        cat("![](",paste("simulation_m", m,
+                                "_b", b,
+                                "_split", split,
+                                "_c", DGM.cens,
+                                "_tcens", t.cens,
+                                "_teval", t.eval,  ".png", sep = ""),")")
+
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+# Plots for sensitivity analyses
+
+In each supplementary analysis, aside from the stated input parameter, all other input parameters remained the same as the main analysis.
+
+## No stopped Cox
+
+Individuals in validation cohort were not censored at the time point calibration is being assessed, i.e., stopped Cox not applied in validation cohort. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+### Get tables plots for coefficient = 0.3
+for (t.eval in c(1)){
+  for (b in c("03")){
+    for (t.cens in c(1)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+        
+cat("\n\n\n")
+        cat("**Figure S", counter, ".", DGM.cens, ": Calibration plots under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), ", and input parameters detailed in section introduction**", sep = "")
+        cat(" \n\n")
+        cat("![](",paste("simulation_m", m,
+                                "_b", b,
+                                "_split", split,
+                                "_c", DGM.cens,
+                                "_tcens", t.cens,
+                                "_teval", t.eval,  ".png", sep = ""),")")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+## Coefficients 0.5/0.2
+
+Coefficients of 0.5/0.2 as opposed to Coefficients 0.3/0.12 in the data generating mechanisms. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+### Get tables plots for coefficient = 0.3
+for (t.eval in c(1)){
+  for (b in c("05")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+        
+cat("\n\n\n")
+        cat("**Figure S", counter, ".", DGM.cens, ": Calibration plots under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), ", and input parameters detailed in section introduction**", sep = "")
+        cat(" \n\n")
+        cat("![](",paste("simulation_m", m,
+                                "_b", b,
+                                "_split", split,
+                                "_c", DGM.cens,
+                                "_tcens", t.cens,
+                                "_teval", t.eval,  ".png", sep = ""),")")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+## Unmeasured dependence
+
+Unmeasured dependence between the outcome and censoring mechanisms. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+### Get tables plots for coefficient = 0.3
+for (t.eval in c(1)){
+  for (b in c("03")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+        for (DGM.cens in c(1,2,3,4)){
+        
+cat("\n\n\n")
+        cat("**Figure S", counter, ".", DGM.cens, ": Calibration plots under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), ", and input parameters detailed in section introduction**", sep = "")
+        cat(" \n\n")
+        cat("![](",paste("simulation_m", m,
+                                "_b", b,
+                                "_split", split,
+                                "_c", DGM.cens,
+                                "_tcens", t.cens,
+                                "_teval", t.eval,  "_un.png", sep = ""),")")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+## t = 0.5
+
+Calibration assessed at time point t = 0.5. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+### Get tables plots for coefficient = 0.3
+for (t.eval in c(2)){
+  for (b in c("03")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+        
+cat("\n\n\n")
+        cat("**Figure S", counter, ".", DGM.cens, ": Calibration plots under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), ", and input parameters detailed in section introduction**", sep = "")
+        cat(" \n\n")
+        cat("![](",paste("simulation_m", m,
+                                "_b", b,
+                                "_split", split,
+                                "_c", DGM.cens,
+                                "_tcens", t.cens,
+                                "_teval", t.eval,  ".png", sep = ""),")")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
