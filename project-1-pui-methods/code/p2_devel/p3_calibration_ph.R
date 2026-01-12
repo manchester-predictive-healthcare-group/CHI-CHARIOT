@@ -105,6 +105,14 @@ est_calib_ph <- function(gender, model){
                              bhaz = bhaz, 
                              time = round(10*365.25))
   
+  #####################################
+  ### Get CI's for ICI, E50 and E90 ###
+  #####################################
+  print(paste("PH boot", Sys.time()))
+  calib_ph_boot <- boot::boot(data = df_valid_pred, 
+                         statistic = boot_func_for_calib_metrics_CI, 
+                         R = 500, fit = fit, bhaz = bhaz, time = round(10*365.25), nk = 4)
+  
   ###########################
   ### KM grouped approach ###
   ###########################
@@ -116,9 +124,11 @@ est_calib_ph <- function(gender, model){
                                          n.groups = 50,
                                          CI = TRUE)
   
-  ### Extract plot data
+  ### Extract plot data and save
   df_calib_smooth <- calib_ph[["plotdata"]]
   df_calib_grouped <- calib_km_group[["plot"]]$data
+  saveRDS(df_calib_smooth, paste("data/calib_ph_df_smooth_", gender, "_model", model, ".rds", sep = ""))
+  saveRDS(df_calib_grouped, paste("data/calib_ph_df_grouped_", gender, "_model", model, ".rds", sep = ""))
   
   ### Create a ggplot out of this
   ggplot_comb <- ggplot2::ggplot() +
@@ -141,15 +151,15 @@ est_calib_ph <- function(gender, model){
   } else if (model == 2){
     ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Unexposed mediator model", sep = "")) 
   } else if (model == 3){
-    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Causal modifiable risk factor model", sep = "")) 
+    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Modifiable risk factor model", sep = "")) 
   } else if (model == 4){
-    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Two-stage model", sep = "")) 
+    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Two-component model", sep = "")) 
   } else if (model == 5){
-    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Causal modifiable risk factor model (SBP only)", sep = "")) 
+    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Modifiable risk factor model (SBP only)", sep = "")) 
   } else if (model == 6){
-    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Causal modifiable risk factor model (BMI only)", sep = "")) 
+    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Modifiable risk factor model (BMI only)", sep = "")) 
   } else if (model == 7){
-    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Causal modifiable risk factor model (non-HDL cholesterol only)", sep = "")) 
+    ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Modifiable risk factor model (non-HDL cholesterol only)", sep = "")) 
   }
   
   ### Save plot
@@ -161,74 +171,136 @@ est_calib_ph <- function(gender, model){
   ### Save higher res for manuscript figures
   if (gender == 2){
     if (model == 0){
-      png("figures/Figure1.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure1.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     } else if (model == 1){
-      png("figures/Figure2.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure2.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     } else if (model == 2){
-      png("figures/Figure3.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure3.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     } else if (model == 3){
-      png("figures/Figure4.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure4.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     } else if (model == 4){
-      png("figures/Figure5.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure5.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     } else if (model == 5){
-      png("figures/Figure6.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure6.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     } else if (model == 6){
-      png("figures/Figure7.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure7.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     } else if (model == 7){
-      png("figures/Figure8.png", width = 5, height = 5, unit = "in", res = 600)
+      ragg::agg_png(paste("figures/Figure8.png", sep = ""), 
+                    width = 5, height = 5, scaling = 1, unit = "in", res = 600)
       plot(ggplot_comb)
       dev.off()
     }
   }
   
-  ### Print and save ICI, E50, E90
+  ### Print and save ICI, E50, E90 and the CI
   print(paste("ICI = ", calib_ph[["ICI"]]))
   print(paste("E50 = ", calib_ph[["E50"]]))
   print(paste("E90 = ", calib_ph[["E90"]]))
   saveRDS(calib_ph[["ICI"]], paste("data/calib_ph_ICI_", gender, "_model", model, ".rds", sep = ""))
   saveRDS(calib_ph[["E50"]], paste("data/calib_ph_E50_", gender, "_model", model, ".rds", sep = ""))
   saveRDS(calib_ph[["E90"]], paste("data/calib_ph_E90_", gender, "_model", model, ".rds", sep = ""))
+  saveRDS(calib_ph_boot$t, paste("data/calib_ph_CI_ICI_E50_E90_", gender, "_model", model, ".rds", sep = ""))
+  
   
 }
 
 ### Run this function
-for (gender_in in c(1,2)){
-
+for (gender_in in c(2,1)){
+  
   print(paste("gender = ", gender_in))
-
-  for (model_in in c(1,2,3,4,5,6,7)){
-
+  
+  for (model_in in c(0,1,2,3,4,5,6,7)){
+    
     print(paste("model = ", model_in))
     est_calib_ph(gender = gender_in, model = model_in)
-
+    
   }
 }
 
+warnings()
+
+### Create a combined plot for models 0 to 4
+create_combined_calib_plot <- function(gender){
+  
+  ### Create a list to store the plots in
+  output_plot_list <- vector("list", 5)
+  
+  ### For each model, create a plot and store it
+  for (model in 0:4){
+    
+    ### Read in data
+    df_calib_smooth <- readRDS(paste("data/calib_ph_df_smooth_", gender, "_model", model, ".rds", sep = ""))
+    df_calib_grouped <- readRDS(paste("data/calib_ph_df_grouped_", gender, "_model", model, ".rds", sep = ""))
+    
+    ### Create a ggplot out of this
+    ggplot_comb <- ggplot2::ggplot() +
+      ggplot2::geom_line(ggplot2::aes(x = pred, y = pred.obs), 
+                         data = df_calib_smooth) + 
+      ggplot2::geom_abline(slope = 1, intercept = 0, lty = "dashed") +
+      ggplot2::xlab("Predicted risk") + ggplot2::ylab("Predicted-observed risk") +
+      ggplot2::geom_point(data = df_calib_smooth,  
+                          ggplot2::aes(x = pred, y = pred.obs), col = grDevices::rgb(0, 0, 0, alpha = 0)) +
+      ggplot2::geom_point(data = df_calib_grouped, 
+                          ggplot2::aes(x = pred, y = obs, col = grDevices::rgb(0, 1, 0, alpha = 1))) + 
+      ggplot2::theme(legend.position = "none") + 
+      ggplot2::xlim(c(0,0.6)) + ggplot2::ylim(c(0,0.6))
+    
+    ### Add title
+    if (model == 0){
+      ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Non-causal model", sep = "")) 
+    } else if (model == 1){
+      ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Treatment offset model", sep = "")) 
+    } else if (model == 2){
+      ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Unexposed mediator model", sep = "")) 
+    } else if (model == 3){
+      ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Modifiable risk factor model", sep = "")) 
+    } else if (model == 4){
+      ggplot_comb <- ggplot_comb + ggplot2::ggtitle(paste("Model ", model, ": Two-component model", sep = "")) 
+    }
+    
+    ### Assign to output
+    output_plot_list[[(model+1)]] <- ggplot_comb
+  }
+  
+  ### Combine the plots into a single ggplot
+  plot_out <- ggpubr::ggarrange(plotlist = output_plot_list, nrow = 3, ncol = 2)
+  
+  ### Save
+  ragg::agg_png(paste("figures/calib_plot_grid", gender, ".png", sep = ""), 
+                width = 10, height = 15, scaling = 1, unit = "in", res = 600)
+  plot(plot_out)
+  dev.off()
+}
 
 ### Run this function
-model_in <- 0
-for (gender_in in c(1,2)){
+for (gender_in in c(2,1)){
   
   print(paste("gender = ", gender_in))
-  
-  print(paste("model = ", model_in))
-  est_calib_ph(gender = gender_in, model = model_in) 
+  create_combined_calib_plot(gender = gender_in)
   
 }
 
 print(paste("FINISHED", Sys.time()))
 
+warnings()

@@ -114,35 +114,23 @@ est_discrimination <- function(gender, model){
   ### Add to object
   Cstat_object[["index_lower"]] <- C_lower
   Cstat_object[["index_upper"]] <- C_upper
+  print(Cstat_object)
   
   ### Save output
   saveRDS(Cstat_object, paste("data/discrim_", gender, "_model", model, ".rds", sep = ""))
   
 }
 
-# ### Run this function
-# for (gender_in in c(1,2)){
-#   
-#   print(paste("gender = ", gender_in))
-#   
-#   for (model_in in c(1,2,3,4,5,6,7)){
-#     
-#     print(paste("model = ", model_in))
-#     est_discrimination(gender = gender_in, model = model_in) 
-#     
-#   }
-# }
-
 ### Run this function
-model_in <- 0
 for (gender_in in c(1,2)){
-  
-  print(paste("gender = ", gender_in))
-  
-  print(paste("model = ", model_in))
-  est_discrimination(gender = gender_in, model = model_in) 
-  
-}
 
-print(paste("FINISHED", Sys.time()))
+  print(paste("gender = ", gender_in))
+
+  for (model_in in c(0,1,2,3,4,5,6,7)){
+
+    print(paste("model = ", model_in))
+    est_discrimination(gender = gender_in, model = model_in)
+
+  }
+}
 
