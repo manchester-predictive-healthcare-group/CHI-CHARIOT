@@ -1,0 +1,295 @@
+---
+title: "summary of poisson"
+output:
+  html_document: 
+    number_sections: true
+date: "2024-11-07"
+---
+
+# Preliminaries
+
+```{r cars}
+### Load libraries
+rm(list=ls())
+library(survival)
+library(splines)
+library(rms)
+library(ggplot2)
+
+### Load functions I have written for assessing calibration, estimating true calibration curve for simulated data, etc
+source(file.path("..", "..", "R/functions.R"))
+
+### Read in data
+dat.devel <- readRDS(file.path("..", "..", "data/reproducible_example_dat_nocens.rds"))
+str(dat.devel)
+
+### Read in data
+dat.valid <- readRDS(file.path("..", "..", "data/reproducible_example_dat_cens.rds"))
+str(dat.valid)
+
+dat.valid <- subset(dat.valid, id != 21075)
+t.eval <- 0.5
+
+### Censor at time t.eval
+dat.devel <- dplyr::mutate(dat.devel,
+                           status = dplyr::case_when(time > t.eval ~ 0,
+                                                     TRUE ~ status),
+                           time = dplyr::case_when(time > t.eval ~ t.eval,
+                                                   TRUE ~ time))
+
+### Censor at time t.eval
+dat.valid <- dplyr::mutate(dat.valid,
+                           status = dplyr::case_when(time > t.eval ~ 0,
+                                                     TRUE ~ status),
+                           time = dplyr::case_when(time > t.eval ~ t.eval,
+                                                   TRUE ~ time))
+
+str(dat.valid)
+```
+
+Fit a non-linear model with the appropriate non-linear terms (x2 squared and x3 cubed) and check the coefficients match 0.5, 0.5, 0.5, 0.5 and 0.2. Hopefully this proves that the data generating mechanism is as described above.
+
+```{r}
+### Fit non-linear model
+fit.nl <- coxph(Surv(time, status) ~ x1 + x2 + x2sq + x3 + x3cu, data = dat.devel)
+coefficients(fit.nl)
+```
+
+# Examples using multiple linear model (poorly specified)
+
+## Fit model
+
+```{r}
+### Fit non-linear model
+fit.ml <- coxph(Surv(time, status) ~ x1 + x2 + x3, data = dat.devel)
+coefficients(fit.ml)
+
+### Calculate baseline hazard
+bhaz.ml <- basehaz(fit.ml, centered = TRUE)
+```
+
+## Assess calibraiton using proportional hazards approach and true calibration curve
+
+We can see calibration according to the proportional hazards approach, and also add the 'true' calibration curve estimated by regressing true risk (from DGM) on predicted risk.
+
+```{r}
+### Estimate calibration plot using proportional-hazards approach
+calib.ph <- est_calib_ph(data = dat.valid, fit  = fit.ml, bhaz = bhaz.ml, t = t.eval, nk = 5)
+
+### Estimate true calibration curve
+calib.true <- est_calib_true(data = dat.valid, 
+                             fit = fit.ml,
+                             bhaz = bhaz.ml,
+                             t = t.eval,
+                             true.lp = dat.valid$true.lp, 
+                             cumhaz.t = 0.5)
+
+### Add to the plot
+calib.ph <- add_calib_true(calib.ph, calib.true)
+
+### Print the plot
+calib.ph[["plot"]]
+```
+
+## Assess calibration using smoothed Poisson methods
+
+Now lets assess calibration using the approach in the Terry vignette.
+
+```{r}
+### Estimate predicted risks
+dat.valid$eta <- predict(fit.ml, newdata = dat.valid, type = "lp")
+
+### Get expected number of events
+dat.valid$expect1 <- predict(fit.ml, type = "expected", newdata = dat.valid)
+
+### Fit calibration model for mean calibraiton
+gfit1 <- glm(status ~ offset(log(expect1)), poisson, data = dat.valid)
+exp(coef(gfit1))
+
+### Now lets get a plot of excess event rates on the y-axis, vs linear predictor on the x-axis
+# gfit_flex <- glm(status ~ ns(eta, 4) + offset(log(expect1)), poisson, data = dat.valid)
+gfit_flex <- update(gfit1, . ~ . + ns(eta, 4))
+xx <- seq(as.numeric(quantile(dat.valid$eta, p = 0.01)), as.numeric(quantile(dat.valid$eta, p = 0.99)), length=100)
+yhat <- predict(gfit_flex, newdata= data.frame(eta=xx, expect1=1), se=TRUE)
+yy <- yhat$fit + outer(yhat$se.fit, c(0, -1.96, 1.96), '*')
+
+matplot(xx, exp(yy), type='l', lty=c(1,2,2), lwd=c(2,1,1), log='y', col=1,
+        ylim=c(.5, 2),
+        xlab="Linear predictor", ylab="Excess event rate")
+abline(h=exp(coef(gfit1)), col='gray', lty=1)
+temp <- density(dat.valid$eta, adjust=.5)
+tfun <- function(y) .5 + (y-min(y))/(4*diff(range(y)))
+lines(temp$x, tfun(temp$y), lty=3, col='gray')
+```
+
+This obviously looks quite different! My main "issue" is that I don't know how to calculate a true version of this plot, to compare and see if its correct, or biased.
+
+Lets add some vertical lines at the points where the Kaplan-Meier curve crossed the y=x line.
+
+```{r}
+calib.ph.lines <- subset(calib.ph[["plot"]]$data, Calibration == "Estimated") |> dplyr::arrange(pred) |> dplyr::mutate(lp = log(-log(1-pred))) 
+matplot(xx, exp(yy), type='l', lty=c(1,2,2), lwd=c(2,1,1), log='y', col=1,
+        ylim=c(.5, 2),
+        xlab="Linear predictor", ylab="Excess event rate")
+abline(h=exp(coef(gfit1)), col='gray', lty=1)
+temp <- density(dat.valid$eta, adjust=.5)
+tfun <- function(y) .5 + (y-min(y))/(4*diff(range(y)))
+lines(temp$x, tfun(temp$y), lty=3, col='gray')
+abline(v=calib.ph.lines[min(which(calib.ph.lines$pred.obs < calib.ph.lines$pred)), "lp"], col='green', lty=1)
+abline(v=calib.ph.lines[max(which(calib.ph.lines$pred.obs < calib.ph.lines$pred)), "lp"], col='green', lty=1)
+```
+
+It's a bit off, with try and add vertical lines for the true calibration curve crossing points
+I can sort of replicate this by grouping individuals by the linear predictor, and taking mean expected number of events from DGM, and mean predicted risk.
+
+```{r}
+### Calculate true expected number of events according to DGM
+### The baseline hazard is just 1, so its 1*time
+dat.valid$bhaz.pat.true <- 1*dat.valid$time
+
+### The expected number of events is then the baseline hazard, multiplied by the exponent of the linear predictor
+dat.valid$expect_true <- dat.valid$bhaz.pat.true*exp(dat.valid$true.lp)
+
+expect_pred_group <- vector("numeric", 300)
+expect_true_group <- vector("numeric", 300)
+for (i in 1:300){
+  eta.loop <- seq(-2,2,length.out = 300)[i]
+  expect_pred_group[i] <- mean(dat.valid$expect1[dat.valid$eta > eta.loop-0.02 & dat.valid$eta < eta.loop+0.02])
+  expect_true_group[i] <- mean(dat.valid$expect_true[dat.valid$eta > eta.loop-0.02 & dat.valid$eta < eta.loop+0.02])
+}
+
+xx <- seq(-2,2,length.out = 300)
+yy <- expect_true_group/expect_pred_group
+
+matplot(xx, yy, type='l', lty=c(1), lwd=c(2), log='y', col=1,
+        #ylim=c(.5, 2),
+        xlab="Linear predictor", ylab="Excess event rate")
+abline(h=exp(coef(gfit1)), col='gray', lty=1)
+temp <- density(dat.valid$eta, adjust=.5)
+tfun <- function(y) .5 + (y-min(y))/(4*diff(range(y)))
+lines(temp$x, tfun(temp$y), lty=3, col='gray')
+```
+
+Lets repeat the plot with predicted risk of the x-axis
+
+```{r}
+# matplot(exp(-0.5*exp(xx)), exp(yy), type='l', lty=c(1,2,2), lwd=c(2,1,1), log='y', col=1,
+#         ylim=c(.5, 2),
+#         xlab="Predicted risk", ylab="Excess event rate")
+# abline(h=exp(coef(gfit1)), col='gray', lty=1)
+# temp <- density(dat.valid$eta, adjust=.5)
+# tfun <- function(y) .5 + (y-min(y))/(4*diff(range(y)))
+# lines(temp$x, tfun(temp$y), lty=3, col='gray')
+```
+
+## Assess calibration using grouped Poisson method
+
+Going to split the validation dataset up by eta (the linear predictor) and do an intercept only model Poisson model, to get the observed/expected ratios. This matches very well, to be expected. But again, any proble with the Poisson approach would also be a problem here.
+
+```{r}
+lp_mean <- vector("numeric",100)
+oe <- vector("numeric",100)
+dat.valid.split <- split(dat.valid, cut(dat.valid$eta, quantile(dat.valid$eta, p = seq(0, 1, length.out = 101))))
+for (i in 1:100){
+
+  ### Fit calibration model for mean calibraiton
+  temp_gfit1 <- glm(status ~ offset(log(expect1)), poisson, data = dat.valid.split[[i]])
+  oe[i] <- exp(coef(temp_gfit1))
+  lp_mean[i] <- mean(dat.valid.split[[i]][,"eta"])
+
+}
+
+xx <- lp_mean
+yy <- oe
+
+matplot(xx, yy, type='p', lty=c(1), lwd=c(2), log='y', col=1,
+        #ylim=c(.5, 2),
+        xlab="Linear predictor", ylab="Excess event rate")
+abline(h=exp(coef(gfit1)), col='gray', lty=1)
+temp <- density(dat.valid$eta, adjust=.5)
+tfun <- function(y) .5 + (y-min(y))/(4*diff(range(y)))
+lines(temp$x, tfun(temp$y), lty=3, col='gray')
+```
+
+Plot again with predcte risk on x-axis
+
+```{r}
+# matplot(exp(-0.5*exp(xx)), yy, type='p', lty=c(1), lwd=c(2), log='y', col=1,
+#         #ylim=c(.5, 2),
+#         xlab="Predicted risk", ylab="Excess event rate")
+# abline(h=exp(coef(gfit1)), col='gray', lty=1)
+# temp <- density(dat.valid$eta, adjust=.5)
+# tfun <- function(y) .5 + (y-min(y))/(4*diff(range(y)))
+# lines(temp$x, tfun(temp$y), lty=3, col='gray')
+```
+
+## Assess calibration using kaplan-meier
+
+Here, observed is kaplan-meier within subgroup, predicted risk is the mean predicted risk within that subgroup.
+
+```{r}
+km_group <- est_calib_plot_group(data = dat.valid, fit = fit.ml, bhaz = bhaz.ml, t = t.eval, n.groups = 100)
+km_group[["plot"]] + xlim(c(0,1)) + ylim(c(0,1))
+```
+
+This matches our smoothed calibration curve, unsurprisingly.
+
+## Assess calibration using kaplan-meier to get observed vs expcted ratio
+
+Here, we calculate kaplan-meier within each subgroup, and the mean predicted risk within each subgroup, then take the ratio to get observed/expected ratio.
+
+```{r}
+est_calib_plot_group_oe_lp <- function(data, fit, bhaz, t, n.groups, surv = NULL){
+
+  ### Get the survival probabilities
+  if (is.null(surv)){
+    data$surv <- as.numeric(est_surv(newdata = data, fit = fit, bhaz = bhaz, t = t))
+  } else {
+    data$surv <- as.numeric(surv)
+  }
+
+  ### Split data by surv
+  data.split <- split(data, cut(data$surv, c(-Inf, quantile(data$surv, probs = 1:n.groups/n.groups))))
+
+  ### Create vectors to store estimates
+  obs <- vector("numeric", n.groups)
+  pred <- vector("numeric", n.groups)
+  lp_mean <- vector("numeric", n.groups)
+
+  ### Run through
+  for (i in 1:n.groups){
+
+    ### Get Kaplan-Meier estimate
+    survobj <- survival::survfit(survival::Surv(time, status) ~ 1, data = data.split[[i]])
+    obs[i] <- 1-as.numeric(survobj$surv[max(which(survobj$time <= t))])
+
+    ### Get predicted
+    pred[i] <- 1 - (mean(data.split[[i]]$surv))
+
+    ### Get mean of lp
+    lp_mean[i] <- mean(log(-log(data.split[[i]]$surv)))
+  }
+
+  ### Get oe
+  oe <- obs/pred
+
+  ### Create plot data
+  plot.data <- data.frame("oe" = oe, "lp" = lp_mean)
+
+  ### Create plot
+  plot <- ggplot2::ggplot(data = plot.data) +
+    ggplot2::geom_point(ggplot2::aes(x = lp_mean, y = oe), color = "red") +
+    ggplot2::geom_abline(slope = 0, intercept = 1, lty = "dashed")
+
+  ### Create output.object
+  output.object <- list("plot" = plot)
+
+  return(output.object)
+
+}
+
+km_group_oe_lp <- est_calib_plot_group_oe_lp(data = dat.valid, fit = fit.ml, bhaz = bhaz.ml, t = t.eval, n.groups = 100)
+km_group_oe_lp[["plot"]]
+```
+
+
