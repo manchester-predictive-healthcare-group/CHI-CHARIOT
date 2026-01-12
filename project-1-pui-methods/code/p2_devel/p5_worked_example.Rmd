@@ -9,6 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir = )
 library(knitr)
 ```
 
@@ -68,21 +69,15 @@ df_valid <- dplyr::mutate(df_valid,
                           diabetes = factor("Type2", levels = levels(diabetes)),
                           ethnicity = factor("white", levels = levels(ethnicity)))
 
-
-### Create datasets for on and off antihypertensives
-df_valid_off_ah <- dplyr::mutate(df_valid, 
-                                 offset_ah_timevar_lnHR = 0)
-
-df_valid_on_ah <- dplyr::mutate(df_valid, 
-                                offset_ah_timevar_lnHR = lnHR_ah)
-
 ###
 ### Get predicted risks
 ###
 
-### Non-causal model
-pred0 <- 1 - df_valid |>
+### Visit 1, Non-causal model, off antihypertensives
+pred_model0_off_ah <- 1 - df_valid |>
   dplyr::mutate(
+    ### Define antihypertensives
+    antihypertensives = "Absent",
     ### Define sbp
     sbp = 140) |>
   ### Estimate survival probability
@@ -90,7 +85,19 @@ pred0 <- 1 - df_valid |>
            bhaz = bhaz_list[[5]],
            time = 10*365.25)
 
-### Visit 1, off antihyertensives
+### Visit 1, Non-causal model, on antihypertensives
+pred_model0_on_ah <- 1 - df_valid |>
+  dplyr::mutate(
+    ### Define antihypertensives
+    antihypertensives = "Present",
+    ### Define sbp
+    sbp = 140) |>
+  ### Estimate survival probability
+  est_surv(fit = fit_list[[5]],
+           bhaz = bhaz_list[[5]],
+           time = 10*365.25)
+
+### Visit 1, model 1, off antihyertensives
 pred_model1_off_ah_visit1 <- 1 - df_valid |>
   dplyr::mutate(
     ### Define treatment off antihypertensives
@@ -102,7 +109,7 @@ pred_model1_off_ah_visit1 <- 1 - df_valid |>
                   bhaz = bhaz_list[[1]],
                   time = 10*365.25)
 
-### Visit 1, on antihyertensives
+### Visit 1, model 1, on antihyertensives
 pred_model1_on_ah_visit1 <- 1 - df_valid |>
   dplyr::mutate(
     ### Define treatment off antihypertensives
@@ -115,7 +122,7 @@ pred_model1_on_ah_visit1 <- 1 - df_valid |>
                   time = 10*365.25)
 
 ### Present risks
-round(100*c(pred0, pred_model1_off_ah_visit1, pred_model1_on_ah_visit1), 2)
+round(100*c(pred_model0_off_ah, pred_model0_on_ah, pred_model1_off_ah_visit1, pred_model1_on_ah_visit1), 2)
 
 
 ######################################################################################
@@ -429,7 +436,6 @@ round(100*c(pred_model4_sbp140, pred_model4_sbp130, pred_model4_sbp120), 2)
 ### Reduction of BMI by 5
 ###
 pred_model4_bmi25 <- convert_risk_odds(p = pred_model4_sbp140, change_sbp = -sbp_reduction, change_bmi = -bmi_reduction, change_nonhdl = -nonhdl_reduction)
-pred_model4_healthy <- convert_risk_odds(p = pred_model4_sbp140, change_sbp = 20, change_bmi = -5, change_nonhdl = -1.4)
 
 ### Compare risks
 round(100*pred_model4_bmi25, 2)
@@ -437,6 +443,7 @@ round(100*pred_model4_bmi25, 2)
 ###
 ### Reduction of all values to healthy level
 ###
+pred_model4_healthy <- convert_risk_odds(p = pred_model4_sbp140, change_sbp = -20, change_bmi = -5, change_nonhdl = -1.4)
 
 ### Compare risks
 round(100*pred_model4_healthy, 2)

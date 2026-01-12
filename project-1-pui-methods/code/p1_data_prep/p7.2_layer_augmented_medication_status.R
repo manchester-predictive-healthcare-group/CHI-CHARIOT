@@ -12,8 +12,13 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd()
 getwd()
+
+### Load paralleisation packages
+library(foreach)
+library(doParallel)
+library(doFuture)
 
 ### Extract chain seed and gender from command line
 args <- commandArgs(trailingOnly = T)
@@ -23,6 +28,10 @@ print(paste("burnout = ", burnout))
 ### Read in the outcome data
 cvd_split_times_statins <- readRDS(paste("data/cohort_split_times_augmented_", "statins", "_burnout", burnout, ".rds", sep = ""))
 cvd_split_times_ah <- readRDS(paste("data/cohort_split_times_augmented_", "antihypertensives", "_burnout", burnout, ".rds", sep = ""))
+
+### Extract cohort (used to define list of variables for adjustment)
+cohort <- readRDS("data/cohort_pui.rds")
+cohort <- data.table::as.data.table(cohort)
 
 ###
 ### Start by combining statins and antihypertensives
@@ -103,7 +112,6 @@ get_cut_surv_times <- function(data, id){
     ### AH
     j <- 2
     for (i in 2:length(tstart_comb)){
-      print(paste("i=",i))
       if (tstart_comb[i] %in% pat_ah$tstart){
         status_adj_ah <- 
           append(status_adj_ah, 
@@ -133,13 +141,67 @@ cvd_split_times <- rbind(cvd_split_times_statins, cvd_split_times_ah) |>
   dplyr::arrange(patid, treatment, tstart, cvd_time) |>
   dplyr::group_by(patid)
 
-### Run function
+### Reduce cohort to just cvd_time, cvd_indicator and patid
+cohort_reduced <- cohort[,c("patid", "cvd_time", "cvd_indicator")]
+
+###
+### Write a function to layer the medication status times using above functions, then merge with cohort to add back in cvd_indicator
+###
+convert_data3 <- function(df){
+  
+  ### Layer the event times
+  cohort_split_times <- dplyr::group_modify(.data = df, 
+                                            .f = get_cut_surv_times) |>
+    as.data.frame() |>
+    dplyr::arrange(patid, tstart)
+  print(paste("end conversion", Sys.time()))
+  
+  ### Merge with cohort_reduced by patid and cvd_time to add cvd_indicator back in
+  ### Note cvd_time in cohort will always match the last interval in cohort_split_times
+  cohort_split_times <- merge(cohort_split_times, cohort_reduced, by.x = c("patid", "cvd_time"), by.y = c("patid", "cvd_time"), all.x = TRUE)
+  
+  ### Observations with missing cvd_indicator, set to zero
+  cohort_split_times <- dplyr::mutate(cohort_split_times, 
+                                      cvd_indicator = dplyr::case_when(is.na(cvd_indicator) ~ 0,
+                                                                       TRUE ~ cvd_indicator)
+  )
+  
+  ### Return 
+  return(cohort_split_times)
+  
+}
+
+### Cut the split survival times into smaller chunks
+### We can't split the cvd_split_times times data frame directly given multiple observations per patient,
+### which we don't want to be split up
+
+### First cut the cohort
+cohort_cut <- split(cohort, cut(seq_len(nrow(cohort)), 10, labels = FALSE))
+
+### Split cvd_split_times based on the cohort groupings
+cvd_split_times_cut <- lapply(1:10, function(x) {cvd_split_times[!is.na(fastmatch::fmatch(cvd_split_times$patid, cohort_cut[[x]]$patid)), ]})
+str(cvd_split_times_cut)
+
+### Run function using parallelisation
 print(paste("start conversion", Sys.time()))
-cohort_split_times <- dplyr::group_modify(.data = cvd_split_times, 
-                                          .f = get_cut_surv_times) |>
-  as.data.frame() |>
-  dplyr::arrange(patid, tstart)
+
+cl <- parallel::makeCluster(11)
+doParallel::registerDoParallel(cl)
+foreach::getDoParWorkers()
+cohort_split_times <- (foreach(x = 1:10, .combine = list, .multicombine = TRUE, 
+                               .packages = c("dplyr", "fastmatch"), 
+                               .export = c("get_cut_surv_times")) %dopar% {
+                                 convert_data3(df = cvd_split_times_cut[[x]])
+                               })
+stopCluster(cl)
 print(paste("end conversion", Sys.time()))
+str(cohort_split_times)
+
+### Combine into single dataset and sort
+cohort_split_times <- do.call("rbind", cohort_split_times) |>
+  dplyr::arrange(patid, tstart, cvd_time)
+str(cohort_split_times)
 
 ### Save adjsuted survival times, as it may take a while to run
 saveRDS(cohort_split_times, paste("data/cohort_split_times_augmented_burnout", burnout, ".rds", sep = ""))
+print("FINISHED")

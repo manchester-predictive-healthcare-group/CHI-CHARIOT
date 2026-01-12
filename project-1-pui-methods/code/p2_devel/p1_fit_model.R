@@ -155,6 +155,7 @@ fit_model <- function(gender){
   } else if (model == 0){
     full_formula_vec <- c("rms::rcs(age, c(25, 40, 57.5, 75))", 
                           paste("age*", inter_age_rcs, sep = ""),
+                          "age*antihypertensives",
                           "age*rms::rcs(IMD, c(1,10,20))",
                           "age*rms::rcs(sbp, 4)",
                           "age*rms::rcs(bmi, 4)",
