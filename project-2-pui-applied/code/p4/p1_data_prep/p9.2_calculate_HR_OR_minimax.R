@@ -1,5 +1,8 @@
 ###
-### Define treatment effects 
+### Define treatment effects and save as reseearch object in R for later use
+### Total effects of interventions (adjust for treatment drop-in)
+### Direct effects of each MFR on CVD (used in intervention layer)
+### Total effect of each MFR on the other MFRs, labelled as 'slopes' (used in intervention layer) 
 ### This program will apply the minimax conversion for between OR, RR and HR where relevant
 ###
 

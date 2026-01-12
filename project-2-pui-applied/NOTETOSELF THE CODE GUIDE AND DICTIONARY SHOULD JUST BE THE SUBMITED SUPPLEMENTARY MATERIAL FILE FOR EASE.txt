@@ -1,0 +1,1 @@
+Should the code guide be included in supplementary material, or just left on the gitrepo? I actually think the latter.
