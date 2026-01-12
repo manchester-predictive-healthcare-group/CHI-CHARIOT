@@ -1,0 +1,348 @@
+---
+title: "Integrated Calibration Bias Index, CB50 and CB90"
+author: "Alex Pate"
+date: "2025-02-17"
+output: 
+  word_document:
+    number_sections: true
+---
+
+```{r, setup, include = FALSE}
+knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project4")
+options(scipen = 999)
+```
+
+```{r, echo = FALSE, results = "asis"}
+### Load functions
+source("R/functions.R")
+
+### Define sample size
+m <- 1000000
+
+### Choose number of decimal places
+dp <- 3
+
+### Note, in the simulations "PV-ipcw" refers to grouping pseudo-value by the ipcw's.
+### We are not reporting that in the paper, and are referring to the binder approach as "PV-IPCW", so
+### are changing the name. Making a note of this, as to not get confused by PV-ipcw moving forwards.
+
+### Write function to create table
+combine_ICBI <- function(DGM.cens, b, split, t.cens, t.eval, unmeas_conf){
+  
+  ### Create object for storage
+  ICBI_dat_list <- vector("list", 3)
+  ICBI_dat_list <- lapply(ICBI_dat_list, function(x) {return(vector("list", 3))})
+  
+  CB50_dat_list <- vector("list", 3)
+  CB50_dat_list <- lapply(CB50_dat_list, function(x) {return(vector("list", 3))})
+  
+  CB90_dat_list <- vector("list", 3)
+  CB90_dat_list <- lapply(CB90_dat_list, function(x) {return(vector("list", 3))})
+  
+  ### Read in output
+  for (y in 1:3){
+    
+    for (model in 1:3){
+      
+      ### Read in sim data
+      if (unmeas_conf == FALSE){
+        calib.data <- readRDS(paste("data/simulation_m", m, 
+                                    "_b", b,
+                                    "_y", y,
+                                    "_c", DGM.cens,
+                                    "_model", model,
+                                    "_split", split,  
+                                    "_tcens", t.cens,
+                                    "_teval", t.eval, ".rds", sep = ""))[["plotdata"]]
+      } else {
+        calib.data <- readRDS(paste("data/simulation_m", m, 
+                                    "_b", b,
+                                    "_y", y,
+                                    "_c", DGM.cens,
+                                    "_model", model,
+                                    "_split", split,  
+                                    "_tcens", t.cens,
+                                    "_teval", t.eval, "_un.rds", sep = ""))[["plotdata"]]
+      }
+      
+      ### FOR NOW, REMOVE ALL OBSERVATION WITH PREDRISK==1, AS THIS RESULTS IN NA PRED.OBS VALUES
+      ### Very small proportion (0.014%), and only occurs when DGM is quadratic + cubic (O-DGM-POLY)
+      calib.data <- subset(calib.data, pred != 1)
+      
+      ### Remove the PV-ipcw ones
+      calib.data <- subset(calib.data, Calibration != "PV-ipcw")
+      
+      ### Make sure they are all ordered by id
+      calib.data <- dplyr::arrange(calib.data, Calibration, id)
+
+      ###
+      ### Get the ICBI, CB50 and CB90 for each method
+      ###
+      
+      ### All individuals
+      
+      ### NB: We get warnings that pred.obs.method and pred.obs.true are not the same length, because we
+      ### do this for the IPCW-flex and IPCW-x1 methods, where not all individuals have a predicted observed
+      ### risk, as only uncensored individuals are used in the calibration model. We therefore set these to NA, and
+      ### suppress the warning.
+      
+      ### NBNB: In more recent code, we actually produce calibration curve all individuals, so I can remove this bit.
+      get.ICBI.data <- suppressWarnings(lapply(c("PH", "PV", "PV-binder", "IPCW-flex", "IPCW-x1"), get_ICBI, 
+                          calib.data.in = calib.data))
+      names(get.ICBI.data) <- c("PH", "PV-group-risk", "PV-IPCW", "IPCW-flex", "IPCW-x1")
+      ICBI.data <- unlist(lapply(get.ICBI.data, function(x){x[["ICBI"]]}))
+      CB50.data <- unlist(lapply(get.ICBI.data, function(x){x[["CB50"]]}))
+      CB90.data <- unlist(lapply(get.ICBI.data, function(x){x[["CB90"]]}))
+      
+      ###
+      ### Put these into tables
+      ###
+      ICBI_dat_list[[y]][[model]] <- ICBI.data
+      CB50_dat_list[[y]][[model]] <- CB50.data
+      CB90_dat_list[[y]][[model]] <- CB90.data
+      
+    }
+    
+    ICBI_dat_list[[y]] <- do.call("rbind", ICBI_dat_list[[y]])
+    CB50_dat_list[[y]] <- do.call("rbind", CB50_dat_list[[y]])
+    CB90_dat_list[[y]] <- do.call("rbind", CB90_dat_list[[y]])
+    
+  }
+  
+  ### Extract into a single data frame
+  ICBI_dat_list <- do.call("rbind", ICBI_dat_list) |> as.data.frame()
+  CB50_dat_list <- do.call("rbind", CB50_dat_list) |> as.data.frame()
+  CB90_dat_list <- do.call("rbind", CB90_dat_list) |> as.data.frame()
+  
+  ### Give row names
+  # rownames(ICBI_dat_list) <- 
+  #   c(paste0("Y1", paste0("MODEL", 1:3)),paste0("Y2", paste0("MODEL", 1:3)),paste0("Y3", paste0("MODEL", 1:3)))
+
+  # rownames(CB50_dat_list) <- 
+  #   c(paste0("Y1", paste0("MODEL", 1:3)),paste0("Y2", paste0("MODEL", 1:3)),paste0("Y3", paste0("MODEL", 1:3)))
+  #   
+  # rownames(CB90_dat_list) <- 
+  #   c(paste0("Y1", paste0("MODEL", 1:3)),paste0("Y2", paste0("MODEL", 1:3)),paste0("Y3", paste0("MODEL", 1:3)))
+  
+  ICBI_dat_list <- dplyr::mutate(ICBI_dat_list, 
+                                 DGM = paste0("O-DGM-", c(rep("SL",3), rep("ML", 3), rep("QU", 3))),
+                                 Model = paste0("Model-", rep(c("SL", "ML", "QU"), 3))) |>
+    dplyr::relocate(DGM, Model)
+  
+  CB50_dat_list <- dplyr::mutate(CB50_dat_list, 
+                                 DGM = paste0("O-DGM-", c(rep("SL",3), rep("ML", 3), rep("QU", 3))),
+                                 Model = paste0("Model-", rep(c("SL", "ML", "QU"), 3))) |>
+    dplyr::relocate(DGM, Model)
+  
+  CB90_dat_list <- dplyr::mutate(CB90_dat_list, 
+                                 DGM = paste0("O-DGM-", c(rep("SL",3), rep("ML", 3), rep("QU", 3))),
+                                 Model = paste0("Model-", rep(c("SL", "ML", "QU"), 3))) |>
+    dplyr::relocate(DGM, Model)
+        
+  ### Return
+  output.object <- list("ICBI" = ICBI_dat_list, "CB50" = CB50_dat_list, "CB90" = CB90_dat_list)
+  return(output.object)
+  
+}
+
+### Assign a counter for Table numbers
+counter <- 1
+```
+
+# Tables for main analysis 
+
+The main analysis had the following input parameters:
+
+* Stopped Cox (individuals in validation cohort censored at the time point calibration is being assessed
+* Coefficients 0.3/0.12
+* No unmeasured dependence
+* t = 0.25, time at which calibration assessed
+
+```{r, echo = FALSE, results = "asis"}
+for (t.eval in c(1)){
+  for (b in c("03")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+          
+          #### Get ICBI
+          ICBI_data <- combine_ICBI(DGM.cens, b, split, t.cens, t.eval, FALSE)
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".1: ICBI for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["ICBI"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".2: CB50 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB50"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".3: CB90 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB90"]], digits = dp))
+          cat("\n")
+
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+# Tables for sensitivity analyses
+
+In each supplementary analysis, aside from the stated input parameter, all other input parameters remained the same as the main analysis.
+
+## No stopped Cox
+
+Individuals in validation cohort were not censored at the time point calibration is being assessed, i.e., stopped Cox not applied in validation cohort. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+for (t.eval in c(1)){
+  for (b in c("03")){
+    for (t.cens in c(1)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+        
+          print(paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]))
+          
+          #### Get ICBI
+          ICBI_data <- combine_ICBI(DGM.cens, b, split, t.cens, t.eval, FALSE)
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".1: ICBI for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["ICBI"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".2: CB50 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB50"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".3: CB90 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB90"]], digits = dp))
+          cat("\n")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+## Coefficients 0.5/0.2
+
+Coefficients of 0.5/0.2 as opposed to Coefficients 0.3/0.12 in the data generating mechanisms. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+for (t.eval in c(1)){
+  for (b in c("05")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+        
+          print(paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]))
+          
+          #### Get ICBI
+          ICBI_data <- combine_ICBI(DGM.cens, b, split, t.cens, t.eval, FALSE)
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".1: ICBI for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["ICBI"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".2: CB50 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB50"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".3: CB90 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB90"]], digits = dp))
+          cat("\n")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+## Unmeasured dependence
+
+Unmeasured dependence between the outcome and censoring mechanisms. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+for (t.eval in c(1)){
+  for (b in c("03")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+        for (DGM.cens in c(1,2,3,4)){
+        
+          print(paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]))
+          
+          #### Get ICBI
+          ICBI_data <- combine_ICBI(DGM.cens, b, split, t.cens, t.eval, TRUE)
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".1: ICBI for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["ICBI"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".2: CB50 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB50"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".3: CB90 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB90"]], digits = dp))
+          cat("\n")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+## t = 0.5
+
+Calibration assessed at time point t = 0.5. Otherwise, input parameters same as main analysis.
+
+```{r, echo = FALSE, results = "asis"}
+for (t.eval in c(2)){
+  for (b in c("03")){
+    for (t.cens in c(2)){
+      for (split in c(2)){
+       for (DGM.cens in c(1,2,3,4)){
+        
+          print(paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]))
+          
+          #### Get ICBI
+          ICBI_data <- combine_ICBI(DGM.cens, b, split, t.cens, t.eval, FALSE)
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".1: ICBI for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["ICBI"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".2: CB50 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB50"]], digits = dp))
+          cat("\n")
+          
+          cat("**Figure S", counter, ".", DGM.cens, ".3: CB90 for each method under ", paste(c("C-DGM-R", "C-DGM-SL", "C-DGM-ML", "C-DGM-QU")[DGM.cens]), "; input parameters detailed in section introduction**", sep = "")
+          print(knitr::kable(ICBI_data[["CB90"]], digits = dp))
+          cat("\n")
+        }
+      }
+    }
+  }
+}
+
+counter <- counter + 1
+```
+
+# Tables for supplementary analysis looking at mean calibration
+
+```{r, echo = FALSE}
+mean_calibration_table <- readRDS("data/supplementary_simulation_mean_calibration.rds")
+
+cat("**Figure S", counter,": Mean observed risk (estimated using Kaplan Meier) dividied by mean predicted risk in four key scenarios**", sep = "")
+print(knitr::kable(mean_calibration_table, digits = dp))
+cat("\n")
+```
