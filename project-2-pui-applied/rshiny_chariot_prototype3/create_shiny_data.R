@@ -3,7 +3,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/")
+setwd()
 getwd()
 
 ###
@@ -25,7 +25,7 @@ bhaz.prototype3.male <- lapply(1:1, function(x) {readRDS(paste("data/p4/prototyp
 ### Standard model
 fit.standard.male <- lapply(1:1, function(x) {readRDS(paste("data/standard_cox_", 1, "_imp", x, ".rds", sep = ""))})
 bhaz.standard.male <- lapply(1:1, function(x) {readRDS(paste("data/standard_cox_bhaz_", 1, "_imp", x, ".rds", sep = ""))})
-  
+
 
 ### Extract development means for offset models
 means.prototype3.female <- vector("list", 4)
@@ -111,7 +111,7 @@ pat <- data.valid[1, ]
 
 ### Assign all variables and de-identfiy...
 pat <- dplyr::select(pat, -c(cvd_time, cvd_indicator, cvd_time_prim, cvd_indicator_prim,
-                        cvd_time_hes, cvd_indicator_hes, cvd_time_death, cvd_indicator_death, 
+                        cvd_time_hes, cvd_indicator_hes, cvd_time_death, cvd_indicator_death,
                         patid, pracid, gender, cvd_ev_prim_aj, statins, antihypertensives))
 pat$age <- 50
 pat$bmi <- 25
@@ -145,15 +145,15 @@ saveRDS(total_hr_smoking1, "code/p4/p7_rshiny/data/offsets_lnHR_smoking_dummy1_t
 saveRDS(total_hr_smoking2, "code/p4/p7_rshiny/data/offsets_lnHR_smoking_dummy2_total.rds")
 
 ### Direct effects
-direct_RR_smoking_initiation <- readRDS("data/p4/direct_RR_smoking_initiation")
-direct_RR_smoking_cessation <- readRDS("data/p4/direct_RR_smoking_cessation")
-direct_RR_nonhdl <- readRDS("data/p4/direct_RR_nonhdl")
-direct_RR_bmi <- readRDS("data/p4/direct_RR_bmi")
-direct_RR_sbp <- readRDS("data/p4/direct_RR_sbp")
+direct_OR_smoking_initiation <- readRDS("data/p4/direct_OR_smoking_initiation")
+direct_OR_smoking_cessation <- readRDS("data/p4/direct_OR_smoking_cessation")
+direct_OR_nonhdl <- readRDS("data/p4/direct_OR_nonhdl")
+direct_OR_bmi <- readRDS("data/p4/direct_OR_bmi")
+direct_OR_sbp <- readRDS("data/p4/direct_OR_sbp")
 
-saveRDS(direct_RR_smoking_initiation, "code/p4/p7_rshiny/data/direct_RR_smoking_initiation")
-saveRDS(direct_RR_smoking_cessation, "code/p4/p7_rshiny/data/direct_RR_smoking_cessation")
-saveRDS(direct_RR_nonhdl, "code/p4/p7_rshiny/data/direct_RR_nonhdl")
-saveRDS(direct_RR_bmi, "code/p4/p7_rshiny/data/direct_RR_bmi")
-saveRDS(direct_RR_sbp, "code/p4/p7_rshiny/data/direct_RR_sbp")
+saveRDS(direct_OR_smoking_initiation, "code/p4/p7_rshiny/data/direct_OR_smoking_initiation.rds")
+saveRDS(direct_OR_smoking_cessation, "code/p4/p7_rshiny/data/direct_OR_smoking_cessation.rds")
+saveRDS(direct_OR_nonhdl, "code/p4/p7_rshiny/data/direct_OR_nonhdl.rds")
+saveRDS(direct_OR_bmi, "code/p4/p7_rshiny/data/direct_OR_bmi.rds")
+saveRDS(direct_OR_sbp, "code/p4/p7_rshiny/data/direct_OR_sbp.rds")
 print("FINISHED")

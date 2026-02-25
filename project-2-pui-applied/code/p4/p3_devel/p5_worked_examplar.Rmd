@@ -2,13 +2,17 @@
 title: "Worked example for how to use the model"
 author: "Alex Pate"
 date: "2025-05-14"
-output: 
+output:
+  html_document:
+    toc: true
+    df_print: paged
   word_document:
-    number_sections: TRUE
-    toc: TRUE
+    number_sections: true
+    toc: true
 ---
 
 ```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/code/p8_collate_results")
 library(knitr)
 ```
 
@@ -18,7 +22,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/")
 getwd()
 
 ### Load libraries
@@ -45,7 +49,7 @@ pat <- readRDS("code/p4/p7_rshiny/data/fake.pat.rds") |> dplyr::mutate(offset_ah
 pat$age <- 70
 pat$bmi <- 30
 pat$sbp <- 160
-pat$nonhdl <- 10
+pat$nonhdl <- 7
 pat$smoking[1] <- "Current"
 pat$ethnicity[1] <- "black caribbean"
 pat$IMD <- 10

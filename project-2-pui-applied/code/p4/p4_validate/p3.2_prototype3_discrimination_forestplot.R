@@ -70,7 +70,7 @@ create_forestplot <- function(gender, age_knots, caltime){
   dev.off()
   
   if (gender == 2 & age_knots == 4 & caltime == TRUE){
-    ragg::agg_png(paste("figures/p4/Figure3.png", sep = ""), 
+    ragg::agg_png(paste("figures/p4/Figure4.png", sep = ""), 
                   width = 3, height = 4, unit = "in", res = 600)
     plot(plot_out)
     dev.off()

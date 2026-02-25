@@ -1,8 +1,6 @@
 module load apps/gcc/R/4.4.2
 #Rscript p1_create_cohort.R > p1_create_cohort.out
 #Rscript p2_create_variable_objects.R > p2_create_variable_objects.out
-#Rscript p3.1_layer_cohort_split_times_statins_ah.R > p3.1_layer_cohort_split_times_statins_ah.out
-#Rscript p3.2_layer_cohort_split_times_statins_ah_comb.R > p3.2_layer_cohort_split_times_statins_ah_comb.out
 #Rscript p3_impute_cohort.R 1 1 > p3_impute_cohort_1.R
 #Rscript p3_impute_cohort.R 1 2 > p3_impute_cohort_2.R
 #Rscript p4_create_split_sample.R > p4_create_split_sample.out

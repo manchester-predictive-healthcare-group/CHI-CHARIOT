@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/")
 getwd()
 
 ### Load libraries
@@ -34,7 +34,7 @@ pat <- readRDS("code/p4/p7_rshiny/data/fake.pat.rds") |> dplyr::mutate(offset_ah
 pat$age <- 70
 pat$bmi <- 30
 pat$sbp <- 160
-pat$nonhdl <- 10
+pat$nonhdl <- 7
 pat$smoking[1] <- "Current"
 pat$ethnicity[1] <- "black caribbean"
 pat$IMD <- 10

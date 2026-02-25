@@ -1,6 +1,7 @@
 ###
-### Define treatment effects 
+### Define treatment effects
 ### This program will apply the minimax conversion for between OR, RR and HR where relevant
+### The derivation of the direct effects is provided in program CHI-CHARIOT/project-2-pui-applied/code/p4/p1_data_prep/p9.1_calculate_DAG.R
 ###
 
 ### Clear workspace
@@ -40,7 +41,7 @@ convert_OR_to_RR_ORlt1 <- function(OR, w, u){
 ## HR > 1, w < p0 < p1 < u
 convert_HR_to_RR_HRgt1 <- function(HR, w, u){
   top <- 1 - (1-w)^HR
-  bot <- 1 - (1-u)^(1/HR) 
+  bot <- 1 - (1-u)^(1/HR)
   out <- ((top/bot)*(u/w))^(1/2)
   return(out)
 }
@@ -48,7 +49,7 @@ convert_HR_to_RR_HRgt1 <- function(HR, w, u){
 ## HR < 1, w < p1 < p0 < u
 convert_HR_to_RR_HRlt1 <- function(HR, w, u){
   top <- 1 - (1-u)^HR
-  bot <- 1 - (1-w)^(1/HR) 
+  bot <- 1 - (1-w)^(1/HR)
   out <- ((top/bot)*(w/u))^(1/2)
   return(out)
 }
@@ -128,14 +129,14 @@ saveRDS(log(HR_statins), "data/offsets_total_lnHR_statins.rds")
 
 ### These have all been calculated by Bowen in his DAG and associated code, so I can read straight in
 # ORs
-direct_OR_nonhdl <- 1/0.812421
-direct_OR_bmi <- 1/0.9768592
-direct_OR_sbp <- 1/0.9741304
+direct_OR_nonhdl <- 1.230889
+direct_OR_bmi <-  1.023184
+direct_OR_sbp <- 1.026557
 
 ### HRs
-HR_sbp <- 1/0.975962
-HR_bmi <- 1/0.9785
-HR_nonhdl <- 1/0.823972
+HR_sbp <- 1.02464
+HR_bmi <- 1.021503
+HR_nonhdl <- 1.21364
 
 saveRDS(direct_OR_nonhdl, "data/offsets_direct_OR_nonhdl.rds")
 saveRDS(direct_OR_bmi, "data/offsets_direct_OR_bmi.rds")
