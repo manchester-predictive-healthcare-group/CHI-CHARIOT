@@ -1,0 +1,5 @@
+See t.eval in est_calib_pv_ipcw. Hasn't impacted simulations as t.eval is always defined anyway, but needs to be fixed at second round.
+
+Also add into computational improvements to calc_ipcw_pos (see in other work).
+
+Possibility to change model for pv to linear model.

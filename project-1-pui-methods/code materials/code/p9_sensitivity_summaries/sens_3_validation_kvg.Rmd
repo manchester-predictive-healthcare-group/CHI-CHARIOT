@@ -1,0 +1,1347 @@
+---
+title: Validation of the two component model using artificial censoring
+date: "`r format(Sys.time(), '%d %B %Y')`"
+bibliography: refs.bib
+output: 
+  html_document:
+    number_sections: true
+    toc_float: true
+    toc: true
+    code_folding: show
+    df_print: paged
+---
+
+```{=html}
+<style>
+.container, .main-container {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+body, html {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+</style>
+```
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+```
+
+This document contains a number of analyses pertaining to validation of the two-component model using, as outlined by Keogh and Van Geloven.[@RN1549] This is in contrast to validating the model with a process aligned with Xu et al,[@RN1345] which was utilised in the main analysis. This document in split into three sections. [Section 1](#methodology) explains our choice of methodology. [Section 2](#simulation) implements a simulation to ensure application of the methodology of Keogh and Van Geloven[@RN1549] is being applied appropriately, given the data/setting in this study is slightly different from the referenced work. [Section 3](#validation) presents a validation of the two-component model using these approaches. [Section 4](#rr_supplementary) presents an analysis to estimate the causal effect of statin and antihypertensive use on cardiovascular risk, using artificial censoring weights. Given the causal effect of these interventions are broadly known, we can assess whether the artificial censoring weights framework allows correct recovery statin and antihypertensive use. Failure to do so may explain any differences in the validation results from section 2, and the validation results from the main paper.
+
+# Choice of methodology when evaluating model performance using artificial censoring {#methodology}
+
+## Motivation
+
+The work of [@RN1549] applies artificial censoring in the validation cohort when anyone deviates from the treatment strategy under which predictions are being made. Inverse probability of artificial censoring weights (IPACWs) are then estimated, and used in a weighted Kaplan-Meier estimator to estimate observed risk in the validation cohort. This observed risk is in a pseudo-population where everybody followed the assigned treatment strategy. This is then compared with the mean predicted risk under intervention. This analysis is also executed within subgroups defined by predicted risk. When using artificial censoring to assess the validation of the two-component model (see section 2), we do not follow this approach. There are a few reasons for this. 
+
+Firstly, our data is continuously observed, and 10-year risk scores contain 3652 different possible event times. Given the size of the cohort, the majority of these event times are observed. A weighted Kaplan-Meier requires time-varying weights at every possible event time using interval censored data, which presents a computational problem. One option would be to bin the data at 30/90/180 intervals, and apply weighted Kaplan-Meier estimator to this data. However, the impact of this choice, and magnitude of the bias induced by doing so, is unclear. There are alternative approaches (detailed subsequently in this document) which do not suffer this issue which we prefer.
+
+Secondly, our non-artificial censoring mechanism is not independent from the outcome mechanism. This is primarily due to individuals at high risk of death (censoring event), are generally older and are also more likely to experience a cardiovascular event. Assessment of mean calibration through Kaplan-Meier observed risk vs mean predicted risk will be biased, as the Kaplan-Meier estimate will be biased. This is protected somewhat by looking at weighted Kaplan-Meier vs Mean Predicted risk within groups of individuals with similar risk (i.e. deciles). [@RN1549] state that "*some estimators for evaluating predictive performance in the (non interventiuonal) prediction setting apply inverse probability of censoring weights to account for standard right censoring*". When using such estimators, and independence between the censoring mechanisms, combined weights can be calculated as the product of the inverse probability of censoring weights (IPCWs) and the IPACWs. These combined weights could be used to weight the Kaplan-Meier estimator, however, this feels like an overly complicated solution. 
+
+Thirdly, comparing Kaplan-Meier observed risk with mean predicted risk cannot be easily extended to produce calibration curves. Doing so within subgroups defined by predicted risk may often be sufficient, but has it's limitations (primarily results dependent on number of arbitrarily defined groups).[@RN1422]
+Given the aforementioned computational issues, and that we must use combined weights due to a dependent non-artificial censoring mechanism, and  we prefer to use alternative approaches which do not require estimating both time-varying IPCWs and IPACWs, and that can be easily extended to produce calibration curves.
+
+The methods we choose to use are pseudo-values, and cross sectional approaches looking at who has and hasn't had the event by the time point of interest. Both must be weighted using IPCW's and IPACW's (specifically the product of these, the combined weights). We demonstrate approaches to estimate mean calibration, and produce smoothed calibration curves. 
+
+## Proposed methodology
+
+We first introduce methodology than can be used to estimate calibration in a validation cohort with right censoring, using IPCWs.
+
+### Mean calibration
+
+The first suggestion is to use a Horvitz-Thompson Estimator to estimate the mean observed risk, and compare this with mean predicted risk. An outcome indicator is defined for who has ($Y_i(t_{eval}) = 1$) and hasn't ($Y_i(t_{eval}) = 0$) had the event by $t_{eval}$. The indicator itself is multiplied by the weights, and then we take the mean.
+
+$$
+\widehat{R}_{HT}(t_{eval})
+=
+\frac{1}{N}
+\sum_{i=1}^{N}
+w_iY_i(t_{eval})
+=
+\frac{\sum_{i=1}^{N} w_iY_i(t_{eval})}{N}.
+$$
+
+The second suggestion is to use a weighted mean estimator in the subset of uncensored individuals at 10-years. This is a Hajek-style estimator. This includes those who have had the event prior to 10-years, or who have not had the event and are uncensored at 10-years. Rather than multiplying the outcome indicator $Y_i(t_{eval})$ by the weight and taking the mean across the whole validation cohort (Horvitz-Thompson), we take a weighted mean in the subset of uncensored individuals $U$: 
+
+$$
+\widehat{R}_{Hajek}(t_{eval})
+=
+\frac{
+\sum_{i \in U} w_iY_i(t_{eval})
+}{
+\sum_{i \in U} w_i
+}.
+$$
+The difference between the Hajek style and Horvitz-Thompson estimator, is that the denominator when calculating the mean for the Hajek style estimator is 1/sum(weights), rather than 1/n. More generally, the Hajek style estimator is a stabilised version of the Horvitz-Thompson estimator.
+
+A third approach is the use of weighted pseudo-values. See [@RN1473; @RN1474]. The mean of the weighted pseudo-values would be compared against the mean predicted risk.
+
+### Moderate calibration
+
+For the first approach, we extended the Horvitz-Thompson estimator approach for mean calibration to produce calibration curves. We multiply the outcome indicator ($Y_{eval}$) by the weights, and then apply calibration methods that would be used for a linear model (regression weighted outcome on predictions and then estimate fitted values as a function of the predictions). This is done within the entire validation cohort (not just those that are uncensored at $t_{eval}$). We refer to this as smoothed HT approach.
+
+For the second approach, we look in the cohort of individuals uncensored at time $t_{eval}$, and apply methods for producing calibration curves for a binary logistic regression model, with the addition of IPCWs. We refer to this as the BLR-IPCW approach. 
+
+The third approach uses the weighted pseudo-values, again appling calibration methods that would be used for a linear model (weighted pseudo-values regressed on predictions and then estimate fitted values as a function of the predictions).
+
+We also consider the use of proportional hazards regression to estimate the calibration curve, following the work of [@RN1143]. Given that this approach regresses the observed survival outcome on the predicted risks using a cox proportional hazards model, the implementation with respect to the IP weights is less clear. This is therefore implemented as a comparator, rather than a proposed analysis when working in an artificially censored cohort.
+
+Finally, I will try and use the PH regression approach of [@RN1143]. Given that this approach regresses the observed survival outcome on the predicted risks using a cox proportional hazards model, the implementation with respect to the weights is less clear. I believe the correct thing to do would be to use the IPACWs, rather than the product of the IPCWs and IPACWs, however I am unsure. Furthermore, these weights should be time-varying.
+
+We report the calibration plot and integrated calibration index (mean magnitude of bias of the calibration curve), E50 (median magnitude of bias), and E90 (90th percentile of the magnitude of bias) for each method.
+
+### Extension to assess validation in artificially censored cohorts
+
+All these methods can be extended to the setting validating a model in a validation cohort with artificial censoring, in order to evaluate the performance of a prediction under intervention model.
+
+The IPCWs are estimated by fitting a model in the non-artificially censored cohort, to predict the risk of being censored. The IPACWs are estimated by fitting a model in the artificially censored cohort, to predict the risk of being artificially censored. Both weights are calculated by evaluating the probability of being uncensored at $min\{t_{eval}, t_{event}, t_{censored}, t_{artif censored}\}$. The combined weights are defined as $IPCW*IPACW$, as detailed by [@RN1549].
+
+Note, it may feel natural to estimate the IPCWs at $min{t_{eval}, t_{event}, t_{censored}}$, which is the weight that would be estimated in a cohort without artificial censoring. I have tried this and this does not impact results. This minimum of these only changes for individuals who are artificially censored, and these individuals will always contribute zero to the outcome model, and $0*weight = 0$. Therefore either is fine.
+
+# Simulation {#simulation}
+
+We implement a simulation to ensure application of the methodology of [@RN1549] is being applied appropriately, given the metrics for evaluating model performance, data and setting is different from the referenced work.
+
+## Simulation setup
+
+This simulation now applies two censoring mechanisms. The first reflects the regular censoring mechanisms, and the second represents the artificial censoring mechanism applied in the K&VG work. Only the artificial censoring mechanism is dependent with the outcome. This is to ensure that when applying non time-varying weights (for the IPACWs) to the Kaplan-Meier estimator, we have no bias induced by the regular censoring mechanism. In section 3, we have a simulation where both the censoring mechanisms are dependent.
+
+We simulate survival times, censoring times, and artificial censoring times. All have exponential hazard. We simulate a cohort of size $N = 500000$.
+
+The regular censoring time and survival time share a single predictor (z) with a log-hazard of 1, proportional hazards. The artificial censoring time and survival time share a single predictor (x) with a log-hazard of 1, proportional hazards. This means both censoring mechanisms are dependent with the outcome. A perfectly specified prediction model is developed in the non-artificially censored cohort. Validation is then assessed in the artificially censored cohort. Weights are estimated following the process defined in the previous section, and compared with weights derived directly from the data generating mechanism, to ensure they are correct. The weights derived directly from the data generating mechanism are used when assessing validation.
+
+## Simulation results
+
+We know the prediction model is perfectly specified and risks are correct. The assessment of calibration should therefore indicate near perfect calibration.
+
+```{r, include = FALSE}
+### Clear workspace
+rm(list=ls())
+Sys.time()
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+sapply(R.func.sources, source)
+
+### Define t_fup
+t_fup <- 10 * 365.25
+
+### Function to create ipacw data
+create_ipacw_data <- function(beta_true_x, # control ipacw censoring
+                              beta_true_z # control normal censoring
+){
+  
+  ### NB: In the previous one censoring simulation, we used weights derived from the DGM.
+  ### In this example, we estimate them, so show the use of function est_surv_eventtime_or_t, for full consistency with the real data example.
+  
+  ### Set cap for weights
+  weight_cap <- 10000
+  
+  ###
+  ### Simulate df_valid from scratch
+  ###
+  set.seed(42)
+  n <- 500000
+  
+  ### Simulate predictors x and z
+  x <- rnorm(n, mean = 0, sd = 1)
+  z <- rnorm(n, mean = 0, sd = 1)
+  
+  ### Simulate true event times from exponential PH model
+  ### Median event time ~10 years at x = 0
+  lambda_true <- log(1.5) / (10 * 365.25)
+  true_event_times <- rexp(n, rate = lambda_true * exp(beta_true_x * x + beta_true_z * z))
+  
+  ### Simulate censoring times
+  ### These are dependent censoring, via the variable z.
+  ### Target: ~20% of individuals censored by 10 years
+  ### P(C < 10*365.25) = 0.20 => lambda_c = -log(0.80) / (10*365.25)
+  lambda_c <- 1/5000
+  rates_c  <- lambda_c * exp(beta_true_z * z)
+  cens_times <- rexp(n, rate = rates_c)
+  
+  ### Administrative censoring at 15 years
+  admin_cens <- 15 * 365.25
+  
+  ### Observed time and event indicator
+  time      <- pmin(true_event_times, cens_times, admin_cens)
+  status <- as.integer(true_event_times < cens_times & 
+                         true_event_times < admin_cens)
+  
+  ### Create dataset
+  df_valid <- data.frame(
+    patid = 1:n,
+    x = x,
+    z = z,
+    time = time,
+    status = status
+  )
+  
+  ### Add true prob of event
+  df_valid$cvd_surv_true <- exp(-lambda_true * exp(beta_true_x * df_valid$x + beta_true_z * df_valid$z) * t_fup)
+  
+  ### Quick sanity checks
+  # mean(df_valid$status)                                          # ~proportion with events
+  # 1 - summary(survfit(Surv(time, status) ~ 1, data = df_valid), times = 10*365.25)$surv  # KM event rate at 10 yrs
+  # mean(df_valid$time < admin_cens & df_valid$status == 0)   # ~proportion randomly censored
+  
+  ###
+  ### Build a prediction model I know is well calibrated,
+  ### estimate prediction risks, and show it's well calibrated
+  ###
+  
+  ### Create formula
+  model_formula_full <- as.formula("survival::Surv(time, status) ~ x + z")
+  
+  ### Fit a cox model and get baseline hazard
+  fit <- survival::coxph(model_formula_full, data = df_valid, model = TRUE)
+  bhaz <- survival::basehaz(fit, centered = TRUE)
+  bhaz_uncent <- survival::basehaz(fit, centered = FALSE)
+  
+  ### Get estimated survival probabilities
+  df_valid$cvd_surv <- est_surv(newdata = df_valid, fit = fit, bhaz = bhaz, time = 10*365.25)
+  df_valid$cvd_surv_cloglog <- log(-log(df_valid$cvd_surv))
+  
+  ###
+  ### Apply some artificial (informative) censoring
+  ###
+  
+  ### Individual-level rates under the PH model
+  lambda_ac <- 1/5000
+  beta_ac <- 1
+  rates_ac  <- lambda_ac * exp(beta_ac * df_valid$x)
+  
+  ### Draw artificial censoring times, dependent with the outcome via x.
+  raw_times_ac <- rexp(n = nrow(df_valid), rate = rates_ac)
+  
+  ### Apply administrative cap
+  df_ipacw_times <- data.frame(
+    patid     = df_valid$patid,
+    eventtime = pmin(raw_times_ac, admin_cens),
+    status    = as.integer(raw_times_ac <= admin_cens)
+  )
+  
+  ### Add artificial censoring times to dataset
+  df_valid <- dplyr::mutate(df_valid, 
+                            artif_cens_times = df_ipacw_times$eventtime)
+  
+  ### Create indicator and event time for estimating the IPCW weights
+  df_valid <- dplyr::mutate(df_valid, 
+                            ipacw_time = pmin(artif_cens_times, time),
+                            ipacw_indicator = dplyr::case_when(artif_cens_times < time ~ 1,
+                                                               TRUE ~ 0))
+  
+  ### Create indicator and event time for cvd, after applying artificial censoring
+  df_valid <- dplyr::mutate(df_valid,
+                            time_ipacw = pmin(artif_cens_times, time), 
+                            status_ipacw = dplyr::case_when(time < artif_cens_times ~ status,
+                                                            TRUE ~ 0))
+  
+  ### Create indicator for when normal censoring happens, inverse of status: ipcw_indicator
+  ### When administratively censored, set to zero.
+  df_valid <- dplyr::mutate(df_valid,
+                            ipcw_indicator = dplyr::case_when(time == admin_cens ~ 0,
+                                                              TRUE ~ 1 - status)
+  )
+  
+  ### Add a variable Y, for who has had the event by t_fup 
+  ### (in the normal cohort, and artificially censored cohort)
+  df_valid <- dplyr::mutate(df_valid,
+                            Y = dplyr::case_when(time > t_fup ~ 0,
+                                                 TRUE ~ status),
+                            Y_ipacw = dplyr::case_when(time_ipacw > t_fup ~ 0,
+                                                       TRUE ~ status_ipacw))
+  
+  ### Add id variable
+  df_valid$id <- df_valid$patid
+  
+  ########################
+  ### Estimate weights ###
+  ########################
+  
+  ###
+  ### Estimate the weights for the normal censoring mechanism
+  ###
+  
+  ### Add true prob of censoring and true weights (the weights are 1/this)
+  df_valid$ipcw_surv_true <- exp(-lambda_c * exp(beta_true_z * df_valid$z) * pmin(df_valid$time, t_fup))
+  df_valid$ipcw_weight_true <- 1/df_valid$ipcw_surv_true
+  
+  ### Fit model to estimate ipcws
+  fit_est_ipcw <- survival::coxph(survival::Surv(time, ipcw_indicator) ~ z, data = df_valid, model = TRUE)
+  bhaz_est_ipcw <- survival::basehaz(fit_est_ipcw, centered = TRUE)
+  bhaz_uncent_est_ipcw <- survival::basehaz(fit_est_ipcw, centered = FALSE)
+  
+  ### Estimate weights
+  df_valid$ipcw_weight <- 1/est_surv_eventtime_or_t(newdata   = df_valid,
+                                                    fit       = fit_est_ipcw,
+                                                    bhaz      = bhaz_est_ipcw,
+                                                    eventtime = "time",
+                                                    t         = 10*365.25)
+  
+  ### Cap weights
+  df_valid <- dplyr::mutate(df_valid, 
+                            ipcw_weight_cap = dplyr::case_when(ipcw_weight > weight_cap ~ weight_cap,
+                                                               TRUE ~ ipcw_weight))
+  #print("compare estimated ipcw weights with true weights")
+  #print(paste(head(df_valid[,c("patid", "time", "ipcw_weight", "ipcw_weight_true", "x", "z")], 15)))
+  
+  ###
+  ### Estimate the weights for the artificial censoring mechanism
+  ###
+  
+  ### Add true prob of artificial censoring and true artificial censoring weights (the weights are 1/this)
+  df_valid$ipacw_surv_true <- exp(-lambda_ac * exp(beta_ac * df_valid$x) * pmin(10 * 365.25, df_valid$ipacw_time))
+  df_valid$ipacw_weight_true <- 1/df_valid$ipacw_surv_true
+  
+  ### Fit model to estimate ipacws
+  fit_est_ipacw        <- survival::coxph(survival::Surv(ipacw_time, ipacw_indicator) ~ x, data = df_valid, model = TRUE)
+  bhaz_est_ipacw       <- survival::basehaz(fit_est_ipacw, centered = TRUE)
+  bhaz_uncent_est_ipacw <- survival::basehaz(fit_est_ipacw, centered = FALSE)
+  
+  ### Estimate weights
+  df_valid$ipacw_weight <- 1/est_surv_eventtime_or_t(newdata   = df_valid,
+                                                     fit       = fit_est_ipacw,
+                                                     bhaz      = bhaz_est_ipacw,
+                                                     eventtime = "time_ipacw", # note time_ipacw = ipacw_time
+                                                     t         = 10*365.25)
+  
+  ### Compare weights with true weights (should be the same)
+  #print("compare estimated ipacw weights with true weights")
+  #print(paste(head(df_valid[,c("patid", "time", "ipacw_weight_true", "ipacw_weight")], 15)))
+  
+  ### Cap weights
+  df_valid <- dplyr::mutate(df_valid, 
+                            ipacw_weight_cap = dplyr::case_when(ipacw_weight > weight_cap ~ weight_cap,
+                                                                TRUE ~ ipacw_weight))
+  
+  ### Get combined weights (note these are based off true censoring probabilities, not the estimated ones)
+  df_valid$comb_weights <- df_valid$ipacw_weight * df_valid$ipcw_weight
+  df_valid$comb_weights_cap <- pmin(df_valid$comb_weights, weight_cap)
+  
+  ### Add true weights
+  df_valid$comb_weights_true <- df_valid$ipacw_weight_true * df_valid$ipcw_weight_true
+  df_valid$comb_weights_true_cap <- pmin(df_valid$comb_weights_true, weight_cap)
+  
+  ### Create artificially censored data, by setting event times and indicators to the ipac times,
+  ### and create new dataset
+  df_valid_ipacw <- dplyr::mutate(df_valid,
+                                  time_original = time,
+                                  status_original = status,
+                                  time = time_ipacw,
+                                  status = status_ipacw)
+  
+  return(df_valid_ipacw)
+  
+}
+
+### Create data
+df_valid_ipacw <- create_ipacw_data(beta_true_x = 1, beta_true_z = 1)
+
+### Create an uncensored at t_fup cohort
+df_valid_ipacw_uncensored <- subset(df_valid_ipacw,
+                                    time >= t_fup | status == 1 & time < t_fup)
+
+### Fit a model on the "original" data
+
+### Create formula
+model_formula_full <- as.formula("survival::Surv(time_original, status_original) ~ x + z")
+
+### Fit a cox model and get baseline hazard
+fit <- survival::coxph(model_formula_full, data = df_valid_ipacw, model = TRUE)
+bhaz <- survival::basehaz(fit, centered = TRUE)
+bhaz_uncent <- survival::basehaz(fit, centered = FALSE)
+```
+
+### Mean calibration
+
+Horvitz-Thompson Estimator of observed risk indicates the model is well calibrated:
+
+```{r}
+### Horvitz-Thompson estimator
+ht_estimate <- mean(
+  (df_valid_ipacw$status == 1 & df_valid_ipacw$time <= t_fup) * 
+    (df_valid_ipacw$comb_weights_cap)
+)
+# obs
+ht_estimate
+# pred
+mean(1 - df_valid_ipacw$cvd_surv)
+# ratio
+mean(1 - df_valid_ipacw$cvd_surv)/ht_estimate
+```
+
+The weighted mean estimator of observed risk in subset of uncensored individuals (Hajek style) also indicates the model is well calibrated:
+
+```{r}
+### Weighted mean estimator (Hajek-style: weights in numerator and denominator)
+weighted_subset_estimate <- weighted.mean(df_valid_ipacw_uncensored$Y, 
+                                          df_valid_ipacw_uncensored$comb_weights_cap)
+# obs
+weighted_subset_estimate
+# pred
+mean(1 - df_valid_ipacw$cvd_surv)
+#ratio 
+mean(1 - df_valid_ipacw$cvd_surv)/weighted_subset_estimate
+```
+
+The weighted pseudo-value estimator of observed risk also indicates the model is well calibrated:
+
+### Moderate calibration
+
+```{r, include = FALSE}
+### Note I am using estimated weights here, but I could use true weights for better performance?
+### Calculate calibration plot using IPCW approach in uncensored cohort
+calib_two_cens_ipcw <- est_calib_ipcw_new(data = df_valid_ipacw_uncensored, 
+                                          fit  = fit, 
+                                          bhaz = bhaz, 
+                                          t = t_fup,
+                                          nk = 5,
+                                          weights_in = df_valid_ipacw_uncensored$comb_weights_cap)
+
+### Calculate calibration plot using weighted pseudo-value approach
+calib_two_cens_pv_ipcw <- est_calib_pv_ipcw(data = df_valid_ipacw, 
+                                            fit  = fit, 
+                                            bhaz = bhaz, 
+                                            t = t_fup,
+                                            weights_in = df_valid_ipacw$comb_weights_cap)
+
+### Calculate calibration plot using the smoothed Horvitz-Thompson approach
+calib_two_cens_smoothed_ht <- est_calib_smoothed_ht(data = df_valid_ipacw, 
+                                                    fit  = fit, 
+                                                    bhaz = bhaz, 
+                                                    t = t_fup,
+                                                    weights_in = df_valid_ipacw$comb_weights_cap)
+
+calib_two_cens_smoothed_ht_true <- est_calib_smoothed_ht(data = df_valid_ipacw, 
+                                                    fit  = fit, 
+                                                    bhaz = bhaz, 
+                                                    t = t_fup,
+                                                    weights_in = df_valid_ipacw$comb_weights_true_cap)
+```
+
+Calibration plot and ICI for the smoothed-HT approach indicates the model is well calibrated:
+
+```{r}
+calib_two_cens_smoothed_ht[["ICI"]]
+calib_two_cens_smoothed_ht[["plot"]]
+```
+
+Calibration plot and ICI for the BLR-IPCW approach indicates the model is well calibrated:
+
+```{r}
+calib_two_cens_ipcw[["ICI"]]
+calib_two_cens_ipcw[["plot"]]
+```
+
+Calibration plot and ICI for the weighted pseudo-value approach indicates the model is well calibrated:
+
+```{r}
+calib_two_cens_pv_ipcw[["ICI"]]
+calib_two_cens_pv_ipcw[["plot"]]
+```
+
+The the PH regression approach of [@RN1143].
+
+```{r, include = FALSE}
+### Estimate calibration under various weighting schemes
+calib_ph_noweight <- est_calib_ph(data = df_valid_ipacw, 
+                                  fit  = fit, 
+                                  bhaz = bhaz, 
+                                  time = round(10*365.25))
+
+calib_ph_comb_weight <- est_calib_ph(data = df_valid_ipacw,
+                                     fit = fit,
+                                     bhaz = bhaz,
+                                     time = round(10*365.25),
+                                     weights = df_valid_ipacw$comb_weights_cap)
+
+calib_ph_ipacw_weight <- est_calib_ph(data = df_valid_ipacw,
+                                      fit = fit,
+                                      bhaz = bhaz,
+                                      time = round(10*365.25),
+                                      weights = df_valid_ipacw$ipacw_weight_cap)
+```
+
+Finally, we will use the proportional hazards regression approach for assessing calibration.[@RN1143] Given that this approach regresses the observed survival outcome on the predicted risks using a Cox proportional hazards model, the implementation with respect to the weights is less clear. I believe the correct thing to do would be to use the IPACWs, rather than the product of the IPACW and IPCW weights, given the Cox already makes assumptions about the censoring mechanism, however I am unsure about this. Furthermore, these weights should be time-varying.
+
+We implement the method using combined weights (not time-varying), and as expected, this is not appropriate:
+
+```{r}
+calib_ph_comb_weight[["ICI"]]
+calib_ph_comb_weight[["plot"]]
+```
+
+We also implement using just the IPACWs (not time-varying), and find similar results:
+
+```{r}
+calib_ph_ipacw_weight[["ICI"]]
+calib_ph_ipacw_weight[["plot"]]
+```
+
+Interestingly though, if we use no weights at all, this approach indicates the model is well calibrated:
+
+```{r}
+calib_ph_noweight[["ICI"]]
+calib_ph_noweight[["plot"]]
+```
+
+Based on ongoing work (*REF XXXX*), I believe this is because the prediction model is perfectly specified, and therefore the censoring mechanism (combined normal and artificial) is conditionally independent from the outcome in the validation dataset, given the predicted risks. When we start weighting the cohort, this no longer holds. If the prediction model was not perfectly specified, this would also violate this assumption, and the assessment of calibration would be biased. We will therefore avoid this approach in the real data examples.
+
+## A note on time-varying confounding
+
+We have ignored time-varying confounding in these simulations. The goal of these simulations was to show how to assess calibration (mean or moderate) using approaches avoiding the Kaplan-Meier estimator. We assumed that we can accurately estimate or know the weights. If there is time-dependent confounding between treatment initiation (artificial censoring) and the outcome, this would need to be reflected in the process for estimating the weights. This could either be a pooled logistic regression model, or an interval censored survival model. However, this does induce extra considerations, as the IPC and IPACWs are estimated at $min\{t_{eval}, t_{event}, t_{censored}, t_{artif censored}\}$. 
+
+Currently, our models for estimating the weights (cox proportional hazard models) allow us to estimate probabilities of censoring at these exact times. If we use a pooled logistic regression models in order to estimate the weights, then we will lose the ability to do this. This is based on the assumption that the pooled logistic regression model would be implemented within intervals of say 30/90/180/365 days. While a pooled logistic regression model could be implemented with 1 day intervals, again this introduces a large computational burden, and potentially insufficient sample sizes/event rates for the individual logistic regression models.
+
+An alternative is to use interval censored survival models to estimate the weights. This would allow us to both adjustment for time-varying confounding (at say 1 year intervals), and still estimate weights at the exact times of $min\{t_{eval}, t_{event}, t_{censored}, t_{artif censored}\}$. Once estimated, these weights (estimated with adjustment for time-varying confounding), can then be used in the same way as the weights have been throughout this manuscript, in conjunction with the Hajek style/Horvitz Thompson estimators of mean calibration, and the BLR-IPCW, smoothed-HT and weighted pseudo-values approaches for estimating calibration curves. We prefer these approaches over the Kaplan-Meier approach for computational reasons, and more explicit handling of the non-artificial censoring mechanism.
+
+# Validation of the two-component model using inverse probability of artificial censoring weights {#validation}
+
+```{r, message = FALSE, echo = FALSE}
+### Clear workspace
+rm(list=ls())
+
+### Call survival
+library(survival)
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+sapply(R.func.sources, source)
+
+### Define follow up time
+t_fup <- 10*365.25
+```
+
+## Calibration results
+
+We apply IPACW weights as soon as anyone deviates from their treatment at baseline, with respect to statin use, or antihypertensive use. IPCWs are estimated by modelling the entire validation cohort together. IPACWs are estimated using stratified models for those off treatment at baseline, antihypertensives at baseline, statins at baseline, or on both treatments at baseline. Predictors are the same for each model, but due to smaller sample sizes for the latter three cohorts, we do not include interaction terms between age and other predictors in these models. Sample size criteria of [@RN1422] are adhered to, to minimise risk of overfitting. This is all implemented in program p1_create_validation_data_and_assess_calibration.R. These are the results from the three methods.
+
+**Female cohort:**
+<div style="display: flex; justify-content: space-between; gap: 10px;">
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ht2.png" style="width:100%; height:auto;">
+<p>Smoothed-HT</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ipcw_uncesnored2.png" style="width:100%; height:auto;">
+<p>Hajek-style</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_pv2.png" style="width:100%; height:auto;">
+<p>Weighted pseudo-value</p>
+</div>
+</div>
+
+**Male cohort:**
+<div style="display: flex; justify-content: space-between; gap: 10px;">
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ht1.png" style="width:100%; height:auto;">
+<p>Smoothed-HT</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ipcw_uncesnored1.png" style="width:100%; height:auto;">
+<p>Hajek-style</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_pv1.png" style="width:100%; height:auto;">
+<p>Weighted pseudo-value</p>
+</div>
+</div>
+
+Table of calibration metrics:
+
+```{r, echo = FALSE}
+results_table1 <- readRDS("data/calibration_moderate_kvg_metric_table1.rds")
+results_table2 <- readRDS("data/calibration_moderate_kvg_metric_table2.rds")
+results_table <- rbind(dplyr::mutate(results_table2, "Cohort" = "Female") |> dplyr::relocate(Cohort), 
+                       dplyr::mutate(results_table1, "Cohort" = "Male") |> dplyr::relocate(Cohort))
+knitr::kable(results_table)
+```
+
+We find the model to be miscalibrated for all methods in the same direction for both female and male cohorts. There appears to be a clear issue with the Hajek-style estimator in the male cohort, but the rest present a similar pattern.
+
+It's impossible to say whether the model is really miscalibrated, or there is just a difference between the average conditional treatment effect taken from the literature, vs what can be recovered from the data using the IP weights. The weighting could be subject to a number of assumption violations. In particular, the positivity assumption (we need support to effectively estimate the effect of sustaining treatment for 10-years), as well as conditional exchangability between the artificial censoring mechanism and the outcome.
+
+A small exploration/summary of key variables in the data follows.
+
+## Exploration of the data {#exploration}
+
+We inspect the distribution of the weights. There are some extremely large combined weights (IPCW*IPACW) indicating positivity violations. This is driven primarily by the artificial censoring mechanism, indicating we do not have support for estimating calibration of predictions under sustained treatment for 10-years.
+
+```{r, message = FALSE, echo = FALSE}
+# Define dp
+dp <- 2
+
+# Female table
+df_valid_realdata2 <- readRDS(paste("data/df_valid_ipacw", 2, ".rds"))
+weights_dist2 <- rbind(
+  round(quantile(df_valid_realdata2$ipcw_weight, p = c(0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 0.9999, 1)), dp),
+  round(quantile(df_valid_realdata2$ipacw_weight, p = c(0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 0.9999, 1)), dp),
+  round(quantile(df_valid_realdata2$comb_weight, p = c(0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 0.9999, 1)), dp)
+) |> as.data.frame()
+
+# Male table
+df_valid_realdata1 <- readRDS(paste("data/df_valid_ipacw", 1, ".rds"))
+weights_dist1 <- rbind(
+  round(quantile(df_valid_realdata1$ipcw_weight, p = c(0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 0.9999, 1)), dp),
+  round(quantile(df_valid_realdata1$ipacw_weight, p = c(0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 0.9999, 1)), dp),
+  round(quantile(df_valid_realdata1$comb_weight, p = c(0.5, 0.9, 0.95, 0.975, 0.99, 0.999, 0.9999, 1)), dp)
+) |> as.data.frame()
+
+# Combined table
+comb_table <- rbind(
+  dplyr::mutate(weights_dist2, "Cohort" = "Female", "Weights" = c("IPCW", "IPACW", "Combined")) |> dplyr::relocate(Cohort, Weights),
+  dplyr::mutate(weights_dist1, "Cohort" = "Male", "Weights" = c("IPCW", "IPACW", "Combined")) |> dplyr::relocate(Cohort, Weights)
+)
+
+knitr::kable(comb_table)
+```
+
+We next present a summary of how the number of outcome events and follow-up time changes after artificial censoring is applied. Variables are presented in the original cohort (orig), artificially censored (ac) cohorts. There are also columns for the ratio of number of events and follow-up time in the artificially censored cohort, compared to the original cohort (i.e. what proportion of follow-up time and number of events remains in artificially censored cohort). This is stratified by treatment status at baseline:
+
+```{r, message = FALSE, echo = FALSE}
+output_table <- rbind(df_valid_realdata2, df_valid_realdata1) |> 
+  dplyr::group_by(gender, med_status_statins, med_status_ah) |>
+  dplyr::summarise(
+    mean_status_orig = mean(status_original),
+    sum_status_orig = sum(status_original),
+    sum_time_orig = sum(time_original)/(1000*365.25),
+    mean_status_ac = mean(status),
+    sum_status_ac = sum(status),
+    sum_time_ac = sum(time)/(1000*365.25)) |> 
+  dplyr::mutate(orig_ac_time_ratio = sum_time_ac/sum_time_orig,
+                orig_ac_indicator_ratio = sum_status_ac/sum_status_orig,
+                gender = ifelse(gender == 2, "Female", "Male")) |>
+  as.data.frame() |>
+  dplyr::rename(
+    Cohort = gender,
+    `on statins` = med_status_statins,
+    `on antihyp` = med_status_ah,
+    `Prop events orig` = mean_status_orig,
+    `N events orig` = sum_status_orig,
+    `Followup time orig` = sum_time_orig,
+    `Prop events ac` = mean_status_ac,
+    `N events ac` = sum_status_ac,
+    `Followup time ac` = sum_time_ac,
+    `N events ratio (ac/orig)` = orig_ac_indicator_ratio,
+    `Followup time ratio (ac/orig)` = orig_ac_time_ratio
+  )
+
+knitr::kable(output_table)
+```
+
+We see that in the untreated at baseline group, that after applying artificial censoring, there is a ~50% reduction in the number of events, however only a ~15% reduction in total follow-up time/at-risk time. This is highlighting that untreated individuals who are at high risk of CVD events, are much more likely to initiate treatment than those at low risk of CVD events. This is reflected in the calibration plot, that after applying artificial censoring, the model appears to under predict, due to the large number of outcome events being artificially censored. This is logical sense, and shows statins/antihypertensives are being initiated in the right people. However, the level of this dependence is extremely strong, and it is likely there may be unmeasured confounding between the outcome and censoring mechanism, which would result in biased estimation of the weights as conditional exchangability assumption will not hold.
+
+Furthermore, and most likely, there could be positivity issues, indicated by large weights. We are predicting the risk of a cardiovascular event if sustaining treatment for 10-years. There are a very small percentage of individuals who sustain treatment for this length of time, and do not have an event, meaning the risk set gets very small. We present data on the proportion of individuals who sustain treatment and are followed up for 10-years.
+
+```{r, message = FALSE, echo = FALSE}
+output_table_sustained <- rbind(df_valid_realdata2, df_valid_realdata1) |> 
+  dplyr::mutate(uncensored_10y = dplyr::case_when(time > t_fup ~ 1,
+                                                  TRUE ~ 0)) |>
+  dplyr::group_by(gender, med_status_statins, med_status_ah) |>
+  dplyr::summarise(
+    N = dplyr::n(),
+    total_sustained = sum(uncensored_10y),
+    prop_sustained = mean(uncensored_10y)) |> 
+  as.data.frame() |>
+  dplyr::mutate(gender = ifelse(gender == 2, "Female", "Male")) |>
+  dplyr::rename(
+    Cohort = gender,
+    `on statins` = med_status_statins,
+    `on antihyp` = med_status_ah,
+    `N sustained treatment` = total_sustained,
+    `Proportion sustained treatment` = prop_sustained 
+  )
+
+knitr::kable(output_table_sustained)
+```
+
+Truncating the weights to a maximum of 100, or 10, does not have a major impact on the calibration plots, beyond the male plot using the Hajek method now aligning with the others. We still see considerable over-prediction in both the female and male cohorts.
+
+**Female cohort, truncated at 100:**
+<div style="display: flex; justify-content: space-between; gap: 10px;">
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ht2_trunc100.png" style="width:100%; height:auto;">
+<p>Smoothed-HT</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ipcw_uncesnored2_trunc100.png" style="width:100%; height:auto;">
+<p>Hajek-style</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_pv2_trunc100.png" style="width:100%; height:auto;">
+<p>Weighted pseudo-value</p>
+</div>
+</div>
+
+**Male cohort, truncated at 100:**
+<div style="display: flex; justify-content: space-between; gap: 10px;">
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ht1_trunc100.png" style="width:100%; height:auto;">
+<p>Smoothed-HT</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ipcw_uncesnored1_trunc100.png" style="width:100%; height:auto;">
+<p>Hajek-style</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_pv1_trunc100.png" style="width:100%; height:auto;">
+<p>Weighted pseudo-value</p>
+</div>
+</div>
+
+**Female cohort, truncated at 10:**
+<div style="display: flex; justify-content: space-between; gap: 10px;">
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ht2_trunc10.png" style="width:100%; height:auto;">
+<p>Smoothed-HT</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ipcw_uncesnored2_trunc10.png" style="width:100%; height:auto;">
+<p>Hajek-style</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_pv2_trunc10.png" style="width:100%; height:auto;">
+<p>Weighted pseudo-value</p>
+</div>
+</div>
+
+**Male cohort, truncated at 10:**
+<div style="display: flex; justify-content: space-between; gap: 10px;">
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ht1_trunc10.png" style="width:100%; height:auto;">
+<p>Smoothed-HT</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_ipcw_uncesnored1_trunc10.png" style="width:100%; height:auto;">
+<p>Hajek-style</p>
+</div>
+<div style="flex: 1; text-align: center;">
+<img src="../../figures/calibration_moderate_kvg_pv1_trunc10.png" style="width:100%; height:auto;">
+<p>Weighted pseudo-value</p>
+</div>
+</div>
+
+To explore this further, we will attempt to estimate the effect of sustaining statins or antihypertensives for 10-years (and other prediction intervals), using artificial censoring (see subsequent section). If we are unable to get stable estimates of statin use and antihypertensive use, which are approximately in-line with the known effect of these interventions from trials, we know there issue an issue with the assumptions supporting analyses utilising the IPC and IPAC weights.
+
+# Intervention Effect Estimates using IP Weighting {#rr_supplementary}
+
+This section summarises the results of an analysis to estimate the causal effect of sustained statin and antihypertensive treatment on cardiovascular disease risk. Analyses were conducted separately for statins and antihypertensives. We use artificial censoring in combination with IP weighting to estimate the effects.
+
+The entire cohort (development + validation) were combined. We aimed to estimate the risk under no-intervention (p0) and risk under sustained treatment (p1). The relative risk reduction is estimated as the ratio of these (p1/p0). Values below 1 indicate a protective effect of treatment. We therefore created two cohorts. One where individuals were artificially censored as soon as they initiated treatment (instantly censoring those on treatment at baseline), and a second where individuals were artificially censored as soon as they stopped receiving treatment (instantly censoring those off treatment at baseline). We estimate the risk at 1/3/5/10 years follow-up in these two cohorts using weights via a Horvitz-Thompson style estimator, and a Hajek-style estimator.
+
+The weights used to estimate p0 and p1 were combined weights IPCW × IPACW × IPTW. The IPCWs and IPACWs were estimated as defined previously. The IPTWs are inverse probability of treatment weights when estimating p1, or inverse probability of untreated if calculating p0, and are the inverse of the probability of the receiving treatment which individuals were on at baseline. Under these weights, we can create pseudo-populations as if the whole population had either been treated, or untreated, over the follow-up horizon of interest. 
+
+Treatment use was defined in the same way as in the main analysis with a 180 wash-out period. We used all the same predictors for estimating the weights and included splines on continuous variables. Two weighting models were used, one with no interaction terms, and another where all predictors were interacted with age.
+
+As a result of finding highly unstable relative risk estimates and some really extreme weights/small effective sample sizes, indicative of violations of the positivity assumption, we also implement these analyses in overlap cohorts. This is where the cohort is restricted to individuals who had a reasonable probability of receiving either treatment (our threshold is 1%). We create two overlap cohorts. The first (*`Overlap cohort 1`*) restricts to individuals with sufficient probability of receiving either treatment at baseline (> 1%). The second (*`Overlap cohort 2`*) applies this restriction, but also restricts to those with probability of sustaining the treatment they did receive for the follow-up interval, i.e. probability of not being artificially censored over prediction interval > 1%; and probability of being observed for follow-up interval, i.e. not being censored from standard censoring mechanism > 1%. While these analyses alter the target population, we assume the effect of statins and antihypertensives to be reasonably homogeneous, the estimand should remain similar, but this should reduce violations of the positivity assumption, leading to more stable estimates. 
+
+We prefer estimation in overlap cohorts as opposed to truncating the weights. Extreme weights indicate there is little information in the data about this treatment strategy for the highly weighted individuals. Truncation will bias the estimator in order to improve variance, but the issue of positivity remains. Overlap restriction removes observations with little or no support before estimation, dealing with the cause of extreme weights, whereas truncation addresses the consequences of extreme weights. Both do have value, but we have opted to create overlap cohorts.
+
+```{r, include=FALSE}
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+### -----------------------------------------------------------------------
+### CONFIGURATION
+### Adjust these paths and parameter combinations to match your outputs
+### -----------------------------------------------------------------------
+
+data_dir   <- "data"
+meds       <- c("statins", "antihypertensives")
+genders    <- c(1, 2)
+t_fups     <- c(1, 3, 5, 10)
+flex_opts  <- c("linear", "flex")
+
+gender_labels <- c("1" = "Female", "2" = "Male")
+
+### -----------------------------------------------------------------------
+### HELPER FUNCTIONS
+### -----------------------------------------------------------------------
+
+### Safely read an RDS file — returns NULL if file doesn't exist
+safe_read <- function(path) {
+  if (file.exists(path)) readRDS(path) else NULL
+}
+
+### Build file path for risk estimates
+rr_path <- function(cohort, med, gender, t, flex, estimator, lagged = FALSE) {
+  lagged_prefix <- ifelse(lagged, "lagged_", "")
+  if (cohort == "full") {
+    file.path(data_dir, paste0("rr_", lagged_prefix, "entire_cohort_", estimator, "_", med, "_", gender, "_tfup", t, "_", flex, ".rds"))
+  } else if (cohort == "overlap"){
+    file.path(data_dir, paste0("rr_", lagged_prefix, "overlap_cohort_", estimator, "_", med, "_", gender, "_tfup", t, "_", flex, ".rds"))
+  } else if (cohort == "overlap_comb"){
+    file.path(data_dir, paste0("rr_", lagged_prefix, "overlap_comb_cohort_", estimator, "_", med, "_", gender, "_tfup", t, "_", flex, ".rds"))
+  }
+}
+
+### Build file path for ESS results
+ess_path <- function(cohort, med, gender, t, flex, lagged = FALSE) {
+  lagged_prefix <- ifelse(lagged, "lagged_", "")
+  if (cohort == "full") {
+    file.path(data_dir, paste0("ess_", lagged_prefix, med, "_entire_cohort_", gender, "_tfup", t, "_", flex, ".rds"))
+  } else if (cohort == "overlap"){
+    file.path(data_dir, paste0("ess_", lagged_prefix, med, "_overlap_cohort_", gender, "_tfup", t, "_", flex, ".rds"))
+  } else if (cohort == "overlap_comb"){
+    file.path(data_dir, paste0("ess_", lagged_prefix, med, "_overlap_cohort_comb_", gender, "_tfup", t, "_", flex, ".rds"))
+  }
+}
+
+### Build file path for weight diagnostics
+diag_path <- function(cohort, med, gender, t, flex) {
+  if (cohort == "full") {
+    file.path(data_dir, paste0("weight_diagnostics_", med, "_entire_cohort_", gender, "_tfup", t, "_", flex, ".rds"))
+  } else if (cohort == "overlap") {
+    file.path(data_dir, paste0("weight_diagnostics_", med, "_overlap_cohort_", gender, "_tfup", t, "_", flex, ".rds"))
+  } else if (cohort == "overlap_comb") {
+    file.path(data_dir, paste0("weight_diagnostics_", med, "_overlap_cohort_comb_", gender, "_tfup", t, "_", flex, ".rds"))
+  }
+}
+
+### Build file path for weight quantile results
+wq_path <- function(cohort, med, gender, t, flex) {
+  suffix <- if (cohort == "full") "entire_cohort"
+            else if (cohort == "overlap") "overlap_cohort"
+            else "overlap_cohort_comb"
+  file.path(data_dir, paste0("weight_quantiles_", med, "_", suffix, "_", gender, "_tfup", t, "_", flex, ".rds"))
+}
+
+### Extract N
+get_n <- function(ess_obj, group){
+  if (is.null(ess_obj)) return(NA)
+  if (group == "overall") return(ess_obj$unweighted$n)
+  g <- ess_obj$unweighted$by_group[[paste0("group_", group)]]
+  if (is.null(g)) return(NA)
+  g$n
+}
+### Extract ESS value from ESS results object for a given stage and group
+get_ess <- function(ess_obj, stage, group = "overall") {
+  if (is.null(ess_obj)) return(NA)
+  if (stage == "unweighted") {
+    if (group == "overall") return(ess_obj$unweighted$n)
+    return(ess_obj$unweighted$by_group[[paste0("group_", group)]]$n)
+  }
+  s <- ess_obj[[stage]]
+  if (is.null(s)) return(NA)
+  if (group == "overall") return(round(s$ess))
+  g <- s$by_group[[paste0("group_", group)]]
+  if (is.null(g)) return(NA)
+  round(g$ess)
+}
+
+get_ess_pct <- function(ess_obj, stage, group = "overall") {
+  if (is.null(ess_obj) || stage == "unweighted") return(NA)
+  s <- ess_obj[[stage]]
+  if (is.null(s)) return(NA)
+  if (group == "overall") return(round(s$ess_pct, 1))
+  g <- s$by_group[[paste0("group_", group)]]
+  if (is.null(g)) return(NA)
+  round(g$ess_pct, 1)
+}
+```
+
+## Relative Risk Estimates {#rr_table}
+
+Green RR values indicate a protective treatment effect (RR < 1). Red values indicate the
+estimate is in the wrong direction, which may signal positivity violations or other issues
+(see diagnostics sections below).
+
+The **effective sample size (ESS)** for each treatment group is also included in the Table. This is calculated using the Kish formula:
+
+$$\text{ESS} = \frac{(\sum w_i)^2}{\sum w_i^2}$$
+
+The ESS equals N when all weights are equal, and falls below N when weights are variable. A low ESS (expressed as a % of N) indicates that a small number of highly-weighted individuals are driving the analysis, which undermines the reliability of the estimates regardless of the nominal sample size. The table below shows the ESS at the final combined weighting stage (IPCW × IPACW × IPTW) alongside the actual sample size, for both cohorts. ESS% values below 10% are shown in red; below 25% in orange.
+
+```{r rr-table, echo = FALSE}
+### Build RR summary table across all combinations
+rr_rows <- list()
+
+for (cohort in c("full", "overlap", "overlap_comb")) {
+  for (med in meds) {
+    for (gender in genders) {
+      for (t in t_fups) {
+        for (flex in flex_opts) {
+          rr_hajek     <- safe_read(rr_path(cohort, med, gender, t, flex, "hajek"))
+          rr_ht     <- safe_read(rr_path(cohort, med, gender, t, flex, "ht"))
+          ess_obj <- safe_read(ess_path(cohort, med, gender, t, flex))
+          rr_rows[[length(rr_rows) + 1]] <- data.frame(
+            Cohort    = ifelse(cohort == "full", "Entire cohort", ifelse(cohort == "overlap", "Overlap cohort 1", "Overlap cohort 2")),
+            Med       = dplyr::recode(med, "statins" = "statins", "antihypertensives" = "Antihyp"),
+            Gender    = gender_labels[as.character(gender)],
+            `Follow-up (years)` = t,
+            `Age interactions` = ifelse(flex == "flex", "Yes", "No"),
+            p0_hajek        = if (!is.null(rr_hajek)) round(rr_hajek[1], 4) else NA,
+            p1_hajek        = if (!is.null(rr_hajek)) round(rr_hajek[2], 4) else NA,
+            RR_hajek        = if (!is.null(rr_hajek)) round(rr_hajek[2] / rr_hajek[1], 3) else NA,
+            p0_ht        = if (!is.null(rr_ht)) round(rr_ht[1], 4) else NA,
+            p1_ht        = if (!is.null(rr_ht)) round(rr_ht[2], 4) else NA,
+            RR_ht        = if (!is.null(rr_ht)) round(rr_ht[2] / rr_ht[1], 3) else NA,
+            `N (untreated)` = get_n(ess_obj, 0),
+            `ESS (untreated)` = get_ess(ess_obj, "combined", 0),
+            `ESS% (untreated)` = get_ess_pct(ess_obj, "combined", 0),
+            `N (treated)` = get_n(ess_obj, 1),
+            `ESS (treated)`   = get_ess(ess_obj, "combined", 1),
+            `ESS% (treated)`  = get_ess_pct(ess_obj, "combined", 1),
+            check.names = FALSE
+          )
+        }
+      }
+    }
+  }
+}
+
+# Rbind into data frame
+rr_df <- do.call(rbind, rr_rows)
+
+# Add color based on above/below 1
+rr_hajek_color <- dplyr::case_when(
+  is.na(rr_df$RR_hajek) ~ "black",
+  rr_df$RR_hajek < 1    ~ "green",
+  TRUE             ~ "red"
+)
+
+rr_ht_color <- dplyr::case_when(
+  is.na(rr_df$RR_ht) ~ "black",
+  rr_df$RR_ht < 1    ~ "green",
+  TRUE             ~ "red"
+)
+
+# Add color for arbitrary threshold on ESS %
+ess_unt_color <- dplyr::case_when(
+  is.na(rr_df$`ESS% (untreated)`)   ~ "black",
+  rr_df$`ESS% (untreated)` < 10     ~ "red",
+  rr_df$`ESS% (untreated)` < 25     ~ "orange",
+  TRUE                               ~ "black"
+)
+
+ess_tr_color <- dplyr::case_when(
+  is.na(rr_df$`ESS% (treated)`)     ~ "black",
+  rr_df$`ESS% (treated)` < 10       ~ "red",
+  rr_df$`ESS% (treated)` < 25       ~ "orange",
+  TRUE                               ~ "black"
+)
+
+# Add colours and print table
+rr_df |>
+  tibble::remove_rownames() |>
+  kable(caption = "Relative risk estimates and ESS by cohort, medication, gender, follow-up, and model",
+        align = c("l","l","l","c","c","r","r","r","r","r","r","r")) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE) |>
+  column_spec(which(names(rr_df) == "RR_hajek") ,               bold = TRUE, color = rr_hajek_color) |>
+  column_spec(which(names(rr_df) == "RR_ht") ,               bold = TRUE, color = rr_ht_color) |>
+  column_spec(which(names(rr_df) == "ESS% (untreated)") , bold = TRUE, color = ess_unt_color) |>
+  column_spec(which(names(rr_df) == "ESS% (treated)") ,   bold = TRUE, color = ess_tr_color) |>
+  collapse_rows(columns = 1:3, valign = "top") |>
+  scroll_box(width = "120%")
+```
+
+## Diagnostics {#diagnostics}
+
+We look at effective sample size (ESS), broken down by each weight, and the distribution of weights.
+
+The following tables break down the ESS loss at each weighting stage — IPCW, IPACW, IPTW,
+and the combined weight. This helps identify which component of the weighting is driving
+the ESS collapse. ESS% values below 10% are shown in red; below 25% in orange.
+
+**IPCW** (Inverse Probability of Censoring Weights) corrects for informative censoring —
+individuals who are lost to follow-up for reasons related to their risk. High IPCW weights
+indicate that some individuals had a very low predicted probability of remaining uncensored,
+meaning the model is trying to upweight a small group to represent a much larger one.
+
+**IPACW** (Inverse Probability of Adherence to Censoring Weights) corrects for artificial
+censoring — individuals who deviate from their assigned treatment strategy (sustained
+treatment or sustained non-treatment) are censored, and IPACW reweights the remaining
+individuals to represent the full population. High IPACW weights arise when some individuals
+have a very low predicted probability of sustaining their assigned strategy.
+
+**IPTW** (Inverse Probability of Treatment Weights) balances the treated and untreated groups
+at baseline on measured confounders. High IPTW weights arise when some individuals have a
+propensity score close to 0 or 1, indicating near-deterministic treatment assignment.
+
+```{r ess-by-stage, echo = FALSE, results='asis'}
+### One table per combination of cohort/med/gender/flex, showing ESS across t_fup and stages
+stages <- c("ipcw", "ipacw", "ipcw_ipacw", "iptw", "combined")
+stage_labels <- c("IPCW", "IPACW", "IPCW×IPACW", "IPTW", "Combined")
+
+for (cohort in c("full", "overlap", "overlap_comb")) {
+  for (med in meds) {
+    for (gender in genders) {
+      for (flex in flex_opts) {
+
+        ### Create ESS table
+        rows <- list()
+        any_data <- FALSE
+
+        for (t in t_fups) {
+          ess_obj <- safe_read(ess_path(cohort, med, gender, t, flex))
+          if (is.null(ess_obj)) next
+          any_data <- TRUE
+
+          for (si in seq_along(stages)) {
+            s <- stages[si]
+            rows[[length(rows) + 1]] <- data.frame(
+              `Follow-up` = t,
+              Stage       = stage_labels[si],
+              `ESS (overall)`   = get_ess(ess_obj, s, "overall"),
+              `ESS% (overall)`  = get_ess_pct(ess_obj, s, "overall"),
+              `ESS (untreated)` = get_ess(ess_obj, s, 0),
+              `ESS% (untreated)`= get_ess_pct(ess_obj, s, 0),
+              `ESS (treated)`   = get_ess(ess_obj, s, 1),
+              `ESS% (treated)`  = get_ess_pct(ess_obj, s, 1),
+              check.names = FALSE
+            )
+          }
+        }
+
+        if (!any_data) next
+
+        ### rbind into one ESS table
+        ess_table <- do.call(rbind, rows)
+
+        ### Create weight quantile table
+        wq_rows <- list()
+        
+        stage_labels_wq <- c(
+          ipcw       = "IPCW",
+          ipacw      = "IPACW",
+          ipcw_ipacw = "IPCW x IPACW",
+          iptw       = "IPTW",
+          combined   = "Combined"
+        )
+        
+        for (t in t_fups) {
+          wq <- safe_read(wq_path(cohort, med, gender, t, flex))
+          if (is.null(wq)) next
+
+          wq_rows[[length(wq_rows) + 1]] <- data.frame(
+            `Follow-up (years)` = t,
+            Stage     = stage_labels_wq[wq$stage],
+            Group     = ifelse(wq$group == 0, "Untreated", "Treated"),
+            N         = wq$n,
+            Min       = round(wq$min, 3),
+            Median    = round(wq$p50, 3),
+            `P90`     = round(wq$p90, 3),
+            `P95`     = round(wq$p95, 3),
+            `P99`     = round(wq$p99, 3),
+            `P99.9`   = round(wq$p99.9, 3),
+            Max       = round(wq$max, 1),
+            check.names = FALSE
+          )
+        }
+          
+        ### rbind into one table
+        wq_table <- do.call(rbind, wq_rows) |>
+          dplyr::arrange(`Follow-up (years)`, Group)
+        
+        ### Print section title
+        cat("\n\n###",
+            ifelse(cohort == "full", "Entire cohort", ifelse(cohort == "overlap", "Overlap cohort 1", "Overlap cohort 2")), "—",
+            tools::toTitleCase(med), "—",
+            gender_labels[as.character(gender)], "—",
+            ifelse(flex == "flex", "Age interactions: Yes", "Age interactions: No"), "\n\n")
+
+        cat("**Table: ESS diagnostics**")
+        cat(
+          ess_table |>
+            kable(align = c("c","l","r","r","r","r","r","r"), format = "html") |>
+            kable_styling(bootstrap_options = c("striped","hover","condensed"),
+                          full_width = TRUE) |>
+            column_spec(4, bold = TRUE,
+                        color = ifelse(is.na(ess_table$`ESS% (overall)`), "black",
+                                ifelse(ess_table$`ESS% (overall)` < 10, "red",
+                                ifelse(ess_table$`ESS% (overall)` < 25, "orange", "black")))) |>
+            column_spec(6, bold = TRUE,
+                        color = ifelse(is.na(ess_table$`ESS% (overall)`), "black",
+                                ifelse(ess_table$`ESS% (overall)` < 10, "red",
+                                ifelse(ess_table$`ESS% (overall)` < 25, "orange", "black")))) |>
+            column_spec(8, bold = TRUE,
+                        color = ifelse(is.na(ess_table$`ESS% (treated)`), "black",
+                                ifelse(ess_table$`ESS% (treated)` < 10, "red",
+                                ifelse(ess_table$`ESS% (treated)` < 25, "orange", "black")))) |>
+            collapse_rows(columns = 1, valign = "top")
+        )
+        
+        
+          
+        cat("**Table: Weight distributions**")
+          cat(
+            ### Print table
+            wq_table |>
+              knitr::kable(
+                align = c("l","l","l","c","c","l","l","r","r","r","r","r","r","r","r"),
+                format = "html"
+              ) |>
+              kableExtra::kable_styling(
+                bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE
+              ) |>
+              kableExtra::collapse_rows(
+                columns = 1:5,
+                valign = "top"
+              )
+          )
+      }
+    }
+  }
+}
+```
+
+<!-- ## Further Weight Distribution Diagnostics -->
+
+<!-- This section examines the distribution of the combined weight (IPCW × IPACW × IPTW) within -->
+<!-- the treated and untreated groups, and identifies which weight component is driving extreme -->
+<!-- values. -->
+
+<!-- **Weight concentration** measures the share of total weight held by the top 1% of -->
+<!-- individuals by weight. High concentration (e.g. > 30%) indicates that a small number of -->
+<!-- individuals are dominating the pseudo-population, which is a major source of instability. -->
+
+<!-- **Spearman correlations** between weight components indicate whether extreme weights are -->
+<!-- arising from a single component or from multiple components compounding on the same -->
+<!-- individuals. High correlations across components are a sign of a structural positivity -->
+<!-- problem that cannot be resolved by model specification alone. -->
+
+<!-- **Covariate profiles** of extreme-weight individuals (top 1% by combined weight) versus -->
+<!-- normal-weight individuals reveal whether extreme weights are concentrated in a clinically -->
+<!-- interpretable subgroup, which can inform overlap cohort definition or estimand restrictions. -->
+
+
+```{r weight-diagnostics, echo = FALSE, results='asis'}
+# for (cohort in c("full", "overlap")) {
+#   for (med in meds) {
+#     for (gender in genders) {
+#       for (flex in flex_opts) {
+#         for (t in t_fups) {
+# 
+#           diag <- safe_read(diag_path(cohort, med, gender, t, flex))
+#           if (is.null(diag)) next
+# 
+#           cat("\n\n###", tools::toTitleCase(med), "—",
+#               gender_labels[as.character(gender)], "—",
+#               ifelse(flex == "flex", "Age interactions: Yes", "Age interactions: No"), "—",
+#               ifelse(cohort == "full", "Entire cohort", ifelse(cohort == "overlap", "Overlap cohort 1", "Overlap cohort 2")), "—",
+#               t, "years\n\n")
+# 
+#           ### Weight distribution quantiles
+#           cat("**Combined weight quantiles**\n\n")
+#           q_df <- data.frame(
+#             Group      = c("Untreated", "Treated"),
+#             `Min`      = c(diag$quantiles$untreated["0%"],   diag$quantiles$treated["0%"]),
+#             `Median`   = c(diag$quantiles$untreated["50%"],  diag$quantiles$treated["50%"]),
+#             `90th`     = c(diag$quantiles$untreated["90%"],  diag$quantiles$treated["90%"]),
+#             `95th`     = c(diag$quantiles$untreated["95%"],  diag$quantiles$treated["95%"]),
+#             `99th`     = c(diag$quantiles$untreated["99%"],  diag$quantiles$treated["99%"]),
+#             `99.9th`   = c(diag$quantiles$untreated["99.9%"],diag$quantiles$treated["99.9%"]),
+#             `Max`      = c(diag$quantiles$untreated["100%"], diag$quantiles$treated["100%"]),
+#             check.names = FALSE
+#           )
+#           cat(
+#             q_df |>
+#               kable(digits = 3, format = "html") |>
+#               kable_styling(bootstrap_options = c("striped","hover","condensed"),
+#                             full_width = FALSE)
+#           )
+# 
+#           ### Weight concentration
+#           cat("\n**Weight concentration (treated group)**\n\n")
+#           cat("Top 1% of individuals hold **",
+#               round(100 * diag$top1_share, 1), "%** of total weight.\n\n")
+# 
+#           ### Spearman correlations
+#           cat("**Spearman correlations between weight components (treated group)**\n\n")
+#           cat(
+#             as.data.frame(diag$cor_mat) |>
+#               kable(digits = 3, format = "html") |>
+#               kable_styling(bootstrap_options = c("striped","hover","condensed"),
+#                             full_width = FALSE)
+#           )
+# 
+#           ### Weight drivers
+#           cat("\n**What is driving extreme combined weights? (treated, top 1% vs rest)**\n\n")
+#           wd_df <- data.frame(
+#             Component = c("IPCW", "IPACW", "IPTW"),
+#             `Mean (extreme)` = c(diag$weight_drivers$ipcw$extreme,
+#                                  diag$weight_drivers$ipacw$extreme,
+#                                  diag$weight_drivers$iptw$extreme),
+#             `Mean (normal)`  = c(diag$weight_drivers$ipcw$normal,
+#                                  diag$weight_drivers$ipacw$normal,
+#                                  diag$weight_drivers$iptw$normal),
+#             check.names = FALSE
+#           )
+#           cat(
+#             wd_df |>
+#               kable(digits = 3, format = "html") |>
+#               kable_styling(bootstrap_options = c("striped","hover","condensed"),
+#                             full_width = FALSE)
+#           )
+# 
+#           ### Covariate profiles
+#           cat("\n**Covariate profiles: extreme vs normal combined weights (treated)**\n\n")
+#           cp <- diag$covariate_profiles
+#           cp_df <- data.frame(
+#             Variable = names(cp),
+#             `Extreme mean (SD)` = sapply(cp, function(x)
+#               paste0(round(x$extreme_mean, 1), " (", round(x$extreme_sd, 1), ")")),
+#             `Normal mean (SD)`  = sapply(cp, function(x)
+#               paste0(round(x$normal_mean, 1), " (", round(x$normal_sd, 1), ")")),
+#             check.names = FALSE
+#           )
+#           cat(
+#             cp_df |>
+#               kable(format = "html") |>
+#               kable_styling(bootstrap_options = c("striped","hover","condensed"),
+#                             full_width = FALSE)
+#           )
+# 
+#           ### Flag table
+#           cat("\n**Overlap of extreme weights across components (treated group)**\n\n")
+#           cat("Number of individuals simultaneously in top 5% of all three weight components: **",
+#               diag$n_all_three, "** (", diag$pct_all_three, "%)\n\n")
+#           cat(
+#             as.data.frame(diag$flag_table) |>
+#               kable(col.names = c("N components in top 5%", "Count"), format = "html") |>
+#               kable_styling(bootstrap_options = c("striped","hover","condensed"),
+#                             full_width = FALSE)
+#           )
+#         }
+#       }
+#     }
+#   }
+# }
+```
+
+## Interpretation of Diagnostic Results
+
+### Statins
+
+I start by discussing the results for statins.
+
+* We don't have enough support to estimate the relative risk ratio of sustaining treatment for 10-years. This is highlighted by the effective sample sizes in the entire cohort for 10-years follow-up. Extreme violation of the positivity assumption.
+
+* We try to deal with violation of the positivity assumption through creating overlap cohorts. 
+  + This changes the estimand to target a cohort/population where we should have better support for to estimate. The first overlap cohort filters to individuals who have >1% chance of receiving either treatment, i.e., improve overlap between treatment groups. The second overlap cohort also filters to those with > 1% chance of not being artificially censored (sustaining treatment for follow-up period), and those with > 1% chance of being being censored by the normal censoring mechanism (probability of being observed for the follow-up period and therefore able to obtain an estimate). 
+  + There is very little difference between the first and second overlap cohort in terms of number of individuals, as few (in the hundreds/low thousands) have probabilities < 1%, however, this does make a notable impact to effective sample sizes induced by the IPACW weights in the longer follow-up times.
+  + Even in overlap cohort 2, ESS is a very small % of N (see [Relative Risk Estimates](#rr_table). This indicates that the relative risk estimates are still being dominated by a relatively small proportion of observations. Note, while any individual weight (IPCW, IPACW, IPTW) in overlap 2 cohort will be smaller than 100, the combined weights still have the potential to be very large. This can be observed in the table in [Diagnostics](#diagnostics).
+  + The tables in [Diagnostics](#diagnostics) indicate that the violations of positivity arise predominately through the artificial censoring mechanism (reflected in drop in ESS caused by IPACW weights alone), followed by a lack of overlap in treatment at baseline (reflected by drop in ESS caused by IPTW weights alone).
+  
+* At five-year follow-up, the positivity issues largely remain, in the entire cohort and overlap cohorts.
+
+* At three year follow-up, there is evidence of reisudal positivity problems in the entire cohort, but there is improvement in the overlap cohorts. 
+  + The ESS is approximately ~25-35% of the original N (overlap cohort 2).
+  + The diagnostics suggest that a lack of overlap in treatment at baseline (reflected by diagnostics for each weight alone) contributions the most to remaining positivity problems (see [Diagnostics](#diagnostics)).
+    + This is reasonable. As follow-up gets shorter, the probability of observing individuals sustaining treatment for this time period increases and will results in less positivity issues driven by the artificial censoring.
+
+* At one year follow-up, there is evidence of reisudal positivity problems in the entire cohort, but there is improvement in the overlap cohorts. 
+  + The ESS is approximately ~30-60% of the original N (overlap cohort 2).
+  + Again, the diagnostics suggest that a lack of overlap in treatment at baseline contributions the most to remaining positivity problems (see [Diagnostics](#diagnostics)).
+
+So at one and three year follow-ups, are there other issues at bay?
+
+The other key assumption which may be failed is exchangability, in particular with respect to treatment at baseline. Our treated group is a prevalent user cohort, rather than a new user design [@RN1570; @RN1569; @RN1571]. This means the decision to initiate treatment may have been made long before the index date. Consequently, baseline covariates may not adequately capture the clinical information that originally determined treatment initiation, in particular as that clinical information may have itself been modified by the intervention. New-user designs align baseline covariate assessment with treatment initiation specifically to avoid this problem. Consequently, in a prevalent-user cohort, the conditional exchangability assumption required for the estimation of the IPTWs is less plausible.
+
+Another potential explanation is informative treatment initiation resulting from residual time-dependent confounding (confounding by indication). Statins or antihypertensive therapy may be initiated in response to clinical deterioration that signals an imminent cardiovascular event. Under the hypothetical "never treated" intervention, these individuals are artificially censored at treatment initiation, removing follow-up immediately preceding events. If the inverse probability of artificial censoring weights do not fully account for this informative censoring, the observed untreated follow-up becomes depleted of high-risk individuals, leading to underestimation of risk under the untreated strategy and biasing estimated treatment effects towards apparent harm.
+
+### Antihypertensives
+
+The pattern in terms of IPCW and IPACW is broadly the same for antihypertensives as it was for statins. The reason this has been split out, is that there are greater positivity issues surrounding being on/off antihypertensives at baseline, highlighted by the IPTWs, and the large drop in ESS driven by the IPTW's alone.
+
+There is evidence of severe practical positivity violations driven by the nature of antihypertensive prescribing: treatment is determined largely by blood pressure exceeding a clinical threshold, meaning the propensity score distribution in the
+treated group is highly concentrated. Many treated individuals have high probabilities of being treated or untreated, producing large IPTW weights.
+
+The overlap restriction removes the most extreme propensity scores but cannot resolve the underlying heterogeneity within the overlap region. Even after restriction, the weighting procedure remains highly unstable, suggesting limitation overlap even after restriction, reflected in the persistent ESS collapse.
+
+### Summary
+
+The results in [Diagnostics](#diagnostics) indicate that there is not sufficient support to estimate the effect of sustaining statin or antihypertensive treatment for 10-years. There is a clear violation of the positivity assumption induced by the artificial censoring mechanism alone. In turn, this indicates that using the same artificial censoring approach [@RN1549] to estimate calibration curves for 10-year risk predictions from the two component model, will also in a biased estimate of the calibration curve. In that setting, the problem would be exacerbated, as artificial censoring weights are estimated within four treatment groups (no treatment at baseline, statins only, antihypertensives only, on both treatments at baseline), rather than two (on/off statins or antihypertensives at baseline), as was done in section [Intervention Effect Estimates using IP Weighting](#rr_supplementary.). The issue was already evident when summarising the proportion of individuals in each group that sustained treatment for 10-years in [Exploration of the data](#exploration).
+
+Subsequent analyses (1/3 year follow-up) were supposed to show that we can recover the effect of statin/antihypertensive use from our cohort, and that positivity violations in the longer follow-ups (5/10 years) are what was driving the bias. However, we believe we were unable to recover these estimates for a range of other reasons. 
+
+# References
+
+```{r rr-lagged-table, echo = FALSE}
+# ### Build RR summary table across all combinations
+# rr_rows <- list()
+# 
+# for (cohort in c("full", "overlap", "overlap_comb")) {
+#   for (med in meds) {
+#     for (gender in genders) {
+#       for (t in t_fups) {
+#         for (flex in flex_opts) {
+#           rr_hajek     <- safe_read(rr_path(cohort, med, gender, t, flex, "hajek", lagged = TRUE))
+#           rr_ht     <- safe_read(rr_path(cohort, med, gender, t, flex, "ht", lagged = TRUE))
+#           ess_obj <- safe_read(ess_path(cohort, med, gender, t, flex, lagged = TRUE))
+#           rr_rows[[length(rr_rows) + 1]] <- data.frame(
+#             Cohort    = ifelse(cohort == "full", "Entire cohort", ifelse(cohort == "overlap", "Overlap cohort 1", "Overlap cohort 2")),
+#             Med       = dplyr::recode(med, "statins" = "statins", "antihypertensives" = "Antihyp"),
+#             Gender    = gender_labels[as.character(gender)],
+#             `Follow-up (years)` = t,
+#             `Age interactions` = ifelse(flex == "flex", "Yes", "No"),
+#             p0_hajek        = if (!is.null(rr_hajek)) round(rr_hajek[1], 4) else NA,
+#             p1_hajek        = if (!is.null(rr_hajek)) round(rr_hajek[2], 4) else NA,
+#             RR_hajek        = if (!is.null(rr_hajek)) round(rr_hajek[2] / rr_hajek[1], 3) else NA,
+#             p0_ht        = if (!is.null(rr_ht)) round(rr_ht[1], 4) else NA,
+#             p1_ht        = if (!is.null(rr_ht)) round(rr_ht[2], 4) else NA,
+#             RR_ht        = if (!is.null(rr_ht)) round(rr_ht[2] / rr_ht[1], 3) else NA,
+#             `N (untreated)` = get_n(ess_obj, 0),
+#             `ESS (untreated)` = get_ess(ess_obj, "combined", 0),
+#             `ESS% (untreated)` = get_ess_pct(ess_obj, "combined", 0),
+#             `N (treated)` = get_n(ess_obj, 0),
+#             `ESS (treated)`   = get_ess(ess_obj, "combined", 1),
+#             `ESS% (treated)`  = get_ess_pct(ess_obj, "combined", 1),
+#             check.names = FALSE
+#           )
+#         }
+#       }
+#     }
+#   }
+# }
+# 
+# # Rbind into data frame
+# rr_df <- do.call(rbind, rr_rows)
+# 
+# # Add color based on above/below 1
+# rr_hajek_color <- dplyr::case_when(
+#   is.na(rr_df$RR_hajek) ~ "black",
+#   rr_df$RR_hajek < 1    ~ "green",
+#   TRUE             ~ "red"
+# )
+# 
+# rr_ht_color <- dplyr::case_when(
+#   is.na(rr_df$RR_ht) ~ "black",
+#   rr_df$RR_ht < 1    ~ "green",
+#   TRUE             ~ "red"
+# )
+# 
+# # Add color for arbitrary threshold on ESS %
+# ess_unt_color <- dplyr::case_when(
+#   is.na(rr_df$`ESS% (untreated)`)   ~ "black",
+#   rr_df$`ESS% (untreated)` < 10     ~ "red",
+#   rr_df$`ESS% (untreated)` < 25     ~ "orange",
+#   TRUE                               ~ "black"
+# )
+# 
+# ess_tr_color <- dplyr::case_when(
+#   is.na(rr_df$`ESS% (treated)`)     ~ "black",
+#   rr_df$`ESS% (treated)` < 10       ~ "red",
+#   rr_df$`ESS% (treated)` < 25       ~ "orange",
+#   TRUE                               ~ "black"
+# )
+# 
+# # Add colours and print table
+# rr_df |>
+#   tibble::remove_rownames() |>
+#   kable(caption = "Relative risk estimates and ESS in lagged cohorts, medication, gender, follow-up, and model",
+#         align = c("l","l","l","c","c","r","r","r","r","r","r","r")) |>
+#   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE) |>
+#   column_spec(which(names(rr_df) == "RR_hajek") ,               bold = TRUE, color = rr_hajek_color) |>
+#   column_spec(which(names(rr_df) == "RR_ht") ,               bold = TRUE, color = rr_ht_color) |>
+#   column_spec(which(names(rr_df) == "ESS% (untreated)") , bold = TRUE, color = ess_unt_color) |>
+#   column_spec(which(names(rr_df) == "ESS% (treated)") ,   bold = TRUE, color = ess_tr_color) |>
+#   collapse_rows(columns = 1:3, valign = "top") |>
+#   scroll_box(width = "120%")
+```

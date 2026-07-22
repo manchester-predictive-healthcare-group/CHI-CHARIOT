@@ -1,0 +1,952 @@
+---
+title: "Sensitivity analyses looking at miss-specification of the effect of statins and antihypertensives"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    df_print: paged
+params:
+  genders: [2, 1]
+  model: 4
+  x_max: 0.6
+  histogram_bins: 40
+  show_stratified: true
+  stratified_meds: ["statins", "antihypertensives"]
+  stratified_types: [0, 1]
+---
+
+<style>
+.figure {
+  text-align: center;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  justify-content: center;
+}
+
+.main-container {
+  max-width: 100%
+  margin-left: 0
+  margin-right: 0
+}
+
+img, svg {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+# Global chunk options.
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 12,
+  fig.height = 15,
+  fig.align = "center",
+  dpi = 72,
+  cache = FALSE,
+  dev = "ragg_png"
+)
+knitr::opts_knit$set(root.dir = "../../")
+
+### Call neccesary packages
+library(ggplot2)
+library(patchwork)
+library(ragg)
+```
+
+**Associated manuscript: A flexible approach to sequential prediction under intervention**
+
+These supplementary analyses validate the model under the assumption that the treatment effect of statins and antihypertensives in the validation dataset are 10% and 20% bigger/smaller than those assumed in the development dataset when building the model. We refer to this as a miss-specification of the treatment effect (i.e., the treatment effect in the development dataset has been miss-specified compared to the true effect in the validation dataset). 
+
+We multiply the effect of statins or antihypertensives (on the hazard ratio scale) by values of 0.8, 0.9, 1.1 and 1.2. As the hazard ratios are < 1, multipliers 0.8 and 0.9 correspond to a bigger effect in the validation dataset, and multipliers 1.1 and 1.2 correspond to a smaller effect in the validation dataset.
+
+In order to assess the impact of miss-specification, we estimate counterfactual survival times in the validation dataset (see supplementary material for this process) using these miss-specified treatment effects. After this, calibration and discrimination are assessed in the way as described in the main manuscript, and supplementary file 1 (methodology).
+
+In section 1, we report calibration and discrimination in the entire validation dataset, for various levels of miss-specification of the treatment effect of statins/antihypertensives. For calibration, we report calibration curves, and the confidence interval for the calibration curve (note, the confidence intervals in section 1 are very small and so are not visible), and summary metrics ICI, E50 and E90. For discrimination, Harrel's C-index is reported. In section 2, we repeat the analyses within subgroups defined by treatment use (either statins or antihypertensives) at baseline. This is because we expect the biggest effect to be among individuals who are on treatment at baseline. The cohort of individuals off treatment at baseline contains a large number of individuals who never receive any treatment, and are therefore unaffected by the miss-specification. 
+
+We always compare calibration and discrimination to the values obtained in the main manuscript, when validating the model assuming the same treatment effects as those used to development to model (no miss-specification).
+
+```{r helper-functions, include=FALSE}
+# Scenario grid used by the sensitivity scripts.
+# From the provided scripts, the retained scenarios are those where exactly one of the
+# treatment-effect multipliers is unchanged (equal to 1.0), excluding the 1.0 / 1.0 case.
+make_scenario_grid <- function() {
+  base::expand.grid(
+    statins = c(0.8, 0.9, 1.0, 1.1, 1.2),
+    ah = c(0.8, 0.9, 1.0, 1.1, 1.2),
+    KEEP.OUT.ATTRS = FALSE,
+    stringsAsFactors = FALSE
+  ) |>
+    dplyr::filter((statins == 1.0 | ah == 1.0) & !(statins == 1.0 & ah == 1.0)) |>
+    dplyr::arrange(statins, ah) |>
+    dplyr::mutate(
+      scenario_id = dplyr::row_number(),
+      scenario_label = base::ifelse(
+        statins == 1.0,
+        paste0("AH multiplier ", ah, "|\n(statins unchanged)"),
+        paste0("Statins multiplier ", statins, "|\n (AH unchanged)")
+      )
+    )
+}
+
+scenario_grid <- make_scenario_grid()
+
+# Human-readable labels.
+gender_label <- function(gender) {
+  dplyr::case_when(
+    gender == 2 ~ "Women",
+    gender == 1 ~ "Men",
+    TRUE ~ paste0("Gender ", gender)
+  )
+}
+
+stratum_label <- function(med, type) {
+  med_label <- dplyr::case_when(
+    med == "statins" ~ "Statins",
+    med == "ah" ~ "Antihypertensives",
+    TRUE ~ med
+  )
+  type_label <- dplyr::case_when(
+    type == 1 ~ "on treatment at baseline",
+    type == 0 ~ "not on treatment at baseline",
+    TRUE ~ paste0("group ", type)
+  )
+  paste(med_label, "-", type_label)
+}
+
+### Discrimination readers
+read_original_discrim <- function(gender) {
+  readRDS(file.path("data", paste0("discrim_", gender, "_model", params$model, ".rds")))
+}
+
+read_sens_discrim <- function(gender, statins, ah) {
+  readRDS(file.path("data",
+    paste0("sens_treatment_effect_modified_discrim_", gender,
+           "_statins", statins, "_ah", ah, ".rds")))
+}
+
+read_strat_discrim <- function(gender, med, type, statins, ah) {
+  readRDS(file.path("data",
+    paste0("sens_treatment_effect_modified_discrim_", gender, "_", med, type,
+           "_statins", statins, "_ah", ah, ".rds")))
+}
+
+# Readers for the original overall outputs from p3_calibration_ph.R.
+read_original_metric <- function(gender, metric, model = params$model) {
+  base::readRDS(base::file.path("data", paste0("calib_ph_", metric, "_", gender, "_model", model, ".rds")))
+}
+
+read_original_smooth <- function(gender, model = params$model) {
+  base::readRDS(base::file.path("data", paste0("calib_ph_df_smooth_", gender, "_model", model, ".rds")))
+}
+
+read_original_grouped <- function(gender, model = params$model) {
+  base::readRDS(base::file.path("data", paste0("calib_ph_df_grouped_", gender, "_model", model, ".rds")))
+}
+
+read_original_metric_boot <- function(gender, model = params$model) {
+  base::readRDS(base::file.path("data", paste0("calib_ph_CI_ICI_E50_E90_", gender, "_model", model, ".rds")))
+}
+
+# Readers for non-stratified sensitivity outputs.
+read_sens_smooth <- function(gender, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_df_smooth_", gender,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_sens_grouped <- function(gender, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_df_grouped_", gender,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_sens_metric <- function(gender, statins_adj, ah_adj, metric) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_", metric, "_", gender,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_sens_boot <- function(gender, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_CI_ICI_E50_E90_", gender,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_sens_pred_grid <- function(gender, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_pred_plot_range_", gender,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+# Readers for stratified sensitivity outputs.
+read_strat_smooth <- function(gender, med, type, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_df_smooth_", gender, "_", med, type,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_strat_grouped <- function(gender, med, type, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_df_grouped_", gender, "_", med, type,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_strat_metric <- function(gender, med, type, statins_adj, ah_adj, metric) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_", metric, "_", gender, "_", med, type,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_strat_boot <- function(gender, med, type, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_CI_ICI_E50_E90_", gender, "_", med, type,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+read_strat_pred_grid <- function(gender, med, type, statins_adj, ah_adj) {
+  base::readRDS(base::file.path(
+    "data",
+    paste0("sens_treatment_effect_modified_calib_ph_pred_plot_range_", gender, "_", med, type,
+           "_statins", statins_adj, "_ah", ah_adj, ".rds")
+  ))
+}
+
+# Standardise the smooth calibration data frame.
+coerce_smooth_df <- function(x) {
+  df <- tibble::as_tibble(x)
+
+  # Standardise the observed-risk column name if needed.
+  if (!"pred.obs" %in% base::names(df) && "pred_obs" %in% base::names(df)) {
+    df <- dplyr::rename(df, pred.obs = pred_obs)
+  }
+  if (!"pred.obs" %in% base::names(df) && "obs" %in% base::names(df)) {
+    df <- dplyr::rename(df, pred.obs = obs)
+  }
+
+  df
+}
+
+# Parse a saved bootstrap matrix.
+# The code assumes the saved bootstrap object has:
+#   - columns 1:3 = ICI, E50, E90
+#   - remaining columns = curve values on the saved pred_plot_range
+# This mirrors how the sensitivity scripts save boot_func_for_calib_metrics_CI() output.
+parse_boot_output <- function(boot_mat, pred_grid) {
+  if (base::is.null(base::dim(boot_mat))) {
+    boot_mat <- base::matrix(boot_mat, nrow = 1)
+  }
+
+  n_curve <- base::length(pred_grid)
+  n_cols <- base::ncol(boot_mat)
+
+  metric_mat <- boot_mat[, base::seq_len(base::min(3, n_cols)), drop = FALSE]
+  if (base::ncol(metric_mat) > 0) {
+    base::colnames(metric_mat) <- c("ICI", "E50", "E90")[base::seq_len(base::ncol(metric_mat))]
+  }
+
+  curve_mat <- NULL
+  if (n_cols >= 3 + n_curve) {
+    curve_mat <- boot_mat[, (3 + 1):(3 + n_curve), drop = FALSE]
+  }
+
+  list(metric_mat = metric_mat, curve_mat = curve_mat)
+}
+
+# Convert the saved bootstrap curve values into pointwise percentile intervals.
+curve_ci_df <- function(curve_mat, pred_grid, scenario_label = NULL) {
+  if (base::is.null(curve_mat)) {
+    return(tibble::tibble())
+  }
+
+  # Fast column-wise quantiles
+  q <- matrixStats::colQuantiles(
+    curve_mat, probs = c(0.025, 0.5, 0.975), na.rm = TRUE
+  )
+  
+  # Output tibble
+  tibble::tibble(
+    pred = pred_grid,
+    lower = q[, "2.5%"],
+    median = q[, "50%"],
+    upper = q[, "97.5%"],
+    scenario_label = scenario_label
+  )
+}
+
+# Extract confidence interval for ICI, E50 and E90
+metric_ci <- function(boot_mat) {
+
+  # Ensure matrix
+  if (is.null(dim(boot_mat))) {
+    boot_mat <- matrix(boot_mat, nrow = 1)
+  }
+
+  # First 3 columns = ICI, E50, E90
+  metric_boot <- boot_mat[, 1:3, drop = FALSE]
+  colnames(metric_boot) <- c("ICI", "E50", "E90")
+
+  # Compute CIs
+  tibble::tibble(
+    metric = colnames(metric_boot),
+    lower_ci = apply(metric_boot, 2, stats::quantile, probs = 0.025, na.rm = TRUE),
+    upper_ci = apply(metric_boot, 2, stats::quantile, probs = 0.975, na.rm = TRUE)
+  )
+}
+
+# Histogram helper.
+# The saved smooth calibration data include the prediction support used on the x-axis.
+extract_hist_pred <- function(smooth_df) {
+  preds <- smooth_df$pred
+  preds[is.finite(preds)]
+}
+
+# Create a two-row figure with the histogram above the main plot.
+assemble_with_histogram <- function(main_plot, hist_df, x_max = params$x_max, bins = params$histogram_bins) {
+  
+  # Create histogram
+  hist_plot <- ggplot2::ggplot(hist_df, ggplot2::aes(x = pred)) +
+    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)),
+                            bins = bins, fill = "grey80", colour = "grey40") +
+    ggplot2::coord_cartesian(xlim = c(0, x_max)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.title.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.ticks.y = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(0, 0, 0, 0),
+      aspect.ratio = 0.25
+    ) +
+    ggplot2::ylab(NULL)
+
+  # Set limits on main plot
+  main_plot <- main_plot +
+    ggplot2::theme(plot.margin = ggplot2::margin(t = 0))
+
+  # Comebine plots using patchwork
+  # (hist_plot / main_plot) + patchwork::plot_layout(guides = "collect") &
+  #   ggplot2::theme(legend.position = "bottom")
+  (hist_plot / main_plot)
+}
+
+# Plot a saved sensitivity calibration curve with its saved CI, alongside the saved original curve.
+# No new calibration is estimated here.
+plot_single_calibration <- function(original_curve, scenario_curve, scenario_ci,
+                                          grouped_df = NULL, hist_pred = NULL,
+                                          title = NULL, x_max = params$x_max) {
+  # Plot original curve
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_line(
+      data = original_curve,
+      ggplot2::aes(x = pred, y = pred.obs, colour = "No miss-specification"),
+      linewidth = 0.8
+    ) +
+    # Plot sensitivity scenario curve
+    ggplot2::geom_line(
+      data = scenario_curve,
+      ggplot2::aes(x = pred, y = pred.obs, colour = "Sensitivity"),
+      linewidth = 0.9
+    ) +
+    # Plot ribbon for CI for scenario curve
+    ggplot2::geom_ribbon(
+      data = scenario_ci,
+      ggplot2::aes(x = pred, ymin = lower, ymax = upper, fill = "Sensitivity"),
+      alpha = 0.5
+    ) +
+    ggplot2::scale_color_manual(values = c("No miss-specification" = "black", "Sensitivity" = "#2C7FB8",
+                                           name = NULL)) +
+    ggplot2::scale_fill_manual(values = c("Sensitivity" = "#2C7FB8")) +
+    ggplot2::guides(fill = "none") +
+    ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "none",
+                   panel.spacing = grid::unit(0.2, "lines"),
+                     plot.margin = ggplot2::margin(0,0,0,0)) +
+    ggplot2::xlab("Predicted risk") +
+    ggplot2::ylab("Observed risk") +
+    ggplot2::coord_fixed(xlim = c(0, x_max), ylim = c(0, x_max))
+
+  # Add grouped plot
+  if (!base::is.null(grouped_df)) {
+    p <- p +
+      ggplot2::geom_point(
+        data = grouped_df,
+        ggplot2::aes(x = pred, y = obs),
+        colour = "darkgreen",
+        alpha = 0.7,
+        size = 1.2
+      )
+  }
+
+  # Add title
+  if (!base::is.null(title)) {
+    p <- p + ggplot2::ggtitle(title)
+  }
+  
+  # Add histogram
+  if (!base::is.null(hist_pred)) {
+    p <- assemble_with_histogram(
+      main_plot = p,
+      hist_df = tibble::tibble(pred = hist_pred),
+      x_max = x_max,
+      bins = params$histogram_bins
+    )
+  }
+
+  # Return plot
+  p
+}
+
+# Plot difference curves relative to the 1:1 line.
+# Difference is defined as observed risk minus predicted risk, using the saved smooth curve only.
+# Per user instruction, no confidence intervals are shown here.
+# plot_difference_from_identity <- function(diff_curve_df, hist_pred = NULL, title = NULL,
+#                                           x_max = params$x_max) {
+#   p <- ggplot2::ggplot(diff_curve_df, ggplot2::aes(x = pred, y = diff_from_identity, colour = scenario_label)) +
+#     ggplot2::geom_hline(yintercept = 0, linetype = "dashed") +
+#     ggplot2::geom_line(linewidth = 0.9) +
+#     ggplot2::theme_bw() +
+#     ggplot2::xlab("Predicted risk") +
+#     ggplot2::ylab("Observed risk - predicted risk") +
+#     ggplot2::coord_cartesian(xlim = c(0, x_max))
+# 
+#   if (!base::is.null(title)) {
+#     p <- p + ggplot2::ggtitle(title)
+#   }
+# 
+#   if (!base::is.null(hist_pred)) {
+#     p <- assemble_with_histogram(
+#       main_plot = p,
+#       hist_df = tibble::tibble(pred = hist_pred),
+#       x_max = x_max,
+#       bins = params$histogram_bins
+#     )
+#   }
+# 
+#   p
+# }
+
+### Metric table for the non-stratified sensitivity analyses.
+
+# Helper function for make_metric_table_non_stratified
+read_sens_metric_with_ci <- function(gender, statins_adj, ah_adj) {
+  
+  est_tbl <- tibble::tibble(
+    metric = c("ICI", "E50", "E90"),
+    value = c(
+      read_sens_metric(gender, statins_adj, ah_adj, "ICI"),
+      read_sens_metric(gender, statins_adj, ah_adj, "E50"),
+      read_sens_metric(gender, statins_adj, ah_adj, "E90")
+    )
+  )
+  
+  ci_tbl <- metric_ci(read_sens_boot(gender, statins_adj, ah_adj))
+  
+  est_tbl |>
+    dplyr::left_join(ci_tbl, by = "metric")
+}
+
+# Function to make metric table for non-stratified analyses
+make_metric_table_non_stratified <- function(gender) {
+  
+  ## --- Original analyses ---
+  original_values <- tibble::tibble(
+    metric = c("ICI", "E50", "E90"),
+    original = c(
+      read_original_metric(gender, "ICI"),
+      read_original_metric(gender, "E50"),
+      read_original_metric(gender, "E90")
+    )
+  )
+  
+  
+  ## --- Sensitivity scenarios ---
+  scenario_grid |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      metric_tbl = list(
+        read_sens_metric_with_ci(
+          gender = gender,
+          statins_adj = statins,
+          ah_adj = ah
+        )
+      )
+    ) |>
+    dplyr::ungroup() |>
+    tidyr::unnest(metric_tbl) |>
+    dplyr::left_join(original_values, by = "metric") |>
+    dplyr::mutate(
+      difference = value - original,
+      metric = factor(metric, levels = c("ICI", "E50", "E90"))
+    ) |>
+    dplyr::arrange(metric, statins, ah) |>
+    dplyr::mutate(
+      dplyr::across(
+        c(value, lower_ci, upper_ci, original, difference),
+        ~ round(.x, 3)
+      )
+    )
+}
+
+
+#### Metric table for saved stratified sensitivity analyses.
+
+# Helper function for make_metric_table_stratified
+read_strat_metric_with_ci <- function(gender, med, type, statins_adj, ah_adj) {
+  
+  # Point estimates
+  est_tbl <- tibble::tibble(
+    metric = c("ICI", "E50", "E90"),
+    value = c(
+      read_strat_metric(gender, med, type, statins_adj, ah_adj, "ICI"),
+      read_strat_metric(gender, med, type, statins_adj, ah_adj, "E50"),
+      read_strat_metric(gender, med, type, statins_adj, ah_adj, "E90")
+    )
+  )
+  
+  # Bootstrap ? CI
+  ci_tbl <- metric_ci(
+    read_strat_boot(
+      gender = gender,
+      med = med,
+      type = type,
+      statins_adj = statins_adj,
+      ah_adj = ah_adj
+    )
+  )
+  
+  # Combine
+  dplyr::left_join(est_tbl, ci_tbl, by = "metric")
+}
+
+# Function to make stratified metric table
+make_metric_table_stratified <- function(gender, med, type) {
+  
+  # Read original values
+  original_values <- tibble::tibble(
+    metric = c("ICI", "E50", "E90"),
+    original = c(
+      read_strat_metric(gender, med, type, statins = 1, ah = 1, "ICI"),
+      read_strat_metric(gender, med, type, statins = 1, ah = 1, "E50"),
+      read_strat_metric(gender, med, type, statins = 1, ah = 1, "E90")
+    )
+  )
+  
+  # Read in sensitivity values
+  scenario_grid |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      ICI = read_strat_metric(gender, med, type, statins, ah, "ICI"),
+      E50 = read_strat_metric(gender, med, type, statins, ah, "E50"),
+      E90 = read_strat_metric(gender, med, type, statins, ah, "E90")
+    ) |>
+    dplyr::ungroup() |>
+    tidyr::pivot_longer(cols = c(ICI, E50, E90), names_to = "metric", values_to = "value") |>
+    dplyr::left_join(original_values, by = "metric")  |>
+    dplyr::mutate(difference = value - original) |>
+    dplyr::mutate(dplyr::across(where(is.numeric), ~ round(.x, 3)))
+}
+
+# Simple formatter for publication-style tables.
+format_metric_table <- function(metric_tbl, include_original = TRUE) {
+  # Format table
+  out <- metric_tbl |>
+    dplyr::select(-c(statins, ah, scenario_id)) |>
+    dplyr::mutate(
+      #value = sprintf("%.4f", value),
+      # Replace the pipe, newline, and any accidental spaces with a single space
+      scenario_label = base::gsub("\\|\\n\\s*", " ", as.character(scenario_label))
+    ) |>
+    dplyr::arrange(metric, scenario_label) |>  
+    dplyr::rename(`no miss-specification` = original,
+                  scenario = scenario_label)
+}
+
+# discrim format helper
+format_discrim_table <- function(discrim_tbl) {
+  discrim_tbl |>
+    dplyr::mutate(
+      scenario_label = as.character(scenario_label),
+      dplyr::across(where(is.numeric), ~ round(.x, 3))
+    ) |>
+    dplyr::arrange(scenario_label)
+}
+```
+
+# Sensitivity analysis in entire validation cohort
+
+When the treatment effects are miss-specified by 10%/20% we see negligible changes to model performance. This will be for two reasons. Firstly, the calibration and discrimination metrics are dominated by low risk individuals who have a small probability of receiving treatment, among whom the impact of miss-specification of the treatment is small. Although, it should be noted that miss-specification seems to have minimal effect among high risk individuals too. This could be partially due to the second reason, which is that the cohort is a mix of individuals on and off treatment at baseline. If equal numbers of individuals start/stop taking treatment during follow-up, the effect of the miss-specification would cancel out. This is why we look at stratified analyses within those on/off treatment at baseline (see section 2).
+
+```{r preload-sensitivity-data, include = FALSE}
+# Preload all sensitivity data into memory to avoid repeated slow disk reads.
+sens_cache <- list()
+
+for (gender in params$genders) {
+
+  gender_key <- as.character(gender)
+  sens_cache[[gender_key]] <- list()
+
+  for (ii in seq_len(nrow(scenario_grid))) {
+
+    sc <- scenario_grid[ii, ]
+    scenario_key <- paste0("statins_", sc$statins, "_ah_", sc$ah)
+
+    sens_cache[[gender_key]][[scenario_key]] <- list(
+      smooth = read_sens_smooth(gender, sc$statins, sc$ah),
+      grouped = read_sens_grouped(gender, sc$statins, sc$ah),
+      boot = read_sens_boot(gender, sc$statins, sc$ah),
+      pred_grid = read_sens_pred_grid(gender, sc$statins, sc$ah)
+    )
+  }
+}
+```
+
+```{r overall-sensitivity, echo = FALSE, results='asis', fig.align = "center"}
+for (gender in params$genders) {
+  cat("\n\n## ", gender_label(gender), "\n\n", sep = "")
+
+  # Read the saved original overall curve once per gender.
+  original_smooth <- coerce_smooth_df(read_original_smooth(gender))
+  hist_pred <- extract_hist_pred(original_smooth)
+  hist_pred <- sample(hist_pred, min(5000, length(hist_pred)), replace = FALSE)
+
+  # Initialise containers
+  calib_plot_list <- vector("list", length = 9)
+  
+  # Loop over scenarios and create plots
+  for (ii in base::seq_len(base::nrow(scenario_grid))) {
+  #for (ii in seq_len(2)) {
+    
+    # Set key
+    sc <- scenario_grid[ii, ]
+    scenario_key <- paste0("statins_", sc$statins, "_ah_", sc$ah)
+    
+    # Extract from cache
+    obj <- sens_cache[[as.character(gender)]][[scenario_key]]
+    
+    sens_smooth <- coerce_smooth_df(obj$smooth)
+    sens_grouped <- obj$grouped
+    sens_pred_grid <- obj$pred_grid
+    sens_boot <- obj$boot
+    
+    # Thin smooth curve
+    idx <- round(seq(1, nrow(sens_smooth), length.out = 250))
+    sens_smooth <- sens_smooth[idx, ]
+    
+    # Create CI
+    sens_ci <- curve_ci_df(
+      curve_mat = parse_boot_output(sens_boot, sens_pred_grid)$curve_mat,
+      pred_grid = sens_pred_grid,
+      scenario_label = sc$scenario_label
+    )
+    
+    # Build plot (NO print)
+    p <- plot_single_calibration(
+      original_curve = original_smooth,
+      scenario_curve = sens_smooth,
+      scenario_ci = sens_ci,
+      grouped_df = sens_grouped,
+      hist_pred = hist_pred,
+      title = sc$scenario_label,
+      x_max = params$x_max
+    )
+    
+    # Remove inner axis labels
+    if (!(ii %in% c(1, 4, 7))) {
+      p <- p + ggplot2::theme(axis.title.y = ggplot2::element_blank())
+    }
+    if (!(ii %in% c(7, 8))) {
+      p <- p + ggplot2::theme(axis.title.x = ggplot2::element_blank())
+    }
+    
+    # Assign p to plot list
+    calib_plot_list[[ii]] <- p
+    
+  }
+  
+  # Add empty panels to fill grid
+  for (jj in seq_len(9)) {
+    if (is.null(calib_plot_list[[jj]])){
+      calib_plot_list[[jj]] <- patchwork::plot_spacer()
+    }
+  }
+  
+  # Print the full grid
+  cat("\n\n### Calibration curves \n\n")
+  print(
+    patchwork::wrap_plots(
+      calib_plot_list,
+      ncol = 3,
+      guides = "collect"
+    ) +
+      patchwork::plot_layout(widths = c(1,1,1)) &
+      ggplot2::theme(legend.position = "bottom",
+                     plot.margin = ggplot2::margin(0,0,0,0),
+                     panel.spacing = grid::unit(0.2, "lines"))
+  )
+
+  cat("\n\n### Calibration Metrics (ICI, E50, E90)\n\n")
+  metric_tbl <- make_metric_table_non_stratified(gender = gender)
+  print(knitr::kable(
+    format_metric_table(metric_tbl, include_original = TRUE),
+    caption = paste0("Calibration metrics for ", gender_label(gender), ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect")
+  ))
+  
+  ## Add discrim
+  cat("\n\n### Discrimination (C-index)\n\n")
+  
+  # --- Original (no misspecification) ---
+  disc_original <- tibble::tibble(
+    scenario_label = "No miss-specification",
+    c_index = read_original_discrim(gender)[["index"]],
+    lower = read_original_discrim(gender)[["index_lower"]],
+    upper = read_original_discrim(gender)[["index_upper"]]
+  )
+  
+  # --- Sensitivity scenarios ---
+  disc_tbl <- scenario_grid |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      c_index = read_sens_discrim(gender, statins, ah)[["index"]],
+      lower = read_sens_discrim(gender, statins, ah)[["index_lower"]],
+      upper = read_sens_discrim(gender, statins, ah)[["index_upper"]],
+      original = as.numeric(disc_original$c_index),
+      difference = c_index - original
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::select(scenario_label, c_index, lower, upper, original, difference) |>
+        dplyr::arrange(scenario_label) |>
+    dplyr::mutate(
+      scenario_label = base::gsub("\\|\\n\\s*", " ", as.character(scenario_label)),
+      dplyr::across(where(is.numeric), ~ round(.x, 3))) |>  
+    dplyr::rename(`no miss-specification` = original,
+                  scenario = scenario_label)
+  
+  # --- Print ---
+  print(knitr::kable(
+    disc_tbl,
+    caption = paste0(
+      "Saved discrimination results for ",
+      gender_label(gender),
+      ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect."
+    )
+  ))
+}
+```
+
+# Treatment-stratified sensitivity analysis
+
+As expected, miss-specification of the effects of either statins/anthypertensives has a bigger impact on calibration and discrimination among those on the respective treatment at baseline.
+
+For example, consider section 2.2.1, or 2.6.1. When the effect of statins is bigger in the validation cohort (statins multiplier = 0.8 or 0.9), the calibration curve indicates more over-prediction than the calibration curve under no miss-specification. Similarly, when the effect of statins is smaller in the validation cohort (statins multiplier = 1.1 or 1.2), the calibration curve indicates less over-prediction. Despite this, the magnitude of the difference in the calibration curves is not alarming, and is only visible among higher risk individuals.
+
+Note, the calibration within subgroups defined by treatment use at baseline is imperfect, even when there is no miss-specification of the treatment effect between development and validation. This will largely be due to the fact that statin and antihypertensive use is a strong predictor of incident cardiovascular disease, which have not been used as a predictors in the model. This effect is much stronger for the statin users group (sections 2.2 and 2.6) compared to the antihypertensive users group (sections 2.4 and 2.8), where the model is reasonably well calibrated across the entire distribution of predicted risk. This trade off between predictive performance in the classical sense, and the ability to use the model for prediction under these interventions, is discussed in the main manuscript. 
+
+```{r cache stratified analyses, include = FALSE}
+# Preload stratified sensitivity data
+sens_cache_strat <- list()
+
+for (gender in params$genders) {
+  g_key <- as.character(gender)
+  sens_cache_strat[[g_key]] <- list()
+  
+  for (med in params$stratified_meds) {
+    sens_cache_strat[[g_key]][[med]] <- list()
+    
+    for (type in params$stratified_types) {
+      t_key <- as.character(type)
+      sens_cache_strat[[g_key]][[med]][[t_key]] <- list()
+      
+      for (ii in seq_len(nrow(scenario_grid))) {
+        sc <- scenario_grid[ii, ]
+        s_key <- paste0("statins_", sc$statins, "_ah_", sc$ah)
+        
+        sens_cache_strat[[g_key]][[med]][[t_key]][[s_key]] <- list(
+          smooth    = read_strat_smooth(gender, med, type, sc$statins, sc$ah),
+          grouped   = read_strat_grouped(gender, med, type, sc$statins, sc$ah),
+          boot      = read_strat_boot(gender, med, type, sc$statins, sc$ah),
+          pred_grid = read_strat_pred_grid(gender, med, type, sc$statins, sc$ah)
+        )
+      }
+    }
+  }
+}
+```
+
+```{r stratified-sensitivity, echo = FALSE, eval=params$show_stratified, results='asis', fig.align = "center"}
+for (gender in params$genders) {
+  for (med in params$stratified_meds) {
+    for (type in params$stratified_types) {
+      
+      cat("\n\n## ", gender_label(gender), " - ", stratum_label(med, type), "\n\n", sep = "")
+      
+      # Read the saved curve of the stratified analysis with no miss-specification
+      original_smooth <- coerce_smooth_df(read_strat_smooth(gender, med, type, statins_adj = 1, ah_adj = 1))
+      hist_pred <- extract_hist_pred(original_smooth)
+      hist_pred <- sample(hist_pred, min(5000, length(hist_pred)), replace = FALSE)
+      
+      # Initialise containers
+      calib_plot_list <- vector("list", length = 9)
+      
+      # Loop over scenarios and create plots
+      for (ii in base::seq_len(base::nrow(scenario_grid))) {
+        #for (ii in seq_len(2)) {
+        
+        # Set key
+        sc <- scenario_grid[ii, ]
+        scenario_key <- paste0("statins_", sc$statins, "_ah_", sc$ah)
+        
+        # Stratified cache
+        obj <- sens_cache_strat[[as.character(gender)]][[med]][[as.character(type)]][[scenario_key]]
+        
+        sens_smooth <- coerce_smooth_df(obj$smooth)
+        sens_grouped <- obj$grouped
+        sens_pred_grid <- obj$pred_grid
+        sens_boot <- obj$boot
+        
+        # Thin curve
+        idx <- round(seq(1, nrow(sens_smooth), length.out = 250))
+        sens_smooth <- sens_smooth[idx, ]
+        
+        # CI
+        sens_ci <- curve_ci_df(
+          curve_mat = parse_boot_output(sens_boot, sens_pred_grid)$curve_mat,
+          pred_grid = sens_pred_grid,
+          scenario_label = sc$scenario_label
+        )
+        
+        # Build calibration plot (no original curve)
+        p <- plot_single_calibration(
+          original_curve = original_smooth,
+          scenario_curve = sens_smooth,
+          scenario_ci = sens_ci,
+          grouped_df = sens_grouped,
+          hist_pred = hist_pred,
+          title = sc$scenario_label,
+          x_max = params$x_max
+        )
+        
+        # Remove inner axis labels
+        if (!(ii %in% c(1, 4, 7))) {
+          p <- p + ggplot2::theme(axis.title.y = ggplot2::element_blank())
+        }
+        if (!(ii %in% c(7, 8))) {
+          p <- p + ggplot2::theme(axis.title.x = ggplot2::element_blank())
+        }
+        
+        # Assign p to plot list
+        calib_plot_list[[ii]] <- p
+        
+      }
+      
+      # Add empty panels to fill grid
+      for (jj in seq_len(9)) {
+        if (is.null(calib_plot_list[[jj]])){
+          calib_plot_list[[jj]] <- patchwork::plot_spacer()
+        }
+      }
+      
+      # Calibration grid
+      cat("\n\n### Calibration curves\n\n")
+      print(
+        patchwork::wrap_plots(
+          calib_plot_list,
+          ncol = 3,
+          nrow = 3,
+          guides = "collect"
+        ) &
+          ggplot2::theme(legend.position = "bottom",
+                         plot.margin = ggplot2::margin(0,0,0,0))
+      )
+      
+      # Tables
+      cat("\n\n### Calibration Metrics (ICI, E50, E90)\n\n")
+      
+      metric_tbl <- make_metric_table_stratified(
+        gender = gender, med = med, type = type
+      )
+      
+      print(knitr::kable(
+        format_metric_table(metric_tbl, include_original = FALSE),
+        caption = paste0(
+          "Saved stratified sensitivity metrics for ",
+          gender_label(gender), ", ",
+          stratum_label(med, type), ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect, but stratified to the same subgroup."
+        )
+      ))
+      
+      ## Add discrim
+      cat("\n\n### Discrimination (C-index)\n\n")
+      
+      # --- Original (no misspecification) ---
+      disc_original <- tibble::tibble(
+        scenario_label = "No miss-specification",
+        c_index = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index"]],
+        lower = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index_lower"]],
+        upper = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index_upper"]]
+      )
+      
+      # --- Sensitivity scenarios ---
+      disc_tbl <- scenario_grid |>
+        dplyr::rowwise() |>
+        dplyr::mutate(
+          c_index = read_strat_discrim(gender, med, type, statins, ah)[["index"]],
+          lower = read_strat_discrim(gender, med, type, statins, ah)[["index_lower"]],
+          upper = read_strat_discrim(gender, med, type, statins, ah)[["index_upper"]],
+          original = as.numeric(disc_original$c_index),
+          difference = c_index - original
+        ) |>
+        dplyr::ungroup() |>
+        dplyr::select(scenario_label, c_index, lower, upper, original, difference) |>
+        dplyr::arrange(scenario_label) |>
+        dplyr::mutate(
+          scenario_label = base::gsub("\\|\\n\\s*", " ", as.character(scenario_label)),
+          dplyr::across(where(is.numeric), ~ round(.x, 3))) |>  
+        dplyr::rename(`no miss-specification` = original,
+                      scenario = scenario_label
+        )
+      
+      # --- Print ---
+      print(knitr::kable(
+        disc_tbl,
+        caption = paste0(
+          "Saved discrimination results for ",
+          gender_label(gender),", ",
+          stratum_label(med, type), ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect, but stratified to the same subgroup."
+        )
+      ))
+    }
+  }
+}
+```
+
+# Session information
+
+```{r session-info}
+utils::sessionInfo()
+```

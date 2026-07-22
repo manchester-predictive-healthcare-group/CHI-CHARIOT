@@ -1,0 +1,776 @@
+---
+title: "Summary of KVG validation progress"
+author: "Alex Pate"
+date: "2026-06-08"
+output: 
+  html_document:
+      number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+```
+
+This document contains simulations to ensure methods to assess calibration of the CHARIOT model using the artificial censoring approach detailed in "Prediction Under Interventions: Evaluation of Counterfactual Performance Using Longitudinal Observational Data (Keogh and Van Geloven)" are being applied appropriately.
+
+In our real data analyses, we do not report weighted Kaplan-Meier vs Mean Predicted risk, or a similar analysis within groups defined by deciles of predicted risk, as is done in the K&VG paper. There are a few reasons for this. 
+
+Firstly, our data is continuously observed, and 10-year risk scores contain 3652 different possible event times. Given the size of the cohort, the majority of these event times are observed. A weighted Kaplan-Meier requires time-varying weights at every possible event time, which is not feasible in this data. One option would be to bin the data at 30/90/180 intervals, and apply weighted Kaplan-Meier estimator to this data. However, the impact of this choice, and magnitude of the bias induced by doing so, is unclear. There are alternative approaches (detailed in this document) which do not suffer this issue.
+
+Secondly, our censoring mechanism is not independent from the outcome mechanism. Primarily due to individuals at high risk of death (censoring event), also being more likely to experience the event. Assessment of mean calibration through Kaplan-Meier observed risk vs mean predicted risk will be biased, as the Kaplan-Meier estimate will be biased. This is protected somewhat by looking at weighted Kaplan-Meier vs Mean Predicted risk within groups of individuals with similar risk (i.e. deciles), however we prefer to address this more directly by using IPCW weights, and calibration estimators of a different form.
+
+The methods we choose to use are pseudo-values, and cross sectional approaches looking at who has and hasn't had the event by the time point of interest. Both must be weighted using IPCW's and IPACW's. We demonstrate approaches to estimate mean calibration, and produce smoothed moderate calibration curves. Given these approaches are not used in the K&VG paper, I wanted to run simulations to make sure they do indeed recover the correct calibration curve.
+
+A final note, in these simulations, we assume all confounding between the outcome, and the censoring mechanisms, can be explained by variables measured at baseline. This means time-varying confounding can be ignored when estimating the weights, however, in practice, the weights could be estimated in a way that accounts for time varying confounding, like is done in K&VG. For example, pooled logistic regression could be used. In these simulations, we actually use the true values of the weights (known from the data generating mechanism) rather than estimating them, so this is effectively a moot point. The goal is to show how we can accurately assess mean calibration, and moderate calibration, using weights derived from two separate censoring mechanisms, avoiding the Kaplan-Meier approach. The two censoring mechanisms reflect the normal censoring, and artificial censoring from the K&VG paper.
+
+# Simulation - one censoring mechanism
+
+The first simulation just uses one censoring mechanism. The goal is to showcase how to assess mean calibration of a model predicting a survival outcome, using a range of IPCW approaches, where there is dependent censoring between the outcome and censoring mechanism in the validation data. We also show that using standard IPCW weights (not time-varying weights) in conjunction with Kaplan-Meier estimator will be biased.
+
+Note that these methods can be extended to produce moderate calibration curves. We have shown this in on-going work (currently under review with D&PR). These extensions are implemented in the second simulation, which involves two censoring mechanisms.
+
+## Simulation setup
+
+Simulate survival times and censoring times. Both have an exponential hazard, and share a single predictor with a log-hazard of 1, proportional hazard.
+
+```{r, include = FALSE}
+### Clear workspace
+rm(list=ls())
+Sys.time()
+
+### Call survival
+library(survival)
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+sapply(R.func.sources, source)
+
+### Define follow up time
+t_fup <- 10*365.25
+
+###
+### Simulate df_valid from scratch
+###
+set.seed(42)
+n <- 500000
+
+### Simulate predictors x and z
+x <- rnorm(n, mean = 0, sd = 1)
+z <- rnorm(n, mean = 0, sd = 1)
+
+### Simulate true event times from exponential PH model
+### Median event time ~10 years at x = 0
+lambda_true <- log(1.5) / (t_fup)
+beta_true_z   <- 1
+true_event_times <- rexp(n, rate = lambda_true * exp(beta_true_z * z))
+
+### Simulate censoring times
+### Target: ~20% of individuals censored by 10 years
+### P(C < 10*365.25) = 0.20 => lambda_c = -log(0.80) / (10*365.25)
+lambda_c <- 1/5000
+rates_c  <- lambda_c * exp(beta_true_z * z)
+random_cens_times <- rexp(n, rate = rates_c)
+
+### Administrative censoring at 15 years
+admin_cens <- 15 * 365.25
+
+### Observed time and event indicator
+cvd_time      <- pmin(true_event_times, random_cens_times, admin_cens)
+cvd_indicator <- as.integer(true_event_times < random_cens_times & 
+                              true_event_times < admin_cens)
+
+### Create dataset
+df_valid <- data.frame(
+  patid         = 1:n,
+  z = z,
+  cvd_time      = cvd_time,
+  cvd_indicator = cvd_indicator
+)
+
+### Add true prob of event
+df_valid$cvd_surv_true <- exp(-lambda_true * exp(beta_true_z * df_valid$z) * t_fup)
+
+### Add true weights
+df_valid$ipcw_weight_true <- 1/exp(-lambda_c * exp(beta_true_z * df_valid$z) * pmin(t_fup, df_valid$cvd_time))
+df_valid$ipcw_weight_true_cap <- pmin(10000, df_valid$ipcw_weight_true)
+
+### Quick sanity checks
+# mean(df_valid$cvd_indicator)                                          # ~proportion with events
+# 1 - summary(survfit(Surv(cvd_time, cvd_indicator) ~ 1, data = df_valid), times = t_fup)$surv  # KM event rate at 10 yrs
+# mean(df_valid$cvd_time < admin_cens & df_valid$cvd_indicator == 0)   # ~proportion randomly censored
+
+###
+### Build a prediction model I know is well calibrated,
+### estimate prediction risks, and show it's well calibrated
+###
+
+### Create formula
+model_formula_full <- as.formula("survival::Surv(cvd_time, cvd_indicator) ~ z")
+
+### Fit a cox model and get baseline hazard
+fit         <- survival::coxph(model_formula_full, data = df_valid, model = TRUE)
+bhaz        <- survival::basehaz(fit, centered = TRUE)
+bhaz_uncent <- survival::basehaz(fit, centered = FALSE)
+
+### Get survival probabilities
+df_valid$cvd_surv        <- est_surv(newdata = df_valid, fit = fit, bhaz = bhaz, time = t_fup)
+df_valid$cvd_surv_cloglog <- log(-log(df_valid$cvd_surv))
+
+### Add id variable
+df_valid <- dplyr::mutate(df_valid,
+                          id = 1:nrow(df_valid))
+
+### Add a variable Y, for who has had the event by t_fup
+df_valid <- dplyr::mutate(df_valid,
+                          Y = dplyr::case_when(cvd_time > t_fup ~ 0,
+                                               TRUE ~ cvd_indicator))
+
+### Create an uncensored at t_fup cohort
+df_valid_uncensored <- subset(df_valid, 
+                              cvd_time >= t_fup | cvd_indicator == 1 & cvd_time < t_fup)
+```
+
+## Mean calibration
+
+We know the prediction model is perfectly specified and risks are correct. Mean calibration should therefore indicate perfect calibration.
+
+Mean predicted risk vs Kaplan-Meier observed risk indicates bias. This is expected given it assumes random censoring:
+
+```{r}
+km_fit <- survfit(Surv(cvd_time, cvd_indicator) ~ 1, data = df_valid)
+# obs
+1 - summary(km_fit, times = round(t_fup))$surv
+# pred 
+mean(1 - df_valid$cvd_surv)
+# ratio
+mean(1 - df_valid$cvd_surv)/(1 - summary(km_fit, times = round(t_fup))$surv)
+```
+
+Using a weighted Kaplan-Meier also indicates miscalibration, which we know to be wrong:
+
+```{r}
+### Implement weighted estimator in reduced sized cohort for computational reasons
+km_fit_weighted <- survfit(Surv(cvd_time, cvd_indicator) ~ 1, 
+                           data = df_valid[1:100000, ], 
+                           weights = df_valid[1:100000, "ipcw_weight_true_cap"])
+1 - summary(km_fit_weighted, times = round(t_fup))$surv
+```
+
+Next we use a Horvitz-Thompson Estimator. An outcome indicator is defined for who has ($Y_{eval} = 1$) and hasn't ($Y_{eval} = 0$) had the event by $t_{eval}$. The indicator itself is multiplied by the weights, and then we take the mean. We compare this with the mean predicted risk, and find this indicates perfect mean calibration:
+
+```{r}
+### Horvitz-Thompson estimator
+ht_estimate <- mean(
+  (df_valid$cvd_indicator == 1 & df_valid$cvd_time <= t_fup) * 
+    (df_valid$ipcw_weight_true_cap)
+)
+# obs
+ht_estimate
+# pred
+mean(1 - df_valid$cvd_surv)
+# ratio
+mean(1 - df_valid$cvd_surv)/ht_estimate
+```
+
+Next we use a weighted mean estimator in the subset of uncensored individuals at 10-years. This is a Hajek style estimator. This includes those who have had the event prior to 10-years, or who have not had the event and are uncensored at 10-years. Rather than multiplying the outcome indicator $Y_{eval}$ by the weight and taking the mean across the whole validation cohort (Horvitz-Thompson), we take a weighted mean in the subset of uncensored individuals. 
+
+The difference between the Hajek style and Horvitz-Thompson estimator, is that the denominator when calculating the mean for the Hajek style estimator is 1/sum(weights), rather than 1/n. More generally, the Hajek style estimator is a stabilised version of the Horvitz-Thompson estimator. However, in this setting, one would expect the Horvitz-Thompson estimator to have smaller variance, given it's estimated on the entire dataset, rather than just the uncensored individuals. I need to look into this in more detail, benefits of stabilisation vs greater variance of the estimator, and whether this even holds.
+
+```{r}
+### Weighted mean estimator (Hajek-style: weights in numerator and denominator)
+weighted_subset_estimate <- weighted.mean(df_valid_uncensored$Y, 
+                                          df_valid_uncensored$ipcw_weight_true_cap)
+# obs
+weighted_subset_estimate
+# pred
+mean(1 - df_valid$cvd_surv)
+# ratio
+mean(1 - df_valid$cvd_surv)/weighted_subset_estimate
+
+# weighted_subset_estimate_manual <- 
+#   sum((df_valid_uncensored$Y*df_valid_uncensored$ipcw_weight_true_cap))/
+#   sum(df_valid_uncensored$ipcw_weight_true_cap)
+# weighted_subset_estimate_manual
+```
+
+The issue with the Kaplan-Meier approach, is that we need to have time-varying weights, that are defined at every step/break-point in the Kaplan-Meier estimator. There is also possibly some conflation here, because Kaplan-Meier deals with censoring in it's own way, but it assumes that the censoring is completely random.
+
+Next, I am going to repeat the experiment, but with two censoring mechanisms, to more accurately replicate what's done in the KVG paper, and also when implementing this method in practice.
+
+# Simulation - two censoring mechanisms (one random, one dependent)
+
+This simulation now applies two censoring mechanisms. The first reflects the regular censoring mechanisms, and the second represents the artificial censoring mechanism applied in the K&VG work. Only the artificial censoring mechanism is dependent with the outcome. This is to ensure that when applying non time-varying weights (for the IPACWs) to the Kaplan-Meier estimator, we have no bias induced by the regular censoring mechanism. In section 3, we have a simulation where both the censoring mechanisms are dependent.
+
+## Simulation setup
+
+Simulate survival time, censoring times, and artificial censoring times. All have exponential hazard.
+
+The censoring time is completely random. The artificial censoring time and survival time share a single predictor (x) with a log-hazard of 1, proportional hazards. The censoring time is chosen to be completely random, so that we know the Kaplan-Meier estimator is not biased through this.
+
+The weights are now calculating by fitting two models. IPC weights are estimated by fitting a model in the not artificially censored cohort, to predict the risk of being censored. The IPAC weights are estimated by fitting a model in the artificially censored cohort, to predict the risk of being artificially censored. Both weights are calculated by evaluating the probability of being uncensored at $min\{t_{eval}, t_{event}, t_{censored}, t_{artif censored}\}$. The combined weights are defined as IPCW*IPACW, as proposed in KVG work.
+
+Note, it may feel natural to estimate the IPC weights at $min{t_{eval}, t_{event}, t_{censored}}$, which is the weight that would be estimated in a cohort without artificial censoring. I have tried this and this does not impact results. This minimum of these only changes for individuals who are artificially censored, and these individuals will always contribute zero to the outcome model, and $0*weight = 0$. Therefore either is fine.
+
+```{r, include = FALSE}
+### Clear workspace
+rm(list=ls())
+Sys.time()
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+sapply(R.func.sources, source)
+
+### Define t_fup
+t_fup <- 10 * 365.25
+
+### Function to create ipacw data
+create_ipacw_data <- function(beta_true_x, # control ipacw censoring
+                              beta_true_z # control normal censoring
+){
+  
+  ### NB: In the previous one censoring simulation, we used weights derived from the DGM.
+  ### In this example, we estimate them, so show the use of function est_surv_eventtime_or_t, for full consistency with the real data example.
+  
+  ### Set cap for weights
+  weight_cap <- 10000
+  
+  ###
+  ### Simulate df_valid from scratch
+  ###
+  set.seed(42)
+  n <- 500000
+  
+  ### Simulate predictors x and z
+  x <- rnorm(n, mean = 0, sd = 1)
+  z <- rnorm(n, mean = 0, sd = 1)
+  
+  ### Simulate true event times from exponential PH model
+  ### Median event time ~10 years at x = 0
+  lambda_true <- log(1.5) / (10 * 365.25)
+  true_event_times <- rexp(n, rate = lambda_true * exp(beta_true_x * x + beta_true_z * z))
+  
+  ### Simulate censoring times
+  ### These are dependent censoring, via the variable z.
+  ### Target: ~20% of individuals censored by 10 years
+  ### P(C < 10*365.25) = 0.20 => lambda_c = -log(0.80) / (10*365.25)
+  lambda_c <- 1/5000
+  rates_c  <- lambda_c * exp(beta_true_z * z)
+  cens_times <- rexp(n, rate = rates_c)
+  
+  ### Administrative censoring at 15 years
+  admin_cens <- 15 * 365.25
+  
+  ### Observed time and event indicator
+  time      <- pmin(true_event_times, cens_times, admin_cens)
+  status <- as.integer(true_event_times < cens_times & 
+                         true_event_times < admin_cens)
+  
+  ### Create dataset
+  df_valid <- data.frame(
+    patid = 1:n,
+    x = x,
+    z = z,
+    time = time,
+    status = status
+  )
+  
+  ### Add true prob of event
+  df_valid$cvd_surv_true <- exp(-lambda_true * exp(beta_true_x * df_valid$x + beta_true_z * df_valid$z) * t_fup)
+  
+  ### Quick sanity checks
+  # mean(df_valid$status)                                          # ~proportion with events
+  # 1 - summary(survfit(Surv(time, status) ~ 1, data = df_valid), times = 10*365.25)$surv  # KM event rate at 10 yrs
+  # mean(df_valid$time < admin_cens & df_valid$status == 0)   # ~proportion randomly censored
+  
+  ###
+  ### Build a prediction model I know is well calibrated,
+  ### estimate prediction risks, and show it's well calibrated
+  ###
+  
+  ### Create formula
+  model_formula_full <- as.formula("survival::Surv(time, status) ~ x + z")
+  
+  ### Fit a cox model and get baseline hazard
+  fit <- survival::coxph(model_formula_full, data = df_valid, model = TRUE)
+  bhaz <- survival::basehaz(fit, centered = TRUE)
+  bhaz_uncent <- survival::basehaz(fit, centered = FALSE)
+  
+  ### Get estimated survival probabilities
+  df_valid$cvd_surv <- est_surv(newdata = df_valid, fit = fit, bhaz = bhaz, time = 10*365.25)
+  df_valid$cvd_surv_cloglog <- log(-log(df_valid$cvd_surv))
+  
+  ###
+  ### Apply some artificial (informative) censoring
+  ###
+  
+  ### Individual-level rates under the PH model
+  lambda_ac <- 1/5000
+  beta_ac <- 1
+  rates_ac  <- lambda_ac * exp(beta_ac * df_valid$x)
+  
+  ### Draw artificial censoring times, dependent with the outcome via x.
+  raw_times_ac <- rexp(n = nrow(df_valid), rate = rates_ac)
+  
+  ### Apply administrative cap
+  df_ipacw_times <- data.frame(
+    patid     = df_valid$patid,
+    eventtime = pmin(raw_times_ac, admin_cens),
+    status    = as.integer(raw_times_ac <= admin_cens)
+  )
+  
+  ### Add artificial censoring times to dataset
+  df_valid <- dplyr::mutate(df_valid, 
+                            artif_cens_times = df_ipacw_times$eventtime)
+  
+  ### Create indicator and event time for estimating the IPCW weights
+  df_valid <- dplyr::mutate(df_valid, 
+                            ipacw_time = pmin(artif_cens_times, time),
+                            ipacw_indicator = dplyr::case_when(artif_cens_times < time ~ 1,
+                                                               TRUE ~ 0))
+  
+  ### Create indicator and event time for cvd, after applying artificial censoring
+  df_valid <- dplyr::mutate(df_valid,
+                            time_ipacw = pmin(artif_cens_times, time), 
+                            status_ipacw = dplyr::case_when(time < artif_cens_times ~ status,
+                                                            TRUE ~ 0))
+  
+  ### Create indicator for when normal censoring happens, inverse of status: ipcw_indicator
+  ### When administratively censored, set to zero.
+  df_valid <- dplyr::mutate(df_valid,
+                            ipcw_indicator = dplyr::case_when(time == admin_cens ~ 0,
+                                                              TRUE ~ 1 - status)
+  )
+  
+  ### Add a variable Y, for who has had the event by t_fup 
+  ### (in the normal cohort, and artificially censored cohort)
+  df_valid <- dplyr::mutate(df_valid,
+                            Y = dplyr::case_when(time > t_fup ~ 0,
+                                                 TRUE ~ status),
+                            Y_ipacw = dplyr::case_when(time_ipacw > t_fup ~ 0,
+                                                       TRUE ~ status_ipacw))
+  
+  ### Add id variable
+  df_valid$id <- df_valid$patid
+  
+  ########################
+  ### Estimate weights ###
+  ########################
+  
+  ###
+  ### Estimate the weights for the normal censoring mechanism
+  ###
+  
+  ### Add true prob of censoring and true weights (the weights are 1/this)
+  df_valid$ipcw_surv_true <- exp(-lambda_c * exp(beta_true_z * df_valid$z) * pmin(df_valid$time, t_fup))
+  df_valid$ipcw_weight_true <- 1/df_valid$ipcw_surv_true
+  
+  ### Fit model to estimate ipcws
+  fit_est_ipcw <- survival::coxph(survival::Surv(time, ipcw_indicator) ~ z, data = df_valid, model = TRUE)
+  bhaz_est_ipcw <- survival::basehaz(fit_est_ipcw, centered = TRUE)
+  bhaz_uncent_est_ipcw <- survival::basehaz(fit_est_ipcw, centered = FALSE)
+  
+  ### Estimate weights
+  df_valid$ipcw_weight <- 1/est_surv_eventtime_or_t(newdata   = df_valid,
+                                                    fit       = fit_est_ipcw,
+                                                    bhaz      = bhaz_est_ipcw,
+                                                    eventtime = "time",
+                                                    t         = 10*365.25)
+  
+  ### Cap weights
+  df_valid <- dplyr::mutate(df_valid, 
+                            ipcw_weight_cap = dplyr::case_when(ipcw_weight > weight_cap ~ weight_cap,
+                                                               TRUE ~ ipcw_weight))
+  #print("compare estimated ipcw weights with true weights")
+  #print(paste(head(df_valid[,c("patid", "time", "ipcw_weight", "ipcw_weight_true", "x", "z")], 15)))
+  
+  ###
+  ### Estimate the weights for the artificial censoring mechanism
+  ###
+  
+  ### Add true prob of artificial censoring and true artificial censoring weights (the weights are 1/this)
+  df_valid$ipacw_surv_true <- exp(-lambda_ac * exp(beta_ac * df_valid$x) * pmin(10 * 365.25, df_valid$ipacw_time))
+  df_valid$ipacw_weight_true <- 1/df_valid$ipacw_surv_true
+  
+  ### Fit model to estimate ipacws
+  fit_est_ipacw        <- survival::coxph(survival::Surv(ipacw_time, ipacw_indicator) ~ x, data = df_valid, model = TRUE)
+  bhaz_est_ipacw       <- survival::basehaz(fit_est_ipacw, centered = TRUE)
+  bhaz_uncent_est_ipacw <- survival::basehaz(fit_est_ipacw, centered = FALSE)
+  
+  ### Estimate weights
+  df_valid$ipacw_weight <- 1/est_surv_eventtime_or_t(newdata   = df_valid,
+                                                     fit       = fit_est_ipacw,
+                                                     bhaz      = bhaz_est_ipacw,
+                                                     eventtime = "time_ipacw", # note time_ipacw = ipacw_time
+                                                     t         = 10*365.25)
+  
+  ### Compare weights with true weights (should be the same)
+  #print("compare estimated ipacw weights with true weights")
+  #print(paste(head(df_valid[,c("patid", "time", "ipacw_weight_true", "ipacw_weight")], 15)))
+  
+  ### Cap weights
+  df_valid <- dplyr::mutate(df_valid, 
+                            ipacw_weight_cap = dplyr::case_when(ipacw_weight > weight_cap ~ weight_cap,
+                                                                TRUE ~ ipacw_weight))
+  
+  ### Get combined weights (note these are based off true censoring probabilities, not the estimated ones)
+  df_valid$comb_weights <- df_valid$ipacw_weight * df_valid$ipcw_weight
+  df_valid$comb_weights_cap <- pmin(df_valid$comb_weights, weight_cap)
+  
+  ### Add true weights
+  df_valid$comb_weights_true <- df_valid$ipacw_weight_true * df_valid$ipcw_weight_true
+  df_valid$comb_weights_true_cap <- pmin(df_valid$comb_weights_true, weight_cap)
+  
+  ### Create artificially censored data, by setting event times and indicators to the ipac times,
+  ### and create new dataset
+  df_valid_ipacw <- dplyr::mutate(df_valid,
+                                  time_original = time,
+                                  status_original = status,
+                                  time = time_ipacw,
+                                  status = status_ipacw)
+  
+  return(df_valid_ipacw)
+  
+}
+
+### Create data
+df_valid_ipacw <- create_ipacw_data(beta_true_x = 1, beta_true_z = 0)
+
+### Create an uncensored at t_fup cohort
+df_valid_ipacw_uncensored <- subset(df_valid_ipacw,
+                                    time >= t_fup | status == 1 & time < t_fup)
+
+### Fit a model on the "original" data
+
+### Create formula
+model_formula_full <- as.formula("survival::Surv(time_original, status_original) ~ x + z")
+
+### Fit a cox model and get baseline hazard
+fit <- survival::coxph(model_formula_full, data = df_valid_ipacw, model = TRUE)
+bhaz <- survival::basehaz(fit, centered = TRUE)
+bhaz_uncent <- survival::basehaz(fit, centered = FALSE)
+```
+
+## Mean calibration
+
+We start by using the Kaplan-Meier estimator and weighting this with the IPACW weights. Note, this is implemented incorrectly. These should be time-varying weights. We therefore expect a biased assessment of calibration, and indeed, this indicates miscalibration, when we know the model to be perfectly calibrated. Estimating time-varying weights for this would be very computationally heavy.
+
+```{r}
+### Using Kaplan-Meier without adjustment for informative censoring results in bias
+km_fit_weighted <- survfit(Surv(time, status) ~ 1, 
+                           data = df_valid_ipacw[1:100000, ], 
+                           weights = df_valid_ipacw[1:100000, "ipacw_weight_cap"])
+# obs
+1 - summary(km_fit_weighted, times = round(10*365.25))$surv
+# pred
+mean(1 - df_valid_ipacw$cvd_surv)
+# ratio
+mean(1 - df_valid_ipacw$cvd_surv)/1 - summary(km_fit_weighted, times = round(10*365.25))$surv
+```
+
+Appropriate calibration using Horvitz-Thompson Estimator:
+
+```{r}
+### Horvitz-Thompson
+ht_estimate <- mean(
+  (df_valid_ipacw$status == 1 & df_valid_ipacw$time <= t_fup) * 
+    (df_valid_ipacw$comb_weights_cap)
+)
+# obs
+ht_estimate
+# pred
+mean(1 - df_valid_ipacw$cvd_surv)
+# ratio
+mean(1 - df_valid_ipacw$cvd_surv)/ht_estimate
+```
+
+A weighted mean estimator in subset of uncensored individuals also works:
+
+```{r}
+### Weighted mean estimator (Hajek-style: weights in numerator and denominator)
+weighted_subset_estimate <- weighted.mean(df_valid_ipacw_uncensored$Y, 
+                                          df_valid_ipacw_uncensored$comb_weights_cap)
+# obs
+weighted_subset_estimate
+# pred
+mean(1 - df_valid_ipacw$cvd_surv)
+# ratio
+mean(1 - df_valid_ipacw$cvd_surv)/weighted_subset_estimate
+```
+
+So, we have identified that time-varying weights are needed for the Kaplan-Meier. This is indeed what is done in KVG approach, and the Kaplan-Meier is fitted to weighted interval censored data. The difference there is that they have data with visits at fixed integer times. For us, having 1-day intervals over 10-years, and weights at every interval would be computationally very difficult. 
+
+The solution would be to discretise our data into bigger intervals, say 180 days or 1-year. However, the impact and bias induced by this is unclear. We have also shown it isn't necessary, because we can estimate observed risk using other approaches which are less computationally demanding.
+
+Another approach we haven't yet discussed is the use of pseudo-values. Weighted pseudo-values can be used to assess calibration. See Overgaard et al; DOI: 10.1016/j.jspi.2019.02.003 and Binder et al; DOI: 10.1007/s10985-013-9247-7. This is again reasonably computationally demanding, and so for the purpose of these simulations, we have not implemented for the analyses looking at mean calibration. We do include this approach in the following section, where we consider moderate calibration curves. To estimate mean calibration, simply compare mean predicted risk with the mean of the pseudo-values.
+
+## Moderate calibration
+
+From our other work (REF XXXX), we have developed methods that can produce calibration plots in the presence of dependent censoring. 
+
+For the first approach, we look in the cohort of individuals uncensored at time $t_{eval}$, and apply methods for producing calibration curves for a binary logistic regression model, with the addition of IPC weights (BLR-IPCW). The second approach uses weighted pseudo-values. Both of these methods work in this setting too:
+
+As a result of this work, we have also extended the Horvitz-Thompson estimator approach for mean calibration to produce calibration curves. We multiply the outcome indicator ($Y_{eval}$) by the weights, and then apply calibration methods that would be used for a linear model (regression weighted outcome on predictions and then estimate fitted values as a function of the predictions). This is done within the entire validation cohort (not just those that are uncensored at $t_{eval}$). We refer to this as smoothed HT approach.
+
+We report the calibration plot and integrated calibration index (mean magnitude of bias of the calibration curve) for each method.
+
+Calibration plot and ICI for the BLR-IPCW approach:
+
+```{r}
+### Calculate calibration plot using IPCW approach in uncensored cohort
+calib_two_cens_ipcw <- est_calib_ipcw_new(data = df_valid_ipacw_uncensored, 
+                                          fit  = fit, 
+                                          bhaz = bhaz, 
+                                          t = t_fup,
+                                          nk = 5,
+                                          weights_in = df_valid_ipacw_uncensored$comb_weights_cap)
+
+calib_two_cens_ipcw[["ICI"]]
+calib_two_cens_ipcw[["plot"]]
+```
+
+Calibration plot and ICI for the weighted pseudo-value approach:
+
+```{r}
+### Calculate calibration plot using weighted pseudo-value approach
+calib_two_cens_pv_ipcw <- est_calib_pv_ipcw(data = df_valid_ipacw, 
+                                            fit  = fit, 
+                                            bhaz = bhaz, 
+                                            t = t_fup,
+                                            weights_in = df_valid_ipacw$comb_weights_cap)
+
+calib_two_cens_pv_ipcw[["ICI"]]
+calib_two_cens_pv_ipcw[["plot"]]
+```
+
+Calibration plot and ICI for the smoothed-HT approach:
+
+```{r}
+### Calculate calibration plot using the smoothed Horvitz-Thompson approach
+calib_two_cens_smoothed_ht <- est_calib_smoothed_ht(data = df_valid_ipacw, 
+                                                    fit  = fit, 
+                                                    bhaz = bhaz, 
+                                                    t = t_fup,
+                                                    weights_in = df_valid_ipacw$comb_weights_cap)
+
+calib_two_cens_smoothed_ht[["ICI"]]
+calib_two_cens_smoothed_ht[["plot"]]
+```
+
+All these approaches find the model to be well calibration across the entire range of predicted risks, as they should.
+
+Finally, I will try and use the "go-to" approach for assessing calibration of a survival model, which is the PH regression approach of Austin et al; DOI: 10.1002/sim.8570. Given that this approach regression the observed survival outcome on the predicted risks using a cox proportional hazards model, the implementation with respect to the weights is less clear. I believe the correct thing to do would be to use the IPAC weights, rather than the product of the IPAC and IPC weights, however I am unsure. Furthermore, these weights should be time-varying.
+
+We implement the method using combined weights (not time-varying), and as expected, this is not appropriate:
+
+```{r}
+calib_ph_comb_weight <- est_calib_ph(data = df_valid_ipacw,
+                                     fit = fit,
+                                     bhaz = bhaz,
+                                     time = round(10*365.25),
+                                     weights = df_valid_ipacw$comb_weights_cap)
+
+calib_ph_comb_weight[["ICI"]]
+calib_ph_comb_weight[["plot"]]
+```
+
+We also implement using just the IPAC weights, and find similar results:
+
+```{r}
+calib_ph_ipacw_weight <- est_calib_ph(data = df_valid_ipacw,
+                                      fit = fit,
+                                      bhaz = bhaz,
+                                      time = round(10*365.25))
+
+calib_ph_ipacw_weight[["ICI"]]
+calib_ph_ipacw_weight[["plot"]]
+```
+
+Interestingly though, if we use no weights, it works:
+
+```{r, echo = FALSE}
+
+calib_ph_noweight <- est_calib_ph(data = df_valid_ipacw, 
+                                  fit  = fit, 
+                                  bhaz = bhaz, 
+                                  time = round(10*365.25))
+
+calib_ph_noweight[["ICI"]]
+calib_ph_noweight[["plot"]]
+```
+
+Based on our ongoing work (REF XXXX), I think this is because the prediction model is perfectly specified, and therefore the censoring mechanism (combined normal and artificial) is conditionally independent from the outcome in the validation dataset, given the predicted risks. When we start weighting the cohort, this no longer holds. If the prediction model was not perfectly specified, this would also violate this assumption, and the assessment of calibration would be biased. We will therefore avoid this approach in the real data examples.
+
+# Simulation - two censoring mechanisms (one random, one dependent)
+
+We repeat the above analyses where both censoring mechanisms are dependent with the outcome. Again, the first reflects the regular censoring mechanisms, and the second represents the artificial censoring mechanism applied in the K&VG work. We understand how to assess calibration appropriately at this point, but doing this to double check the methods do in fact work when regular censoring mechanism is also dependent with the outcome.
+
+## Simulation setup
+
+Simulate survival time, censoring times, and artificial censoring times. All have exponential hazard.
+
+The censoring time is completely random. The regular censoring time and survival time share a single predictor (z) with a log-hazard of 1, proportional hazards. The artificial censoring time and survival time share a single predictor (x) with a log-hazard of 1, proportional hazards.
+
+```{r, include = FALSE}
+### Create data
+df_valid_ipacw <- create_ipacw_data(beta_true_x = 1, beta_true_z = 1)
+
+### Create an uncensored at t_fup cohort
+df_valid_ipacw_uncensored <- subset(df_valid_ipacw,
+                                    time >= t_fup | status == 1 & time < t_fup)
+
+### Fit a model on the "original" data
+
+### Create formula
+model_formula_full <- as.formula("survival::Surv(time_original, status_original) ~ x + z")
+
+### Fit a cox model and get baseline hazard
+fit <- survival::coxph(model_formula_full, data = df_valid_ipacw, model = TRUE)
+bhaz <- survival::basehaz(fit, centered = TRUE)
+bhaz_uncent <- survival::basehaz(fit, centered = FALSE)
+```
+
+## Mean calibration
+
+No need to report Kaplan-Meier estimator with IPACW's. Biased by definition given regular censoring mechanism is dependent with outcome, and time-varying weights are needed.
+
+Appropriate calibration using Horvitz-Thompson Estimator:
+
+```{r}
+### Horvitz-Thompson estimator
+ht_estimate <- mean(
+  (df_valid_ipacw$status == 1 & df_valid_ipacw$time <= t_fup) * 
+    (df_valid_ipacw$comb_weights_cap)
+)
+# obs
+ht_estimate
+# pred
+mean(1 - df_valid_ipacw$cvd_surv)
+# ratio
+mean(1 - df_valid_ipacw$cvd_surv)/ht_estimate
+```
+
+A weighted mean estimator in subset of uncensored individuals (Hajek style) also works:
+
+```{r}
+### Weighted mean estimator (Hajek-style: weights in numerator and denominator)
+weighted_subset_estimate <- weighted.mean(df_valid_ipacw_uncensored$Y, 
+                                          df_valid_ipacw_uncensored$comb_weights_cap)
+# obs
+weighted_subset_estimate
+# pred
+mean(1 - df_valid_ipacw$cvd_surv)
+#ratio 
+mean(1 - df_valid_ipacw$cvd_surv)/weighted_subset_estimate
+```
+
+## Moderate calibration
+
+```{r, include = FALSE}
+### Note I am using estimated weights here, but I could use true weights for better performance?
+### Calculate calibration plot using IPCW approach in uncensored cohort
+calib_two_cens_ipcw <- est_calib_ipcw_new(data = df_valid_ipacw_uncensored, 
+                                          fit  = fit, 
+                                          bhaz = bhaz, 
+                                          t = t_fup,
+                                          nk = 5,
+                                          weights_in = df_valid_ipacw_uncensored$comb_weights_cap)
+
+### Calculate calibration plot using weighted pseudo-value approach
+calib_two_cens_pv_ipcw <- est_calib_pv_ipcw(data = df_valid_ipacw, 
+                                            fit  = fit, 
+                                            bhaz = bhaz, 
+                                            t = t_fup,
+                                            weights_in = df_valid_ipacw$comb_weights_cap)
+
+### Calculate calibration plot using the smoothed Horvitz-Thompson approach
+calib_two_cens_smoothed_ht <- est_calib_smoothed_ht(data = df_valid_ipacw, 
+                                                    fit  = fit, 
+                                                    bhaz = bhaz, 
+                                                    t = t_fup,
+                                                    weights_in = df_valid_ipacw$comb_weights_cap)
+
+calib_two_cens_smoothed_ht_true <- est_calib_smoothed_ht(data = df_valid_ipacw, 
+                                                    fit  = fit, 
+                                                    bhaz = bhaz, 
+                                                    t = t_fup,
+                                                    weights_in = df_valid_ipacw$comb_weights_true_cap)
+```
+
+Calibration plot and ICI for the BLR-IPCW approach:
+
+```{r}
+calib_two_cens_ipcw[["ICI"]]
+calib_two_cens_ipcw[["plot"]]
+```
+
+Calibration plot and ICI for the weighted pseudo-value approach:
+
+```{r}
+calib_two_cens_pv_ipcw[["ICI"]]
+calib_two_cens_pv_ipcw[["plot"]]
+```
+
+Calibration plot and ICI for the smoothed-HT approach:
+
+```{r}
+calib_two_cens_smoothed_ht[["ICI"]]
+calib_two_cens_smoothed_ht[["plot"]]
+```
+
+Again the "go-to" approach for assessing calibration of a survival model, which is the PH regression approach of Austin et al; DOI: 10.1002/sim.8570.
+
+```{r, echo = FALSE}
+### Estimate calibration under various weighting schemes
+calib_ph_noweight <- est_calib_ph(data = df_valid_ipacw, 
+                                  fit  = fit, 
+                                  bhaz = bhaz, 
+                                  time = round(10*365.25))
+
+calib_ph_comb_weight <- est_calib_ph(data = df_valid_ipacw,
+                                     fit = fit,
+                                     bhaz = bhaz,
+                                     time = round(10*365.25),
+                                     weights = df_valid_ipacw$comb_weights_cap)
+
+calib_ph_ipacw_weight <- est_calib_ph(data = df_valid_ipacw,
+                                      fit = fit,
+                                      bhaz = bhaz,
+                                      time = round(10*365.25),
+                                      weights = df_valid_ipacw$ipacw_weight_cap)
+```
+
+As with the previous section, if I apply this approach using the combined weights, it doesn't work:
+
+```{r}
+calib_ph_comb_weight[["ICI"]]
+calib_ph_comb_weight[["plot"]]
+```
+
+Just the IPACW weights also doesn't work:
+
+```{r}
+calib_ph_ipacw_weight[["ICI"]]
+calib_ph_ipacw_weight[["plot"]]
+```
+
+Again, if we use no weights, it works:
+
+```{r}
+calib_ph_noweight[["ICI"]]
+calib_ph_noweight[["plot"]]
+```
+
+For same reason as before, I think this is because the prediction model is perfectly specified, and therefore the censoring mechanism (combined normal and artificial) is conditionally independent from the outcome in the validation dataset, given the predicted risks.
+
+# A note on time-varying confounding
+
+We have ignored time-varying confounding in these simulations. The goal of these simulations was to show how to assess calibration (mean or moderate) using approaches avoiding the Kaplan-Meier estimator. We assumed that we can accurately estimate or know the weights. If there is time-dependent confounding between treatment initiation (artificial censoring) and the outcome, this would need to be reflected in the process for estimating the weights. This could either be a pooled logistic regression model, or an interval censored survival model. However, this does induce extra considerations, as the IPC and IPAC weights are estimated at $min\{t_{eval}, t_{event}, t_{censored}, t_{artif censored}\}$. 
+
+Currently, our models for estimating the weights (cox proportional hazard models) allow us to estimate probabilities of censoring at these exact times. If we use a pooled logistic regression models in order to estimate the weights, then we will lose the ability to do this. This is based on the assumption that the pooled logistic regression model would be implemented within intervals of say 30/90/180/365 days. While a pooled logistic regression model could be implemented with 1 day intervals, again this introduces a large computational burden, and potentially insufficient sample sizes/event rates for the individual logistic regression models.
+
+An alternative is to use interval censored survival models to estimate the weights. This would allow us to both adjustment for time-varying confounding (at say 1 year intervals), and still estimate weights at the exact times of $min\{t_{eval}, t_{event}, t_{censored}, t_{artif censored}\}$. Once estimated, these weights (estimated with adjustment for time-varying confounding), can then be used in the same way as the weights have been throughout this manuscript, in conjunction with the Hajek style/Horvitz Thompson estimators of mean calibration, and the BLR-IPCW, smoothed-HT and weighted pseudo-values approaches for estimating calibration curves. We prefer these approaches over the Kaplan-Meier approach for computational reasons, and more explicit handling of the non-artificial censoring mechanism.
+
+# A small note 
+
+The other goal of the simulation was to establish whether the IPC weights should be evaluated at $min\{t_{eval}, t_{event}, t_{censored}, t_{artif censored}\}$ (event/censoring time observed in artificially censored data) or $min\{t_{eval}, t_{event}, t_{censored}\}$ (event/censoring time observed in normal data). We found that this had no impact, because this only changes for individuals who are artificially censored, and these individuals will always contribute zero to the outcome model, and $0*weight = 0$, under the approaches we are implemented. Therefore either is fine. There may be situations where this doesn't hold.
+
