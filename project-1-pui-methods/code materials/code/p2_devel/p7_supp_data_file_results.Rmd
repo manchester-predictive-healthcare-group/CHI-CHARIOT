@@ -1,0 +1,153 @@
+---
+title: "Supplementary data file 2 - results"
+date: "2025-05-14"
+output: 
+  html_document:
+    number_sections: TRUE
+    toc: TRUE
+---
+
+```{r setup, include=FALSE}
+#knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/code/p8_collate_results")
+library(knitr)
+```
+
+# Prelim
+
+This document presents results for both the female and male cohorts, as well as modifiable risk factor models where we fixed the effect the modifiable risk factors to their causal value one at a time.
+
+The models are as follows:
+
+* Model 0 = Non-causal model
+* Model 1 = Treatment offset model
+* Model 2 = Unexposed mediator model
+* Model 3 = Modifiable risk factor model
+* Model 4 = Two-component model
+* Model 5 = Modifiable risk factor model (fix effect for SBP only)
+* Model 6 = Modifiable risk factor model (fix effect for BMI only)
+* Model 7 = Modifiable risk factor model (fix effect for Non-HDL cholesterol only)
+
+```{r, echo = FALSE}
+###
+### Calibration
+###
+
+### Write function to extract results
+create_row_calibration <- function(gender, model, dp, CI = 95){
+  
+  ### Read in relevant data
+  ICI <- readRDS(paste("../../data/calib_ph_ICI_", gender, "_model", model, ".rds", sep = ""))
+  E50 <- readRDS(paste("../../data/calib_ph_E50_", gender, "_model", model, ".rds", sep = ""))
+  E90 <- readRDS(paste("../../data/calib_ph_E90_", gender, "_model", model, ".rds", sep = ""))
+  CI_data <- readRDS(paste("../../data/calib_ph_CI_ICI_E50_E90_", gender, "_model", model, ".rds", sep = ""))
+  
+  ### Calculate CIs
+  alpha <- (1-CI/100)/2
+  ICI_lower <- quantile(CI_data[,1], probs = alpha, na.rm = TRUE)
+  ICI_upper <- quantile(CI_data[,1], probs = 1-alpha, na.rm = TRUE)
+  ICI_median <- quantile(CI_data[,1], probs = 0.5, na.rm = TRUE)
+  
+  E50_lower <- quantile(CI_data[,2], probs = alpha, na.rm = TRUE)
+  E50_upper <- quantile(CI_data[,2], probs = 1-alpha, na.rm = TRUE)
+  E50_median <- quantile(CI_data[,2], probs = 0.5, na.rm = TRUE)
+  
+  E90_lower <- quantile(CI_data[,3], probs = alpha, na.rm = TRUE)
+  E90_upper <- quantile(CI_data[,3], probs = 1-alpha, na.rm = TRUE)
+  E90_median <- quantile(CI_data[,3], probs = 0.5, na.rm = TRUE)
+  
+  ### Combine into vector and round
+  calibration_entire_cohort <- c("ICI" = paste0(round(ICI, dp), " (", round(ICI_lower, dp), ", ", round(ICI_upper, dp), ")"), 
+                                 "E50" = paste0(round(E50, dp), " (", round(E50_lower, dp), ", ", round(E50_upper, dp), ")"), 
+                                 "E90" = paste0(round(E90, dp), " (", round(E90_lower, dp), ", ", round(E90_upper, dp), ")")
+                                 )
+  
+  return(calibration_entire_cohort)
+  
+}
+
+### Create tables
+calib_table_female <- do.call("rbind", lapply(0:7, function(x){create_row_calibration(2, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(Model = 0:7) |>
+  dplyr::mutate(Estimand = dplyr::case_when(Model == 0 ~ "Non-causal estimate",
+                                            Model %in% c(1,2) ~ "No antihypertensive use",
+                                            Model %in% c(3,4,5,6,7) ~ "Continue on current interventions")) |>
+  dplyr::relocate(Model, Estimand)
+calib_table_male <- do.call("rbind", lapply(0:7, function(x){create_row_calibration(1, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(Model = 0:7) |>
+  dplyr::mutate(Estimand = dplyr::case_when(Model == 0 ~ "Non-causal estimate",
+                                            Model %in% c(1,2) ~ "No antihypertensive use",
+                                            Model %in% c(3,4,5,6,7) ~ "Continue on current interventions")) |>
+  dplyr::relocate(Model, Estimand)
+
+###
+### Discrimination
+###
+
+### Write function to extract results
+create_row_discrimination <- function(gender, model, dp){
+  
+  ### Read in relevant data
+  discrim_row <- readRDS(paste("../../data/discrim_", gender, "_model", model, ".rds", sep = ""))
+  
+  ### Retain relevant variables and round
+  discrim_row <- discrim_row[c("index", "index_lower", "index_upper")]
+  discrim_row <- round(discrim_row, dp)
+  
+  return(discrim_row)
+  
+}
+
+### Create tables
+discrim_table_female <- do.call("rbind", lapply(0:7, function(x){create_row_discrimination(2, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(Model = 0:7) |>
+  dplyr::mutate(Estimand = dplyr::case_when(Model == 0 ~ "Non-causal estimate",
+                                            Model %in% c(1,2) ~ "No antihypertensive use",
+                                            Model %in% c(3,4,5,6,7) ~ "Continue on current interventions")) |>
+  dplyr::relocate(Model, Estimand)
+discrim_table_male <- do.call("rbind", lapply(0:7, function(x){create_row_discrimination(1, x, 3)})) |>
+  as.data.frame() |>
+  dplyr::mutate(Model = 0:7) |>
+  dplyr::mutate(Estimand = dplyr::case_when(Model == 0 ~ "Non-causal estimate",
+                                            Model %in% c(1,2) ~ "No antihypertensive use",
+                                            Model %in% c(3,4,5,6,7) ~ "Continue on current interventions")) |>
+  dplyr::relocate(Model, Estimand)
+```
+
+# Calibration
+
+## Female
+
+```{r, echo = FALSE, out.width = "100%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../figures/calib_plot_grid", 2, "_all.png", sep = ""))
+```
+
+```{r, echo = FALSE}
+knitr::kable(calib_table_female)
+```
+
+## Male
+
+```{r, echo = FALSE, out.width = "100%", fig.show = "hold", fig.align = "default"}
+knitr::include_graphics(paste("../../figures/calib_plot_grid", 1, "_all.png", sep = ""))
+```
+
+```{r, echo = FALSE}
+knitr::kable(calib_table_male)
+```
+
+# Discrimination
+
+## Female
+
+```{r, echo = FALSE}
+knitr::kable(discrim_table_female)
+```
+
+## Male
+
+```{r, echo = FALSE}
+knitr::kable(discrim_table_male)
+```
