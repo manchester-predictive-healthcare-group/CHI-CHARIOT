@@ -1,0 +1,528 @@
+---
+title: "Assessment of missingness and imputation"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+bibliography: refs.bib
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: show
+    df_print: paged
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 10,
+  fig.height = 8
+)
+knitr::opts_knit$set(root.dir = "../../")
+
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(tibble)
+library(matrixStats)
+```
+
+**Associated manuscript: A flexible approach to sequential prediction under intervention**
+
+We start with a summary of missing data stratified by antihypertensive use at baseline, and an exploration of whether the assumptions underpinning the imputation mechanism are met, with a particular focus on the variable *Systolic blood pressure unexposed to antihypertensive use (unexposed SBP)*. This is followed by repeating validation of model 2, stratified within subgroups defined by those with missing unexposed SBP, and those with recorded unexposed SBP.
+
+# Summary of missingess stratified by antihypertensive use at baseline
+
+Missing data in the analyses is imputed using multiple imputation, which assumes that the data is missing at random. This is when the probability of the variable being missing is dependent on observed variables in the dataset, including other predictors and the outcome. If this assumption is not met, this is called missing not at random (MNAR). This is when the probability of the varaible being missing is dependent on the value of the variable itself, even after adjusting for observed variables.
+
+In the unexposed mediator model, there is missingness in the variable "Systolic blood pressure (SBP) unexposed to antihypertensives; *unexposed SBP*". For some individuals, this is because they have no SBP recorded in the five years prior to index date (standard SBP will then also be missing). However, for some individuals, they may have SBP measurements (SBP recorded), but these are only within 180-days of an antihypertensives prescription. In this case, missingness is related to the primary intervention variable of interest. This raises the possibility that the missing at random assumption underlying the multiple imputation may be violated.
+
+To mitigate the risk of MNAR, antihypertensive use at baseline is a predictor in the imputation model for *unexposed SBP* (it is a predictor in the imputation model for all missing variables). We also included *SBP* (not restricted to unexposed) as a predictor in the imputation model. This helps to address the concern that missingness is strongly dependent on antihypertensive use, by ensuring that this driver of missingness is included in the imputation model.
+
+However, if all individuals receiving antihypertensives at baseline had missing *unexposed SBP*, this assumption would be highly likely to be violated. This would be because there would be insufficient non-missing *unexposed SBP* values, in order to predict the missing *unexposed SBP* values among those on antihypertensives. More formally, there would be a lack of overlap between individuals with and without observed values, requiring extrapolation of the imputation model to regions of the covariate space where no data are observed. We therefore present an analysis of missing patterns by treatment status at baseline.
+
+In the case that there is sufficient non-missing *unexposed SBP* among people both on/off antihypertensives at baseline, we still acknowledge that this does not guarantee that the missing at random assumption holds, as missingness may still depend on missing values of *unexposed SBP*, as is the case for all variables with missingness.
+
+We refrain from a complete case analysis, which is highly likely to be biased.
+
+```{r, include=FALSE}
+### Clear workspace
+rm(list=ls())
+Sys.time()
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+sapply(R.func.sources, source)
+```
+
+```{r, echo = FALSE}
+### Load survival package
+library(survival)
+
+### Define burnout
+burnout <- 180
+
+### Read in imputed dataset
+
+### Read in raw cohort with missingness
+cohort1 <- readRDS("data/cohort_male_pui.rds")
+cohort2 <- readRDS("data/cohort_female_pui.rds")
+cohort <- dplyr::bind_rows(cohort2, cohort1)
+
+### Turn gender into a factor variable
+cohort <- dplyr::mutate(cohort,
+                        gender = dplyr::case_when(
+                          gender == 2 ~ "Female",
+                          gender == 1 ~ "Male"
+                        ))
+
+### Read in interval censored outcome data, which indicates treatment use at baseline
+cohort_split_times <- readRDS(paste("data/cohort_split_times_burnout", burnout, ".rds", sep = "")) |>
+  dplyr::filter(tstart == 0) |>
+  dplyr::select(patid, med_status_statins, med_status_ah)
+
+### Merge
+df <- merge(cohort, cohort_split_times,
+            by.x = "patid",
+            by.y = "patid", 
+            all.x = TRUE)
+
+#--------------------------------------------
+# Identify variables with any missingness
+#--------------------------------------------
+vars_with_na <- names(df)[
+  base::colSums(base::is.na(df)) > 0
+]
+
+# Remove treatment variables themselves if present
+vars_with_na <- base::setdiff(
+  vars_with_na,
+  c("med_status_statins", "med_status_ah")
+)
+
+#--------------------------------------------
+# Function to summarise missingness by group
+#--------------------------------------------
+#--------------------------------------------
+# Function to summarise missingness by group
+# (no pivot_longer -> no type conflict)
+#--------------------------------------------
+summarise_missing_by_group <- function(data, treatment_var, vars) {
+  
+  data |>
+    dplyr::group_by(!!rlang::sym(treatment_var), gender) |>
+    
+    dplyr::summarise(
+      dplyr::across(
+        dplyr::all_of(vars),
+        ~ 100 * base::mean(base::is.na(.x)),
+        .names = "pct_missing_{.col}"
+      ),
+      n_total = dplyr::n(),
+      .groups = "drop"
+    ) |>
+    
+    # Long format
+    tidyr::pivot_longer(
+      cols = dplyr::starts_with("pct_missing_"),
+      names_to = "variable",
+      values_to = "pct_missing"
+    ) |>
+    
+    # Clean variable names and relabel treatment info
+    dplyr::mutate(
+      variable = base::sub("^pct_missing_", "", variable),
+      
+      # Map treatment variable names
+      treatment = dplyr::case_when(
+        treatment_var == "med_status_statins" ~ "statins",
+        treatment_var == "med_status_ah" ~ "antihypertensives"
+      ),
+      
+      # Map treatment group values
+      receiving = dplyr::case_when(
+        !!rlang::sym(treatment_var) == 1 ~ "yes",
+        !!rlang::sym(treatment_var) == 0 ~ "no",
+        TRUE ~ NA_character_
+      )
+    ) |>
+    
+    # Rename columns as requested
+    dplyr::rename(
+      N = n_total
+    ) |>
+    
+    # Drop original numeric treatment column
+    dplyr::select(
+      gender,
+      treatment,
+      receiving,
+      variable,
+      N,
+      pct_missing
+    )
+}
+
+#--------------------------------------------
+# Run separately for each treatment variable
+#--------------------------------------------
+missing_ah <- summarise_missing_by_group(
+  data = df,
+  treatment_var = "med_status_ah",
+  vars = vars_with_na
+)
+
+#--------------------------------------------
+# Optional: arrange for readability
+#--------------------------------------------
+missing_summary <- missing_ah |>
+  dplyr::arrange(
+    gender,
+    treatment,
+    variable,
+    receiving
+  ) |> 
+  as.data.frame() |>
+  dplyr::mutate(pct_missing = paste0(round(pct_missing, 2), "%")) |>
+  dplyr::rename(`Missing (%)` = pct_missing)
+
+# Print results
+knitr::kable(missing_summary)
+```
+
+We can see that among those on antihypertensives at baseline, 37.42% (female) and 34.37% (male) have a missing *unexposed SBP* value. We believe this is small enough that this is not a major problem and there is sufficient information among those on antihypertensive treatment baseline about the variable SBP unexposed to antihypertensive recorded, in order to impute this variable for those with missing data that are on antihypertensive treatment at baseline.
+
+# Stratified validation of model 2
+
+We present model validation for the unexposed mediator model, stratified by whether SBP unexposed to antihypertensives is missing at baseline. Model performance is compared with performance of the model among all individuals, which was reported in the main manuscript.
+
+```{r, include = FALSE}
+# Define parameters for summarising results
+genders <- c(2, 1)        # 2 = Women, 1 = Men
+miss_inds <- c(0, 1)      # 0 = observed, 1 = missing
+model <- 2
+x_max <- 0.6
+histogram_bins <- 40
+```
+
+```{r, include = FALSE}
+### Label functions
+gender_label <- function(g) {
+  if (g == 2) "Women" else if (g == 1) "Men" else paste0("Gender ", g)
+}
+
+stratum_label <- function(miss_ind) {
+  if (miss_ind == 0) {
+    "sbp_unexposed observed"
+  } else {
+    "sbp_unexposed missing"
+  }
+}
+
+### Read in data from main analysis
+read_main <- function(type, gender) {
+  if (type == "smooth") {
+    readRDS(paste0("data/calib_ph_df_smooth_", gender, "_model", model, ".rds"))
+  } else if (type == "grouped") {
+    readRDS(paste0("data/calib_ph_df_grouped_", gender, "_model", model, ".rds"))
+  } else if (type %in% c("ICI","E50","E90")) {
+    readRDS(paste0("data/calib_ph_", type, "_", gender, "_model", model, ".rds"))
+  } else if (type == "boot") {
+    readRDS(paste0("data/calib_ph_CI_ICI_E50_E90_", gender, "_model", model, ".rds"))
+  } else if (type == "discrim") {
+    readRDS(paste0("data/discrim_", gender, "_model", model, ".rds"))
+  }
+}
+
+### Read in stratified analyses data
+read_strat <- function(type, gender, miss_ind) {
+  if (type == "smooth") {
+    readRDS(paste0("data/sens_imputation_stratified_calib_ph_df_smooth_", gender, "_model", model, 
+                   "_missind", miss_ind, ".rds"))
+  } else if (type == "grouped") {
+    readRDS(paste0("data/sens_imputation_stratified_calib_ph_df_grouped_", gender, "_model", model, 
+                   "_missind", miss_ind, ".rds"))
+  } else if (type %in% c("ICI","E50","E90")) {
+    readRDS(paste0("data/sens_imputation_stratified_calib_ph_", type, "_", gender, "_model", model, 
+                   "_missind", miss_ind, ".rds"))
+  } else if (type == "boot") {
+    readRDS(paste0("data/sens_imputation_stratified_calib_ph_CI_ICI_E50_E90_", gender, "_model", model, 
+                   "_missind", miss_ind, ".rds"))
+  } else if (type == "discrim") {
+    readRDS(paste0("data/sens_imputation_stratified_discrim_", gender, "_model", model, 
+                   "_missind", miss_ind, ".rds"))
+  }
+}
+
+### Extract confidence interval for calibration plot
+curve_ci <- function(boot_mat, pred) {
+  if (is.null(dim(boot_mat))) boot_mat <- matrix(boot_mat, nrow = 1)
+  curve_mat <- boot_mat[, -(1:3), drop = FALSE]
+
+  q <- matrixStats::colQuantiles(curve_mat, probs = c(0.025, 0.5, 0.975), na.rm = TRUE)
+
+  tibble(
+    pred = pred,
+    lower = q[,1],
+    median = q[,2],
+    upper = q[,3]
+  )
+}
+
+### Extract confidence interval for ICI, E50 and E90
+metric_ci <- function(boot_mat) {
+
+  # Ensure matrix
+  if (is.null(dim(boot_mat))) {
+    boot_mat <- matrix(boot_mat, nrow = 1)
+  }
+
+  # First 3 columns = ICI, E50, E90
+  metric_boot <- boot_mat[, 1:3, drop = FALSE]
+  colnames(metric_boot) <- c("ICI", "E50", "E90")
+
+  # Compute CIs
+  tibble::tibble(
+    metric = colnames(metric_boot),
+    `lower CI` = apply(metric_boot, 2, stats::quantile, probs = 0.025, na.rm = TRUE),
+    `upper CI` = apply(metric_boot, 2, stats::quantile, probs = 0.975, na.rm = TRUE)
+  )
+}
+
+### Create a two-row figure with the histogram above the main plot.
+assemble_with_histogram <- function(main_plot, hist_df, x_max = x_max, bins = histogram_bins) {
+  
+  # Create histogram
+  hist_plot <- ggplot2::ggplot(hist_df, ggplot2::aes(x = pred)) +
+    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)),
+                            bins = bins, fill = "grey80", colour = "grey40") +
+    ggplot2::coord_cartesian(xlim = c(0, x_max)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.title.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.ticks.y = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(0, 0, 0, 0),
+      aspect.ratio = 0.25
+    ) +
+    ggplot2::ylab(NULL)
+
+  # Set limits on main plot
+  main_plot <- main_plot +
+    ggplot2::theme(plot.margin = ggplot2::margin(t = 0))
+
+  # Comebine plots using patchwork
+  # (hist_plot / main_plot) + patchwork::plot_layout(guides = "collect") &
+  #   ggplot2::theme(legend.position = "bottom")
+  (hist_plot / main_plot)
+}
+
+### Function to create combined metric table for a given gender
+create_metric_table <- function(gender){
+  
+  ### Create calibration table for main analysis
+  # Main analysis estimates
+  main_calibration_tbl <- tibble::tibble(
+    analysis = "main",
+    metric = c("ICI", "E50", "E90"),
+    estimate = c(
+      read_main("ICI", gender),
+      read_main("E50", gender),
+      read_main("E90", gender)
+    )
+  )
+  
+  # Bootstrap CIs for calibration, main analysis
+  main_calibration_ci <- metric_ci(read_main("boot", gender))
+  
+  # Combine estimate and CI for main analysis
+  main_calibration_tbl <- main_calibration_tbl |>
+    dplyr::left_join(main_calibration_ci, by = "metric")
+  
+  ### Create metirc table for stratified analyses
+  # Create empty table
+  strat_calibration_tbl <- tibble::tibble()
+  
+  # Add stratified analyses
+  for (miss_ind in miss_inds) {
+    
+    # Point estimates
+    tmp_est <- data.frame(
+      analysis = paste0("miss_ind_", miss_ind),
+      metric = c("ICI", "E50", "E90"),
+      estimate = c(
+        read_strat("ICI", gender, miss_ind),
+        read_strat("E50", gender, miss_ind),
+        read_strat("E90", gender, miss_ind)
+      )
+    ) |> as.tibble()
+    
+    # Bootstrap CIs
+    tmp_ci <- metric_ci(read_strat("boot", gender, miss_ind))
+    
+    # Combine estimate and CI
+    tmp_tbl <- tmp_est |>
+      dplyr::left_join(tmp_ci, by = "metric")
+    
+    # Add to output
+    strat_calibration_tbl <- dplyr::bind_rows(strat_calibration_tbl, tmp_tbl)
+  }
+  
+  # Final calibration table
+  calibration_tbl <- dplyr::bind_rows(
+    main_calibration_tbl,
+    strat_calibration_tbl
+  )
+  
+  
+  ### Create discrimination table
+  # Read in data from main analysis
+  d_main <- read_main("discrim", gender)
+  
+  # Put into table
+  d_tbl <- tibble(
+    analysis = "main",
+    estimate = d_main[["index"]],
+    `lower CI` = d_main[["index_lower"]],
+    `upper CI` = d_main[["index_upper"]]
+  )
+  
+  # Add data from stratified analysis
+  for (miss_ind in miss_inds) {
+    # Read in data
+    d_strat <- read_strat("discrim", gender, miss_ind)
+    
+    # Add
+    d_tbl <- bind_rows(d_tbl,
+                       tibble(
+                         analysis = paste0("miss_ind_", miss_ind),
+                         estimate = d_strat[["index"]],
+                         `lower CI` = d_strat[["index_lower"]],
+                         `upper CI` = d_strat[["index_upper"]]
+                       )
+    )
+  }
+  
+  # Add metric column
+  d_tbl <- dplyr::mutate(d_tbl, metric = "C_index")
+  
+  ### Combine the two
+  combined_tbl <- dplyr::bind_rows(calibration_tbl, d_tbl) |>
+    dplyr::mutate(
+      analysis = dplyr::case_when(
+        analysis == "main" ~ "All individuals",
+        analysis == "miss_ind_0" ~ "Recorded unexposed SBP",
+        analysis == "miss_ind_1" ~ "Missing unexposed SBP"
+      ),
+      metric = factor(metric, levels = c("ICI", "E50", "E90", "C_index")),
+      gender = dplyr::case_when(
+        gender == 2 ~ "Female",
+        gender == 1 ~ "Male"
+      )) |>
+    dplyr::arrange(metric, analysis) |>
+    dplyr::relocate(gender, metric, analysis, estimate, `lower CI`, `upper CI`)
+  
+  # Return
+  return(combined_tbl)
+  
+}
+```
+
+## Calibration curves
+
+There are no major differences in the calibration curves when stratifying by whether unexposed SBP was imputed or recorded. All notable differences occur over 20% risk, which is at the tail of the risk distribution.
+ 
+```{r, echo = FALSE, results='asis'}
+for (gender in genders) {
+
+  cat("\n\n### ", gender_label(gender), "", sep="")
+
+  # Read in data for calibration plots from main analysis
+  main_smooth <- read_main("smooth", gender)
+  main_grouped <- read_main("grouped", gender)
+
+  # Create initial plot
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_line(data = main_smooth,
+                       aes(pred, pred.obs, colour="Main"), linewidth=1)
+  
+  cols <- c("Main"="black", "miss0"="#2C7FB8", "miss1"="#D95F0E")
+  
+  # Create plot list to store stratified plots
+  plot_list <- list()
+  
+  # Add to list
+  for (miss_ind in miss_inds) {
+  
+    # Extract data for stratified curve
+    sm <- read_strat("smooth", gender, miss_ind)
+    gr <- read_strat("grouped", gender, miss_ind)
+ 
+    # Create label
+    lab <- if (miss_ind == 0) "miss0" else "miss1"
+
+    # Add stratified calibration curve to original plot
+    p2 <- p +
+      ggplot2::geom_line(data = sm,
+                ggplot2::aes(pred, pred.obs, colour= "subgroup"), linewidth=1) +
+      ggplot2::geom_point(data = gr,
+                 ggplot2::aes(pred, obs), 
+        colour = "darkgreen",
+        alpha = 0.7,
+        size = 1.2) +
+    ggplot2::scale_color_manual(values = c("Main" = "black", "subgroup" = "#2C7FB8"),
+                                labels = c("Main" = "All individuals", "subgroup" = "stratified"),
+                                name = NULL) +
+    ggplot2::geom_abline(slope=1, intercept=0, linetype="dashed") +
+    ggplot2::coord_fixed(xlim = c(0, x_max), ylim = c(0, x_max)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(legend.position = "none",
+                   panel.spacing = grid::unit(0.2, "lines"),
+                     plot.margin = ggplot2::margin(0,0,0,0)) +
+    ggplot2::labs(x="Predicted risk", y="Observed risk", title = if (miss_ind == 0) {"Recorded unexposed SBP"} else {"Missing unexposed SBP"})
+    
+    # Extract data for marginal histogram specific to stratified data (not original plot)
+    hist_pred <- sample(sm$pred, min(5000, nrow(sm)))
+    
+    # Assemble with histogram
+    p2 <- assemble_with_histogram(
+      main_plot = p2,
+      hist_df = tibble::tibble(pred = hist_pred),
+      x_max = x_max,
+      bins = histogram_bins
+    )
+    
+    # Add to plot list
+    plot_list[[(miss_ind + 1)]] <- p2
+    
+  }
+
+  # Combine and print side by side
+  print(patchwork::wrap_plots(plot_list, ncol = 2) + 
+    patchwork::plot_layout(guides = "collect") &
+    ggplot2::theme(legend.position = "bottom",
+                   plot.margin = ggplot2::margin(0,0,0,0),
+                   panel.spacing = grid::unit(0.2, "lines"),
+                   legend.box.margin = margin(t = 0),
+                   legend.margin = margin(t = 0))
+  )
+  
+}
+```
+
+## Performance metrics (calibration and discrimination)
+
+Simiarly, there are no major differences in the calibration metrics (ICI, E50 and E90) when stratifying by whether unexposed SBP was imputed or recorded. For men, there is a notable difference in discrimination. There in a drop in discrimination among those with recorded SBP, and an increase in discrimination among those with missing SBP. This is likely due to the fact that a much wider range of individuals will have missing unexposed SBP (i.e. young healthy individuals, or higher risk individuals with no record of SBP without an antihypertensive with the 180 days before it). On the contrary, those with a recorded unexposed SBP, are likely to be a higher risk group with a smaller spread of predicted risk, resulting in a lower discrimination. For women, we see a similar effect, but much less pronounced.
+
+```{r, echo = FALSE, results = 'asis'}
+# Create metric tables
+metric_tbl_female <- create_metric_table(2)
+metric_tbl_male <- create_metric_table(1)
+
+# Combine
+metric_tbl <- dplyr::bind_rows(metric_tbl_female, metric_tbl_male)
+
+# Print table
+print(knitr::kable(metric_tbl, digits=3))
+```
