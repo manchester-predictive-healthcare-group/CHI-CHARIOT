@@ -1,0 +1,442 @@
+---
+title: "Sensitivity Analysis of Treatment Effect Modifications"
+author: "Automated Report"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "../../")
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(gt)
+library(scales)
+```
+
+# Overview
+
+This report summarises calibration performance following modification of treatment effects for statins and antihypertensives.
+
+The report includes:
+
+- Summary calibration metrics (ICI, E50, E90)
+- Heatmaps of calibration performance
+- Heatmaps showing changes relative to the original model
+- Overlay calibration curves comparing scenarios
+- Difference curves showing deviation from the original calibration curve
+
+```{r scenario-definition}
+scenario_adjustments <- expand.grid(
+  statins = c(0.8, 0.9, 1, 1.1, 1.2),
+  ah = c(0.8, 0.9, 1, 1.1, 1.2)
+) |>
+  filter(!(statins == 1 & ah == 1))
+
+rows_1_unchanged <- which(
+  scenario_adjustments$statins == 1 |
+    scenario_adjustments$ah == 1
+)
+
+scenario_adjustments <- scenario_adjustments[rows_1_unchanged, ]
+```
+
+# Load Sensitivity Analysis Results
+
+```{r load-results}
+load_results <- function(gender){
+
+  map_dfr(
+    #seq_len(nrow(scenario_adjustments)),
+    1:6,
+    function(i){
+
+      statins <- scenario_adjustments$statins[i]
+      ah <- scenario_adjustments$ah[i]
+
+      ici <- readRDS(
+        paste0(
+          "data/sens_treatment_effect_modified_calib_ph_ICI_",
+          gender,
+          "_statins", statins,
+          "_ah", ah,
+          ".rds"
+        )
+      )
+
+      e50 <- readRDS(
+        paste0(
+          "data/sens_treatment_effect_modified_calib_ph_E50_",
+          gender,
+          "_statins", statins,
+          "_ah", ah,
+          ".rds"
+        )
+      )
+
+      e90 <- readRDS(
+        paste0(
+          "data/sens_treatment_effect_modified_calib_ph_E90_",
+          gender,
+          "_statins", statins,
+          "_ah", ah,
+          ".rds"
+        )
+      )
+
+      boot <- readRDS(
+        paste0(
+          "data/sens_treatment_effect_modified_calib_ph_CI_ICI_E50_E90_",
+          gender,
+          "_statins", statins,
+          "_ah", ah,
+          ".rds"
+        )
+      )
+
+      tibble(
+        gender = gender,
+        statins = statins,
+        ah = ah,
+        ICI = ici,
+        E50 = e50,
+        E90 = e90,
+        ICI_lwr = quantile(boot[,1], 0.025),
+        ICI_upr = quantile(boot[,1], 0.975),
+        E50_lwr = quantile(boot[,2], 0.025),
+        E50_upr = quantile(boot[,2], 0.975),
+        E90_lwr = quantile(boot[,3], 0.025),
+        E90_upr = quantile(boot[,3], 0.975)
+      )
+    }
+  )
+}
+
+female_results <- load_results(2)
+male_results <- load_results(1)
+
+results_all <- bind_rows(female_results, male_results)
+```
+
+# Load Original Model Results
+
+```{r}
+load_reference <- function(gender){
+
+  tibble(
+    gender = gender,
+    ICI = readRDS(paste0("data/calib_ph_ICI_", gender, "_model4.rds")),
+    E50 = readRDS(paste0("data/calib_ph_E50_", gender, "_model4.rds")),
+    E90 = readRDS(paste0("data/calib_ph_E90_", gender, "_model4.rds"))
+  )
+
+}
+
+reference_results <- bind_rows(
+  load_reference(1),
+  load_reference(2)
+)
+
+results_diff <-
+  results_all |>
+  left_join(
+    reference_results,
+    by = "gender",
+    suffix = c("", "_ref")
+  ) |>
+  mutate(
+    delta_ICI = ICI - ICI_ref,
+    delta_E50 = E50 - E50_ref,
+    delta_E90 = E90 - E90_ref
+  )
+```
+
+# Summary Tables
+
+```{r}
+female_results |> arrange(ICI) |> gt()
+```
+
+```{r}
+male_results |> arrange(ICI) |> gt()
+```
+
+# Heatmaps
+
+```{r}
+ggplot(female_results,
+       aes(factor(statins), factor(ah), fill = ICI)) +
+  geom_tile() +
+  geom_text(aes(label = round(ICI, 4))) +
+  labs(title = "Female ICI")
+```
+
+```{r}
+ggplot(male_results,
+       aes(factor(statins), factor(ah), fill = ICI)) +
+  geom_tile() +
+  geom_text(aes(label = round(ICI, 4))) +
+  labs(title = "Male ICI")
+```
+
+# Change Relative to Original Model
+
+```{r}
+plot_delta_heatmap <- function(dat, metric, title){
+
+  ggplot(
+    dat,
+    aes(
+      factor(statins),
+      factor(ah),
+      fill = .data[[metric]]
+    )
+  ) +
+    geom_tile() +
+    geom_text(
+      aes(label = round(.data[[metric]], 4))
+    ) +
+    scale_fill_gradient2(
+      midpoint = 0,
+      low = "blue",
+      mid = "white",
+      high = "red"
+    ) +
+    labs(
+      title = title,
+      x = "Statin multiplier",
+      y = "AH multiplier"
+    )
+
+}
+
+plot_delta_heatmap(
+  filter(results_diff, gender == 2),
+  "delta_ICI",
+  "Female ΔICI"
+)
+```
+
+```{r}
+plot_delta_heatmap(
+  filter(results_diff, gender == 1),
+  "delta_ICI",
+  "Male ΔICI"
+)
+```
+
+```{r}
+plot_delta_heatmap(
+  filter(results_diff, gender == 2),
+  "delta_E50",
+  "Female ΔE50"
+)
+```
+
+```{r}
+plot_delta_heatmap(
+  filter(results_diff, gender == 1),
+  "delta_E50",
+  "Male ΔE50"
+)
+```
+
+```{r}
+plot_delta_heatmap(
+  filter(results_diff, gender == 2),
+  "delta_E90",
+  "Female ΔE90"
+)
+```
+
+```{r}
+plot_delta_heatmap(
+  filter(results_diff, gender == 1),
+  "delta_E90",
+  "Male ΔE90"
+)
+```
+
+# Calibration Curve Utilities
+
+```{r}
+load_smooth_curve <- function(gender, statins, ah){
+
+  readRDS(
+    paste0(
+      "data/sens_treatment_effect_modified_calib_ph_df_smooth_",
+      gender,
+      "_statins", statins,
+      "_ah", ah,
+      ".rds"
+    )
+  )
+
+}
+
+load_reference_curve <- function(gender){
+
+  readRDS(
+    paste0(
+      "data/calib_ph_df_smooth_",
+      gender,
+      "_model4.rds"
+    )
+  )
+
+}
+```
+
+# Overlay Calibration Curves
+
+The plots below compare the original calibration curve with selected treatment-effect modifications.
+
+```{r}
+plot_overlay <- function(gender){
+
+  reference <- load_reference_curve(gender) |>
+    mutate(scenario = "Original")
+
+  statins_low <- load_smooth_curve(gender, 0.8, 1) |>
+    mutate(scenario = "Statins 0.8")
+
+  statins_high <- load_smooth_curve(gender, 1.2, 1) |>
+    mutate(scenario = "Statins 1.2")
+
+  ah_low <- load_smooth_curve(gender, 1, 0.8) |>
+    mutate(scenario = "AH 0.8")
+
+  ah_high <- load_smooth_curve(gender, 1, 1.2) |>
+    mutate(scenario = "AH 1.2")
+
+  curves <- bind_rows(
+    reference,
+    statins_low,
+    statins_high,
+    ah_low,
+    ah_high
+  )
+
+  ggplot(curves,
+         aes(pred, pred.obs, colour = scenario)) +
+    geom_line(linewidth = 1) +
+    geom_abline(
+      slope = 1,
+      intercept = 0,
+      linetype = 2
+    ) +
+    labs(
+      x = "Predicted risk",
+      y = "Observed risk"
+    )
+
+}
+```
+
+## Female Overlay Curves
+
+```{r}
+plot_overlay(2)
+```
+
+## Male Overlay Curves
+
+```{r}
+plot_overlay(1)
+```
+
+# Difference Curves
+
+Difference curves show:
+
+Observed risk (scenario) - Observed risk (original)
+
+Values above zero indicate higher observed risk than the original calibration curve at that level of predicted risk.
+
+```{r}
+plot_difference_curves <- function(gender){
+
+  reference <- load_reference_curve(gender)
+
+  scenarios <- list(
+    "Statins 0.8" = c(0.8, 1),
+    "Statins 1.2" = c(1.2, 1),
+    "AH 0.8" = c(1, 0.8),
+    "AH 1.2" = c(1, 1.2)
+  )
+
+  diff_curves <- lapply(
+    names(scenarios),
+    function(name){
+
+      vals <- scenarios[[name]]
+
+      curve <- load_smooth_curve(
+        gender,
+        vals[1],
+        vals[2]
+      )
+
+      curve |>
+        mutate(
+          difference =
+            pred.obs - reference$pred.obs,
+          scenario = name
+        )
+    }
+  )
+
+  diff_curves <- bind_rows(diff_curves)
+
+  ggplot(
+    diff_curves,
+    aes(pred, difference, colour = scenario)
+  ) +
+    geom_hline(
+      yintercept = 0,
+      linetype = 2
+    ) +
+    geom_line(linewidth = 1) +
+    labs(
+      x = "Predicted risk",
+      y = "Difference from original curve"
+    )
+
+}
+```
+
+## Female Difference Curves
+
+```{r}
+plot_difference_curves(2)
+```
+
+## Male Difference Curves
+
+```{r}
+plot_difference_curves(1)
+```
+
+# Interpretation Template
+
+This section is intentionally written as a template rather than a conclusion.
+
+Suggested points to review:
+
+1. Which scenarios produce the largest increase in ICI?
+2. Which scenarios produce the largest increase in E50 and E90?
+3. Are the effects similar between males and females?
+4. Does calibration appear more sensitive to changes in statin effects or antihypertensive effects?
+5. Do deviations occur uniformly across the risk spectrum or mainly among high-risk individuals?
+6. Do the overlay plots indicate a systematic shift in calibration or a change in curve shape?
+7. Do the difference curves suggest clinically meaningful distortion of predicted risks?
+
+No automated interpretation is included so that conclusions can be drawn directly from the reported results.
