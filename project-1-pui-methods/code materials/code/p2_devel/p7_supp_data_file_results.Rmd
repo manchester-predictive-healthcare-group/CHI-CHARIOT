@@ -1,6 +1,6 @@
 ---
 title: "Supplementary data file 2 - results"
-date: "2025-05-14"
+date: "`r format(Sys.time(), '%d %B %Y')`"
 output: 
   html_document:
     number_sections: TRUE

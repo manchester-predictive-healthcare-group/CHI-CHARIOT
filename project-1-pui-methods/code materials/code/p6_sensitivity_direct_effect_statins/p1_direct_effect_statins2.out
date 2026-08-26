@@ -1,0 +1,136 @@
+[1] "2026-08-25 12:04:24 BST"
+[1] "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1"
+        R/db_query.R R/functions_calibration_weighted_OLD.R
+value   ?            ?                                     
+visible FALSE        FALSE                                 
+        R/functions_calibration_weighted.R R/functions.R
+value   ?                                  ?            
+visible FALSE                              FALSE        
+[1] "gender =  2"
+[1] "Start p1_fit_model 2026-08-25 12:04:26.747664"
+Warning message:
+In survfit.coxph(fit, se.fit = FALSE) :
+  the model contains interactions; the default curve based on columm means of the X matrix is almost certainly not useful. Consider adding a newdata argument.
+Warning message:
+In survfit.coxph(fit, se.fit = FALSE) :
+  the model contains interactions; the default curve based on columm means of the X matrix is almost certainly not useful. Consider adding a newdata argument.
+[1] "Start p2_calculate_cf_surv_times 2026-08-25 12:09:40.384319"
+There were 50 or more warnings (use warnings() to see the first 50)
+Time difference of 1.163128 hours
+Warning messages:
+1: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+2: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+3: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+4: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+5: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+6: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+7: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+8: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+9: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+10: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+11: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+12: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+13: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+14: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+15: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+16: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+17: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+18: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+19: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+20: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+21: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+22: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+23: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+24: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+25: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+26: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+27: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+28: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+29: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+30: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+31: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+32: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+33: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+34: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+35: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+36: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+37: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+38: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+39: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+40: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+41: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+42: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+43: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+44: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+45: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+46: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+47: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+48: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+49: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+50: In min(which(bhaz$hazard >= cumhaz_adj)) :
+  no non-missing arguments to min; returning Inf
+[1] "Start p3_calibration_ph 2026-08-25 13:19:34.744162"
+[1] "PH 2026-08-25 13:19:47.79891"
+Warning messages:
+1: Removed 99 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+2: Removed 99 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+[1] "PH boot 2026-08-25 13:20:19.898554"
+[1] "KM group 2026-08-25 20:17:13.036697"
+[1] "ICI =  0.000899230993393305"
+[1] "E50 =  0.00060110092455401"
+[1] "E90 =  0.00191453141427028"
+[1] "Start p4_discrimination 2026-08-25 20:17:29.532536"
+       index   concordant   comparable    tied_risk  index_lower  index_upper 
+8.715024e-01 1.214768e+10 1.393877e+10 8.000000e+00 8.714968e-01 8.715079e-01 
+[1] "Start clinical exemplar 2026-08-25 20:18:29.496186"

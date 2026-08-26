@@ -3,6 +3,11 @@
 ### in the validation cohort
 ###
 
+###
+### We adjust survival times for changes in treatment (statins/ah/smoking) use during follow-up
+### We do not adjust for different BMI/nonhdl/sbp/smoking at baseline, as these are just what will be made for the prediction
+### 
+
 ### Clear workspace
 rm(list=ls())
 Sys.time()

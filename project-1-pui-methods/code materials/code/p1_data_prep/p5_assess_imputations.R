@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
 getwd()
 
 ### Source functions
@@ -28,7 +28,7 @@ for (gender in c(2,1)){
   print(paste("gender = ", gender_char))
   
   ### Load imp.comb
-  imp.comb <- readRDS(paste("data/mice_mids_prototype3_", gender, "_", chain.seed, ".rds", sep = ""))
+  imp.comb <- readRDS(paste("data/mice_mids_prototype3_", gender, "_", 1, ".rds", sep = ""))
   
   ### Create convergence plots
   print("convergence plots")

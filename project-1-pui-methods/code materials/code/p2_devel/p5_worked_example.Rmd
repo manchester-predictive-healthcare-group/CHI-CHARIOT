@@ -41,6 +41,11 @@ lnHR_sbp <- readRDS("data/offsets_direct_lnHR_sbp.rds")
 lnHR_bmi <- readRDS("data/offsets_direct_lnHR_bmi.rds")
 lnHR_nonhdl <- readRDS("data/offsets_direct_lnHR_nonhdl.rds")
 
+### Define HRs (not log) used for adjusting risks in intervention layer of two-component model
+direct_HR_sbp <- exp(lnHR_sbp)
+direct_HR_bmi <- exp(lnHR_bmi)
+direct_HR_nonhdl <- exp(lnHR_nonhdl)
+
 ### Read in model and baseline hazards
 fit_list <- lapply(1:4, function(x) {readRDS(paste("data/fit_", gender, "_model", x, ".rds", sep = ""))})
 bhaz_list <- lapply(1:4, function(x) {readRDS(paste("data/bhaz_", gender, "_model", x, ".rds", sep = ""))})
@@ -57,19 +62,39 @@ bhaz_list[[length(bhaz_list) + 1]] <- readRDS(paste("data/bhaz_", gender, "_mode
 ### Start by comparing risks for non-causal model (model 0) and treatment offset model (model 1) ###
 ####################################################################################################
 
-### Create a data.frame with the inputs for the indiviudal we are intereseted in
-df_valid <- readRDS(paste("data/df_imp_valid_", gender, sep = ""))[1,]
+### Create a data.frame with the required columns
+df_valid <- readRDS(paste("data/df_imp_valid_", gender, sep = ""))[0,]
 colnames(df_valid)
 
-### Set predictors to be predictors of interest
-df_valid <- dplyr::mutate(df_valid, 
+### Set predictors to be predictors of interest (all medical history variable except diabetes are healthy, no previous history)
+df_valid <- tibble::add_row(df_valid, 
                           age = 65,
                           sbp = 140, 
                           bmi = 30, 
                           nonhdl = 5, 
                           IMD = 10,
-                          diabetes = factor("Type2", levels = levels(diabetes)),
-                          ethnicity = factor("white", levels = levels(ethnicity)))
+                          diabetes = factor("Type2", levels = levels(df_valid$diabetes)),
+                          ethnicity = factor("white", levels = levels(df_valid$ethnicity)),
+                          hypertension      = factor("Absent", levels = c("Absent", "Present")),
+                          ra                = factor("Absent", levels = c("Absent", "Present")),
+                          af                = factor("Absent", levels = c("Absent", "Present")),
+                          ckd               = factor("Absent", levels = c("Absent", "Present")),
+                          smi               = factor("Absent", levels = c("Absent", "Present")),
+                          fhcvd             = factor("Absent", levels = c("Absent", "Present")),
+                          migraine          = factor("Absent", levels = c("Absent", "Present")),
+                          sle               = factor("Absent", levels = c("Absent", "Present")),
+                          cortico           = factor("Absent", levels = c("Absent", "Present")),
+                          antipsy           = factor("Absent", levels = c("Absent", "Present")),
+                          copd              = factor("Absent", levels = c("Absent", "Present")),
+                          int_dis           = factor("Absent", levels = c("Absent", "Present")),
+                          downs             = factor("Absent", levels = c("Absent", "Present")),
+                          oral_cancer       = factor("Absent", levels = c("Absent", "Present")),
+                          brain_cancer      = factor("Absent", levels = c("Absent", "Present")),
+                          lung_cancer       = factor("Absent", levels = c("Absent", "Present")),
+                          blood_cancer      = factor("Absent", levels = c("Absent", "Present")),
+                          pre_eclampsia     = factor("Absent", levels = c("Absent", "Present")),
+                          postnatal_depression = factor("Absent", levels = c("Absent", "Present"))) |>
+  as.data.frame()
 
 ###
 ### Get predicted risks
@@ -190,7 +215,7 @@ round(100*c(pred_model1_off_ah_visit0, pred_model1_on_ah_visit0, pred_model2_off
 
 # Modifiable risk factor model
 
-```{r}
+```{r model3}
 ###################################################################
 ### Now we move onto the modifiable risk factor model (model 3) ###
 ###################################################################
@@ -451,12 +476,7 @@ pred_model4_visit0_sbp140 <- 1 - df_valid |>
 
 ### Now we apply the relative risk reduction person A, using the intervention layer
 
-### Read in other direct effects, calculated in file p1_data_prep/p8_calculate_treatment_effects.R
-direct_OR_nonhdl <- readRDS("data/direct_OR_nonhdl.rds")
-direct_OR_bmi <-  readRDS("data/direct_OR_bmi.rds")
-direct_OR_sbp <- readRDS("data/direct_OR_sbp.rds")
-
-### Function to apply odds ratio to a risk score, based on change in SBP, BMI and Non-HDL
+### Function to apply odds ratio to a risk score, based on change in SBP, BMI and Non-HDL (old; no longer used)
 convert_risk_odds <- function(p, change_sbp = 0, change_bmi = 0, change_nonhdl = 0){
   
   ### Apply the relative risk change
@@ -482,13 +502,46 @@ convert_risk_odds <- function(p, change_sbp = 0, change_bmi = 0, change_nonhdl =
   return(new_risk)
 }
 
+### Function to apply hazard ratio to a risk score, based on change in SBP, BMI and Non-HDL
+convert_risk_HR <- function(p, change_sbp = 0, change_bmi = 0, change_nonhdl = 0){
+  
+  ### Get survival probability
+  surv <- 1 - p
+  
+  ### Get survival probability onto the hazard scale by taking logarithm
+  log_surv <- log(surv)
+  
+  ### Apply the relative risk change
+  HR_change_sbp <- direct_HR_sbp^change_sbp
+  HR_change_bmi <- direct_HR_bmi^change_bmi
+  HR_change_nonhdl <- direct_HR_nonhdl^change_nonhdl
+  
+  ### Apply these HRs
+  HR <-
+    HR_change_sbp*
+    HR_change_bmi*
+    HR_change_nonhdl
+  
+  ### Apply hazard ratios
+  log_surv_adjusted <- log_surv*HR
+  
+  ### Calculate survival probability (note, we do not take the negative, 
+  ### as we did not do this when converted back onto the hazard scale)
+  new_surv <- exp(log_surv_adjusted)
+  
+  ### Convert back onto risk scale
+  new_risk <- 1 - new_surv
+  
+  return(new_risk)
+}
+
 ###
 ### Reductions of SBP from 140 to 130 and 120
 ###
 
 ### Apply odds ratio to risk score
-pred_model4_visit0_sbp130 <- convert_risk_odds(p = pred_model4_visit0_sbp140, change_sbp = -10)
-pred_model4_visit0_sbp120 <- convert_risk_odds(p = pred_model4_visit0_sbp140, change_sbp = -20)
+pred_model4_visit0_sbp130 <- convert_risk_HR(p = pred_model4_visit0_sbp140, change_sbp = -10)
+pred_model4_visit0_sbp120 <- convert_risk_HR(p = pred_model4_visit0_sbp140, change_sbp = -20)
 
 ### Compare risks
 round(100*c(pred_model4_visit0_sbp140, pred_model4_visit0_sbp130, pred_model4_visit0_sbp120), 2)
@@ -496,7 +549,7 @@ round(100*c(pred_model4_visit0_sbp140, pred_model4_visit0_sbp130, pred_model4_vi
 ###
 ### Reduction of BMI by 5
 ###
-pred_model4_visit0_bmi25 <- convert_risk_odds(p = pred_model4_visit0_sbp140, change_sbp = -wl_sbp_reduction, change_bmi = -wl_bmi_reduction, change_nonhdl = -wl_nonhdl_reduction)
+pred_model4_visit0_bmi25 <- convert_risk_HR(p = pred_model4_visit0_sbp140, change_sbp = -wl_sbp_reduction, change_bmi = -wl_bmi_reduction, change_nonhdl = -wl_nonhdl_reduction)
 
 ### Compare risks
 round(100*pred_model4_visit0_bmi25, 2)
@@ -504,7 +557,7 @@ round(100*pred_model4_visit0_bmi25, 2)
 ###
 ### Statins
 ###
-pred_model4_visit0_statins <- convert_risk_odds(p = pred_model4_visit0_sbp140, 
+pred_model4_visit0_statins <- convert_risk_HR(p = pred_model4_visit0_sbp140, 
                                                 change_sbp = statins_change_sbp, 
                                                 change_bmi = statins_change_bmi, 
                                                 change_nonhdl = statins_change_nonhdl)
@@ -515,7 +568,7 @@ round(100*pred_model4_visit0_statins, 2)
 ###
 ### Reduction of all values to healthy level
 ###
-pred_model4_visit0_healthy <- convert_risk_odds(p = pred_model4_visit0_sbp140, 
+pred_model4_visit0_healthy <- convert_risk_HR(p = pred_model4_visit0_sbp140, 
                                          change_sbp = -20, 
                                          change_bmi = -5, 
                                          change_nonhdl = -2.4)
@@ -572,19 +625,19 @@ pred_model4_visit1_sbp140 <- 1 - df_valid |>
 
 ### Get the factual estimated risk based on achieved levels of MFRs
 ### Suppose this individual achieved a reduction of BMI of 5 and reduction in non-HDL cholesterol of 1
-pred_model4_visit1_factual <- convert_risk_odds(p = pred_model4_visit1_sbp140, 
+pred_model4_visit1_factual <- convert_risk_HR(p = pred_model4_visit1_sbp140, 
                                                 change_sbp = 0, 
                                                 change_bmi = -5, 
                                                 change_nonhdl = -1)
 round(100*pred_model4_visit1_factual, 2)
 
 ### Now estimate hypothetical risks, if that individual was to also reduce blood pressure by 10 or 20
-pred_model4_visit1_hypo_sbp130 <- convert_risk_odds(p = pred_model4_visit1_sbp140, 
+pred_model4_visit1_hypo_sbp130 <- convert_risk_HR(p = pred_model4_visit1_sbp140, 
                                                     change_sbp = -10, 
                                                     change_bmi = -5, 
                                                     change_nonhdl = -1)
 
-pred_model4_visit1_hypo_sbp120 <- convert_risk_odds(p = pred_model4_visit1_sbp140, 
+pred_model4_visit1_hypo_sbp120 <- convert_risk_HR(p = pred_model4_visit1_sbp140, 
                                                     change_sbp = -20, 
                                                     change_bmi = -5, 
                                                     change_nonhdl = -1)
@@ -616,11 +669,8 @@ arbitrary_change_bmi <- -5
 ## non-HDL cholesterol
 arbitrary_change_nonhdl <- -1
 
-### Apply the relative risk change
-(direct_OR_sbp^arbitrary_change_sbp)*(direct_OR_bmi^arbitrary_change_bmi)*(direct_OR_nonhdl^arbitrary_change_nonhdl) # 0.5951709
-
 ### Calculate risk under intervention
-pred_model4_visit0_arbitrary <- convert_risk_odds(p = pred_model4_visit0_sbp140, 
+pred_model4_visit0_arbitrary <- convert_risk_HR(p = pred_model4_visit0_sbp140, 
                                                 change_sbp = arbitrary_change_sbp, 
                                                 change_bmi = arbitrary_change_bmi, 
                                                 change_nonhdl = arbitrary_change_nonhdl)
