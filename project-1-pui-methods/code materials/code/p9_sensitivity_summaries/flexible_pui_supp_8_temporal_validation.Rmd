@@ -1,0 +1,224 @@
+---
+title: 'Sensitivity Analysis: Temporal Validation'
+date: "`r format(Sys.time(), '%d %B %Y')`"
+bibliography: refs.bib
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    toc_depth: 3
+    toc_float: false
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+params:
+  x_max: 0.3
+  histogram_bins: 40
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = "../../")
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(ggplot2)
+library(gt)
+library(patchwork)
+library(ragg)
+```
+
+**Associated manuscript: A flexible approach to sequential prediction under intervention**
+
+# Overview and methodology
+
+This report summarises performance of the two-component model under temporal validation, where the index dates are defined 1, 2, 3, 4 or 5 years after the start of follow-up.
+
+Start of follow-up is defined as the maximum of: date turned 18; 1 year up to standard follow-up in CPRD; 1st January 2005. This is what was used as the index date in the main manuscript when developing and validating the models. For $t_{fup}$ in $\{1,2,3,4,5\}$, validation cohorts were restricted to individuals who remained event free and under follow-up within $t_{fup}$ years of their start of follow-up. Time until incident cardiovascular event was then defined relative to these new index dates. We refer to these as temporal validation cohorts. 
+
+Model validation was then implemented in the temporal validation cohorts. Predicted risks are under the "continue on current treatment strategy" counterfactual. We evaluate performance of 5-year rather than 10-year predicted risks. This is due to when evaluating performance at 4/5 years post index dates, there would be very few individuals with a further 10 years follow-up. Counterfactual survival times are estimated in the same way as was done in the main manuscript. First statin and antihypertensive use at baseline was reassessed. Counterfactual survival times under the treatment strategy of "do nothing" were then estimated and used to estimate calibration and discrimination.
+
+Section 2 contains a summary table of calibration (ICI, E50, E90) and discrimination (C-statistic) metrics, with 95% confidence intervals. Section 3 contains calibration plots (plus grouped Kaplan-Meier estimates vs mean predicted risk in 25 groups defined by predicted risk).
+
+```{r load-results, include = FALSE}
+# Define scenarios
+scenarios <- expand.grid(
+  gender = c(2, 1),
+  t_fup_integer = 1:5
+)
+
+# Function to load metrics
+load_metrics <- function(gender, t_fup_integer){
+
+  t_fup <- round(365.25 * t_fup_integer)
+
+  # Calibration
+  ici <- readRDS(paste0("data/sens_temporalv_calib_ph_ICI_", gender, "_tfup", t_fup, ".rds"))
+  e50 <- readRDS(paste0("data/sens_temporalv_calib_ph_E50_", gender, "_tfup", t_fup, ".rds"))
+  e90 <- readRDS(paste0("data/sens_temporalv_calib_ph_E90_", gender, "_tfup", t_fup, ".rds"))
+  boot <- readRDS(paste0("data/sens_temporalv_calib_ph_CI_ICI_E50_E90_", gender, "_tfup", t_fup, ".rds"))
+
+  # Discrimination
+  discrim <- readRDS(paste0("data/sens_temporalv_discrim_", gender, "_tfup", t_fup, ".rds"))
+
+  # Sample size
+  df_valid <- readRDS(paste("data/sens_temporalv_df_valid_", gender, "_", t_fup, ".rds", sep = ""))
+  sample_size <- nrow(df_valid)
+  
+  tibble(
+    gender = gender,
+    t_fup_integer = t_fup_integer,
+    N = sample_size,
+    ICI = ici,
+    ICI_lwr = quantile(boot[, 1], 0.025),
+    ICI_upr = quantile(boot[, 1], 0.975),
+    E50 = e50,
+    E50_lwr = quantile(boot[, 2], 0.025),
+    E50_upr = quantile(boot[, 2], 0.975),
+    E90 = e90,
+    E90_lwr = quantile(boot[, 3], 0.025),
+    E90_upr = quantile(boot[, 3], 0.975),
+    Cstat = discrim[["index"]],
+    Cstat_lwr = discrim[["index_lower"]],
+    Cstat_upr = discrim[["index_upper"]]
+  )
+
+}
+
+### Load the metrics
+results_all <- pmap_dfr(scenarios, load_metrics)
+
+# Histogram helper.
+# The saved smooth calibration data include the prediction support used on the x-axis.
+extract_hist_pred <- function(smooth_df) {
+  preds <- smooth_df$pred
+  preds[is.finite(preds)]
+}
+
+# Create a two-row figure with the histogram above the main plot.
+assemble_with_histogram <- function(main_plot, hist_df, x_max = params$x_max, bins = params$histogram_bins) {
+  
+  # Create histogram
+  hist_plot <- ggplot2::ggplot(hist_df, ggplot2::aes(x = pred)) +
+    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)),
+                            bins = bins, fill = "grey80", colour = "grey40") +
+    ggplot2::coord_cartesian(xlim = c(0, x_max)) +
+    ggplot2::theme_bw() +
+    ggplot2::theme(
+      axis.title.x = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_blank(),
+      axis.ticks.y = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(0, 0, 0, 0),
+      aspect.ratio = 0.2
+    ) +
+    ggplot2::ylab(NULL)
+
+  # Set limits on main plot
+  main_plot <- main_plot +
+    ggplot2::theme(plot.margin = ggplot2::margin(t = 0))
+
+  # Comebine plots using patchwork
+  # (hist_plot / main_plot) + patchwork::plot_layout(guides = "collect") &
+  #   ggplot2::theme(legend.position = "bottom")
+  (hist_plot / main_plot)
+}
+```
+
+# Summary Table of Performance Metrics
+
+We find that as the index date gets further away from start of follow-up, the calibration gets worse (symptomatic of calibration drift), however not by a large amount. There is a more considerable drop in discrimination (0.863 to 0.838 for females, 0.845 to 0.814 for males). This is likely due to higher risk individuals having events in the first 5 years and being removed from the validation cohort. This will result in a healthier cohort, within which it is harder to discriminate between high and low risk individuals. 
+
+```{r summary-table}
+results_all |>
+  mutate(
+    Gender = factor(gender, levels = c(1, 2), labels = c("Male", "Female")),
+    `Follow-up (years)` = t_fup_integer,
+    ICI = sprintf("%.3f (%.3f, %.3f)", ICI, ICI_lwr, ICI_upr),
+    E50 = sprintf("%.3f (%.3f, %.3f)", E50, E50_lwr, E50_upr),
+    E90 = sprintf("%.3f (%.3f, %.3f)", E90, E90_lwr, E90_upr),
+    `C-statistic` = sprintf("%.3f (%.3f, %.3f)", Cstat, Cstat_lwr, Cstat_upr)
+  ) |>
+  arrange(Gender, `Follow-up (years)`) |>
+  select(Gender, `Follow-up (years)`, N, ICI, E50, E90, `C-statistic`) |>
+  gt(groupname_col = "Gender") |>
+  tab_header(
+    title = "Calibration and discrimination metrics (95% CI)"
+  )
+```
+
+# Calibration Plots
+
+The plots below show the smoothed calibration curve (red line) together with grouped Kaplan-Meier estimates (points, with 95%
+confidence intervals) across 25 risk groups, for each gender and follow-up time.
+
+We observe a calibration drift, and find that as the index date gets further away from start of follow-up, the model begins to over predict. This aligns with previous research which highlights a downwards secular trend in the incidence of cardiovascular disease observed in UK primary care [@RN1296]. The magnitude of the misscalibration is not large
+
+```{r calib-plot-function}
+plot_calib <- function(gender, t_fup_integer){
+
+  # Read in data
+  t_fup <- round(365.25 * t_fup_integer)
+
+  df_smooth <- readRDS(paste0("data/sens_temporalv_calib_ph_df_smooth_", gender, "_tfup", t_fup, ".rds"))
+  df_grouped <- readRDS(paste0("data/sens_temporalv_calib_ph_df_grouped_", gender, "_tfup", t_fup, ".rds"))
+
+  gender_label <- ifelse(gender == 1, "Male", "Female")
+
+  # Create plot
+  p <- ggplot() +
+    geom_line(
+      data = df_smooth,
+      aes(x = pred, y = pred.obs),
+      colour = "red"
+    ) +
+    geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+    geom_point(
+      data = df_grouped,
+      aes(x = pred, y = obs)
+    ) +
+    geom_errorbar(
+      data = df_grouped,
+      aes(x = pred, ymin = obs_lower, ymax = obs_upper),
+      width = 0.005
+    ) +
+    coord_cartesian(xlim = c(0, params$x_max), ylim = c(0, params$x_max)) +
+    labs(
+      title = paste0(
+        gender_label, ": ", t_fup_integer,
+        " year", ifelse(t_fup_integer == 1, "", "s"), " post index date"
+      ),
+      x = "Predicted risk",
+      y = "Observed risk"
+    ) +
+    theme_minimal()
+  
+  # Create histogram
+  hist_pred <- extract_hist_pred(df_smooth)
+  hist_pred <- sample(hist_pred, min(5000, length(hist_pred)), replace = FALSE)
+  
+  # Combine plot and histogram
+  p <- assemble_with_histogram(
+      main_plot = p,
+      hist_df = tibble::tibble(pred = hist_pred),
+      x_max = params$x_max,
+      bins = params$histogram_bins
+    )
+  
+  # Print
+  p
+
+}
+```
+
+## Female
+
+```{r calib-plots-female, fig.width=6, fig.height=5, dpi = 300, dev = "ragg_png", fig.retina = 2}
+walk(1:5, function(t) print(plot_calib(2, t)))
+```
+
+## Male
+
+```{r calib-plots-male, fig.width=6, fig.height=5, dpi = 300, dev = "ragg_png", fig.retina = 2}
+walk(1:5, function(t) print(plot_calib(1, t)))
+```

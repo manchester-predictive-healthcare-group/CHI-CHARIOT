@@ -1,13 +1,12 @@
 ---
 title: "Sensitivity analysis: direct effect of statins"
-author: "Alex Pate"
+date: "`r format(Sys.time(), '%d %B %Y')`"
 bibliography: refs.bib
 output:
   html_document:
     toc: true
     toc_float: true
     number_sections: true
-    code_folding: show
     df_print: paged
 ---
 
@@ -22,6 +21,8 @@ library(tibble)
 library(matrixStats)
 ```
 
+**Associated manuscript: A flexible approach to sequential prediction under intervention**
+
 # Introduction
 
 This document contains the results from a sensitivity analysis where we assume a pleiotropic effect for statins exists, meaning statins has a direct (protective) effect on cardiovascular risk.
@@ -30,10 +31,9 @@ This document contains the results from a sensitivity analysis where we assume a
 
 During the estimation of the DAG (see supplementary material file 3), we found that the sum of the indirect effects through body mass index (BMI), non-HDL cholesterol and systolic blood pressure (SBP) was equal to the total effect of statins reported from a meta-analysis of systematic reviews. We are not claiming this provides strong evidence that there is no pleiotropic effect of statins, as the DAG was formed using data from a number of sources, which are not consistent with each other in terms of outcome/estimand. However, this did inform the decision to not include a pleiotropic effect of statins when building the two-component model (i.e. we assumed the direct effect of statins represented in the DAG, had no effect). In the main manuscript, we claim it is possible to include direct effects of interventions within the two-component model framework. Given there is evidence supporting the existence of a pleiotropic effect of statins, we implement a sensitivity analysis to showcase the inclusion of a direct effect.
 
-In some situations, if the sum of the indirect effects does not match a reported total effect, it may be appropriate to estimate the size of a direct effect based on this information. However, in our case, the introduction of a direct effect will cause a disagreement between the total effect of statins as calculated from the DAG (sum of the direct and indirect effects), and the total effect as reported from an overview of systematic reviews.[@RN1351] There is no one size fits all approach for what to do when there is conflicting information supporting the derivation of the DAG. If some pathways are deemed to be based on information from lower quality sources, it may be sensible to derive the effect of these based off information from the stronger sources. In our example, the effect of statins on cardiovascular risk mediated by non-HDL cholesterol and SBP comes from high quality sources. The effect of statins on cardiovascular disease mediated through BMI comes from lower quality sources, but the effect is assumed to be very small. It would therefore be unreasonable to modify the effect of statins on cardiovascular risk mediated through BMI to account for the difference between the total effect estimated from the DAG and reported from the meta-analysis; however such an approach may be reasonable in other scenarios
+In other situations, if the sum of the indirect effects does not match a reported total effect, it may be appropriate to estimate the size of the direct effect based on this information. However, in our case, the introduction of a direct effect will cause a disagreement between the total effect of statins as calculated from the DAG (sum of the direct and indirect effects), and the total effect as reported from an overview of systematic reviews.[@RN1351] There is no one size fits all approach for what to do when there is conflicting information supporting the derivation of the DAG. If some pathways are deemed to be based on information from lower quality sources, it may be sensible to derive the effect of these pathways based off information from stronger sources in the rest of the DAG. In our example, the effect of statins on cardiovascular risk mediated by non-HDL cholesterol and SBP comes from high quality sources. The effect of statins on cardiovascular disease mediated through BMI comes from lower quality sources, but the effect is assumed to be very small. It would therefore be unreasonable to modify the effect of statins on cardiovascular risk mediated through BMI to obtain agreement between the total effect estimated from the DAG (including hypothesised direct effect), and the total effect reported from the meta-analysis. However such an approach may be reasonable in other scenarios.
 
-Instead, we include the direct effect of statins without modifying the indirect pathways, and take note that this results in a total effect of statins that is too big compared to the gold standard, for the sake of this sensitivity analysis.
-There is evidence indicating that statins has a pleiotropic effect on cardiovascular risk,[@RN1552; @RN1553; @RN1556] although there variation in the size of this effect. On the contrat, there are a number of studies indicating either no pleiotropic effect, or that have inconclusive findings.[@RN1555; @RN1551; @RN1550; @RN1554] Given the inconsistent evidence, we choose the a size of the direct effect purely as a sensitivity analysis. The size is chosen so that the total effect of statins on cardiovascular risk is 20% bigger than previously (on the hazard ratio scale), with all other effects in the DAG remaining the same.
+Instead, we include the direct effect of statins without modifying the indirect pathways, and take note that this results in a total effect of statins that is too big compared to @RN1351. There is evidence indicating that statins has a pleiotropic effect on cardiovascular risk,[@RN1552; @RN1553; @RN1556] but there variation in the size of this effect. On the contrat, there are a number of studies indicating either no pleiotropic effect, or that have inconclusive findings.[@RN1555; @RN1551; @RN1550; @RN1554] Given the inconsistent evidence, we choose the size of the direct effect purely as a sensitivity analysis. The size is chosen so that the total effect of statins on cardiovascular risk is 20% bigger than previously (on the hazard ratio scale), with all other effects in the DAG remaining the same. This aligns with supplementary data file 4, where model performance is assessed under misspecification of the intervention effects by 20%.
 
 We repeat the analyses from the main paper for the two component model, including model validation, and the worked example.
 
@@ -167,7 +167,7 @@ knitr::kable(tbl)
 
 # A worked example
 
-We consider the same individuals from the worked example in the main manuscript. We compare predicted risks under the statin intervention from the model with the pleiotropic effect, with predicted risks from the model used in the main manuscript (no pleiotropic effect). 
+We consider the same individuals from the worked example in the main manuscript. We compare predicted risks under the statin intervention from the model with the pleiotropic effect, with the model used in the main manuscript (no pleiotropic effect). 
 
 At visit 0, we estimate risk if we don't intervene, and risk under statin treatment. We then consider visit 1 (1-year later). At follow-up visit 1, we estimate the updated risk if we had not intervened. We then compare two further scenarios. The first is where statins has achieved an expected reduction in each of the modifiable risk factors (referred to as 'statins effective' scenario). The second, is where statins has had no effect on the modifiable risk factors (referred to as 'statins ineffective' scenario). This highlights the key difference between the two models, as the pleiotropic model still shows a benefit of the intervention at follow-up visit 1, even when statins have had no effect on the modifiable risk factors, whereas the original model does not. We can also see when statins does have the expected impact on the modifiable risk factors ('statins effective' scenario), the predicted risks under the pleiotropic model are lower, due to the added direct effect of statin use on cardiovascular risk.
 

@@ -200,7 +200,7 @@ calibrate_truncate <- function(gender_in, truncate){
   ###
   print(results_table)
   saveRDS(results_table, paste0("data/calibration_moderate_kvg_metric_table", gender_in, "_trunc", truncate, ".rds"))
-  write.csv(results_table, paste0("data/calibration_moderate_kvg_metric_table.csv", gender_in, "_trunc", truncate, ".rds"))
+  write.csv(results_table, paste0("data/calibration_moderate_kvg_metric_table", gender_in, "_trunc", truncate, ".csv"))
   
 }
 

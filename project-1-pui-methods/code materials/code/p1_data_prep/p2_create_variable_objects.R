@@ -9,7 +9,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
 
 ### Source functions
 R.func.sources = list.files("R", full.names = TRUE)
@@ -107,7 +107,7 @@ for (gender in 1:2){
   }
   
   ### Save gender specific predictor variable lists
-  saveRDS(var.imp, paste("data/var_imp", gender, ".rds"))
+  saveRDS(var.imp, paste("data/var_imp", gender, ".rds", sep = ""))
   
   ### Remove variables that will be interacted with the spline of age (and remove age iteslf)
   inter.age.rcs <- var.imp[!grepl("age|bmi|sbp|chol|hdl|ldl|triglycerides|nonhdl|IMD", var.imp)]
@@ -161,7 +161,7 @@ for (gender in 1:2){
   }
   
   ### Save gender specific predictor variable lists
-  saveRDS(var.model, paste("data/var_model", gender, ".rds"))
+  saveRDS(var.model, paste("data/var_model", gender, ".rds", sep = ""))
   
   ### Remove variables that will be interacted with the spline of age (and remove age itself)
   inter.age.rcs <- var.model[!grepl("age|IMD|bmi|sbp|nonhdl|smoking", var.model)]

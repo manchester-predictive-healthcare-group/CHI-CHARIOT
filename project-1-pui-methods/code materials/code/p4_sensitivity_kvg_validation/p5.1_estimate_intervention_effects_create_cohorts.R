@@ -1,6 +1,6 @@
 ############################################################
 ############################################################
-### The goal of programs p5.1 is to estimate relative risk ratios
+### The goal of programs p5.X is to estimate relative risk ratios
 ### for sustaining statin/antihypertensives use for a period of time.
 ###
 ### This will be done using artificial censoring. We create cohorts
@@ -226,7 +226,7 @@ estimate_ipcws <- function(df){
     newdata = df,
     fit     = fit_est_ipcw,
     bhaz    = bhaz_est_ipcw,
-    t       = t_fup
+    time    = t_fup
   )
   
   return(df)
@@ -289,7 +289,7 @@ estimate_ipacws <- function(df){
     ipacw_temp_surv <- est_surv(newdata = df_stratified,
                                 fit = fit_est_ipacw,
                                 bhaz = bhaz_est_ipacw,
-                                t = t_fup)
+                                time = t_fup)
     
     ### Assign survival probabilities for defining overlap cohort
     df_stratified$ipacw_surv <- ipacw_temp_surv

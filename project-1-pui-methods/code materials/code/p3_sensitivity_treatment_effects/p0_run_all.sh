@@ -1,5 +1,5 @@
 module load apps/gcc/R/4.4.2
-#Rscript p1_calculate_cf_surv_times_treatment_effect_modified.R 1 1 > p1_calculate_cf_surv_times_treatment_effect_modified_1_1.out
+Rscript p1_calculate_cf_surv_times_treatment_effect_modified.R 1 1 > p1_calculate_cf_surv_times_treatment_effect_modified_1_1.out
 Rscript p1_calculate_cf_surv_times_treatment_effect_modified.R 1 2 > p1_calculate_cf_surv_times_treatment_effect_modified_1_2.out
 Rscript p1_calculate_cf_surv_times_treatment_effect_modified.R 1 3 > p1_calculate_cf_surv_times_treatment_effect_modified_1_3.out
 Rscript p1_calculate_cf_surv_times_treatment_effect_modified.R 1 4 > p1_calculate_cf_surv_times_treatment_effect_modified_1_4.out
