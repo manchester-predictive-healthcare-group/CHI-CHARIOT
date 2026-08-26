@@ -10,7 +10,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -36,7 +36,7 @@ lnHR_nonhdl <- readRDS("data/offsets_direct_lnHR_nonhdl.rds")
 ###
 ### Write a function that will produce a calibration curve for a given development and validation dataset
 ###
-est_calib_ph <- function(gender, model){
+est_calibration <- function(gender, model){
   
   # gender <- 1
   # model <- 1
@@ -124,7 +124,7 @@ for (gender_in in c(1,2)){
   for (model_in in c(0,1,2,3,4,5,6,7)){
 
     print(paste("model = ", model_in))
-    est_calib_ph(gender = gender_in, model = model_in)
+    est_calibration(gender = gender_in, model = model_in)
 
   }
 }

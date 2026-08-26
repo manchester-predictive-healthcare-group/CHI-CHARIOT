@@ -1,27 +1,3 @@
----
-title: "Assessment of missingness by treatment group"
-author: "Alex Pate"
-date: "2026-06-18"
-output: html_document
----
-  
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-Missing data in the analyses is imputed using multiple imputation, which assumes that the data is missing at random. This is when the probability of the variable being missing is dependent on observed variables in the dataset, including other predictors and the outcome. If this assumption is not met, this is called missing not at random (MNAR). This is when the probability of the varaible being missing is dependent on the value of the variable itself, even after adjusting for observed variables.
-
-In the unexposed mediator model, there is missingness in the variable "Systolic blood pressure (SBP) unexposed to antihypertensives; *unexposed SBP*". For some individuals, this is because they have no SBP recorded in the five years prior to index date (standard SBP will then also be missing). However, for some individuals, they may have SBP measurements (SBP recorded), but these are only within 180-days of an antihypertensives prescription. In this case, missingness is related to the primary intervention variable of interest. This raises the possibility that the missing at random assumption underlying the multiple imputation may be violated.
-
-To mitigate the risk of MNAR, antihypertensive use at baseline is a predictor in the imputation model for *unexposed SBP* (it is a predictor in the imputation model for all missing variables). We also included *SBP* (not restricted to unexposed) as a predictor in the imputation model. This helps to address the concern that missingness is strongly dependent on antihypertensive use, by ensuring that this driver of missingness is included in the imputation model.
-
-However, if all individuals receiving antihypertensives at baseline had missing *unexposed SBP*, this assumption would be highly likely to be violated. This would be because there would be insufficient non-missing *unexposed SBP* values, in order to predict the missing *unexposed SBP* values among those on antihypertensives. More formally, there would be a lack of overlap between individuals with and without observed values, requiring extrapolation of the imputation model to regions of the covariate space where no data are observed. We therefore present an analysis of missing patterns by treatment status at baseline.
-
-In the case that there is sufficient non-missing *unexposed SBP* among people both on/off antihypertensives at baseline, we still acknowledge that this does not guarantee that the missing at random assumption holds, as missingness may still depend on missing values of *unexposed SBP*, as is the case for all variables with missingness.
-
-We refrain from a complete case analysis, which is highly likely to be biased.
-
-```{r pressure, echo=FALSE}
 ### Info for copilot
 
 ### Clear workspace
@@ -42,6 +18,10 @@ library(survival)
 ### define gender and burnout
 gender <- 1
 burnout <- 180
+
+### Read in imputed dataset
+### Load imp.comb
+#imp.comb <- readRDS(paste("data/mice_mids_prototype3_", gender, "_", 1, ".rds", sep = ""))
 
 ### Read in raw cohort with missingness
 if (gender == 1){
@@ -169,10 +149,7 @@ missing_summary <- missing_summary |>
     receiving
   ) |> 
   as.data.frame() |>
-  dplyr::filter(treatment == "antihypertensives")
+  dplyr::filter(treatment == antihypertensives)
 
 # Print results
-knitr::kable(missing_summary)
-```
-
-We can see that among those on antihypertensives at baseline, 34% have a missing *unexposed SBP* value. We believe this is small enough that this is not a major problem.
+missing_summary

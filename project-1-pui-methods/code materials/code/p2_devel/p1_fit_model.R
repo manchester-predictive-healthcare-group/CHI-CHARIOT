@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
 getwd()
 
 ### Extract model number from command line

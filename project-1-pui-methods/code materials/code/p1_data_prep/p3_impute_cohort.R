@@ -3,7 +3,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
@@ -81,8 +81,7 @@ full_formula_vec <- c("rms::rcs(age, c(25, 40, 57.5, 75))",
                       "age*rms::rcs(IMD, c(1,10,20))", 
                       paste("age*", inter_age_rcs, sep = ""), "cvd_indicator", "cvd_ev_prim_aj")
 
-### Remove term containing variable being imputed, also remove nonhdl, as this isn't used to impute any other variables
-### This is because its effectively derived from the other variables
+### Remove term containing variable being imputed
 ethnicity_formula_vec <- full_formula_vec[!grepl("ethnicity", full_formula_vec)]
 bmi_formula_vec <- full_formula_vec[!grepl("bmi", full_formula_vec)]
 smoking_formula_vec <- full_formula_vec[!grepl("smoking", full_formula_vec)]
