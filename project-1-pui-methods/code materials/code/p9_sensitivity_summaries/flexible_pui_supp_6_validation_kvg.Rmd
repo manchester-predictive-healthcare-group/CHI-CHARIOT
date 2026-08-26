@@ -5,23 +5,11 @@ bibliography: refs.bib
 output: 
   html_document:
     number_sections: true
-    toc_float: true
+    toc_float: false
+    toc_depth: 2
     toc: true
     df_print: paged
 ---
-
-```{=html}
-<style>
-.container, .main-container {
-  max-width: 100% !important;
-  width: 100% !important;
-}
-body, html {
-  margin: 0 !important;
-  padding: 0 !important;
-}
-</style>
-```
 
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
@@ -442,8 +430,6 @@ cat("ICI:", calib_two_cens_pv_ipcw[["ICI"]], "\n")
 calib_two_cens_pv_ipcw[["plot"]]
 ```
 
-The the PH regression approach of [@RN1143].
-
 ```{r, include = FALSE}
 ### Estimate calibration under various weighting schemes
 calib_ph_noweight <- est_calib_ph(data = df_valid_ipacw, 
@@ -499,7 +485,7 @@ An alternative is to use interval censored survival models to estimate the weigh
 
 # Validation of the two-component model using inverse probability of artificial censoring weights {#validation}
 
-```{r, message = FALSE, echo = FALSE}
+```{r, message = FALSE, include = FALSE}
 ### Clear workspace
 rm(list=ls())
 
@@ -1131,63 +1117,3 @@ The pattern in terms of IPCW and IPACW is broadly the same for antihypertensives
 There is evidence of positivity violations driven by the nature of antihypertensive prescribing: treatment is determined largely by blood pressure exceeding a clinical threshold, meaning the propensity score distribution in the treated group is highly concentrated. Many treated individuals have high probabilities of being treated or untreated, producing large IPTW weights.
 
 The overlap restriction removes the most extreme propensity scores but cannot resolve the underlying heterogeneity within the overlap region. Even after restriction, the weighting procedure remains highly unstable, suggesting limitation overlap even after restriction, reflected in the persistent ESS collapse.
-
-```{=html}
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-
-  const section = document.querySelector("#rr_supplementary");
-
-  if (!section) return;
-
-  const heading = section.querySelector(":scope > h1");
-
-  if (!heading) return;
-
-  // Create the collapsible container
-  const details = document.createElement("details");
-  details.className = "collapsible-section";
-
-  // Create the clickable summary
-  const summary = document.createElement("summary");
-  summary.innerHTML = heading.innerHTML;
-
-  // Insert <details> before the existing heading
-  section.insertBefore(details, heading);
-
-  // Move everything AFTER the h1 into <details>
-  let node = heading.nextSibling;
-
-  while (node) {
-    const next = node.nextSibling;
-    details.appendChild(node);
-    node = next;
-  }
-
-  // Put the clickable heading at the top
-  details.insertBefore(summary, details.firstChild);
-
-  // IMPORTANT:
-  // Keep the original h1 in the document so the floating TOC
-  // can still detect it, but hide it visually.
-  heading.style.display = "none";
-
-});
-</script>
-
-<style>
-.collapsible-section {
-  margin-bottom: 1.5em;
-}
-
-.collapsible-section > summary {
-  font-size: 1.7em;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.collapsible-section > summary:hover {
-  text-decoration: underline;
-}
-</style>
-```
