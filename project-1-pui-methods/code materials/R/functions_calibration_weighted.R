@@ -28,7 +28,7 @@ est_calib_ipcw_new <- function(data,
   
   ### 1. Get the survival probabilities
   if (is.null(surv)){
-    data$surv <- as.numeric(est_surv(newdata = data, fit = fit, bhaz = bhaz, t = t))
+    data$surv <- as.numeric(est_surv(newdata = data, fit = fit, bhaz = bhaz, time = t))
   } else {
     data$surv <- as.numeric(surv)
   }
@@ -344,7 +344,7 @@ est_calib_pv_ipcw <- function(data, fit, bhaz, t, surv = NULL, nk = 4,
   
   ### 1. Get the survival probabilities
   if (is.null(surv)){
-    data$surv <- as.numeric(est_surv(newdata = data, fit = fit, bhaz = bhaz, t = t))
+    data$surv <- as.numeric(est_surv(newdata = data, fit = fit, bhaz = bhaz, time = t))
   } else {
     data$surv <- as.numeric(surv)
   }

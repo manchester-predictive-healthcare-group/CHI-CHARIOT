@@ -1,10 +1,5 @@
 ###
-### Assess calibration using inverse probability of artificial censoring approach
-###
-### Create artificially censored cohort
-### Estimate IPCWs
-### Estimate IPACWs
-### Estimate calibration using three approaches (Hajek style, smoothed HT, pseudo-values)
+### Estimate the IPACW's for K&VG validation approach
 ###
 
 ### Clear workspace
@@ -28,8 +23,10 @@ burnout <- 180
 ### And follow up time
 t_fup <- 10*365.25
 
-### Define gender (will eventually create a function)
-gender_in <- 2
+### Extract arguments from command line
+args <- commandArgs(trailingOnly = T)
+gender_in <- as.numeric(args[1])
+print(paste("gender = ", gender_in))
 
 ### Read in validation dataset
 df_valid <- readRDS(paste("data/df_imp_valid_", gender_in, sep = ""))
@@ -390,7 +387,7 @@ mean(df_valid_ipacw$pred)
 mean(df_valid_ipacw$pred)/ht_estimate
 # This is better, but still doesn't work!!
 
-### Calculate calibration plot using IPCW approach in uncensored cohort (Hajek style)
+### Calculate calibration plot using IPCW approach in uncensored cohort
 calib_ipcw_uncensored <- est_calib_ipcw_new(data = df_valid_ipacw_uncensored, 
                                             surv = df_valid_ipacw_uncensored$surv, 
                                             t = t_fup,
@@ -446,10 +443,9 @@ save_calibration_plot <- function(calib_obj,
 }
 
 ### Save the plots
-save_calibration_plot(calib_ipcw_uncensored, "figures/calibration_moderate_kvg_ipcw_uncesnored.png")
-save_calibration_plot(calib_smoothed_ht, "figures/calibration_moderate_kvg_ht.png")
-save_calibration_plot(calib_pv_ipcw, "figures/calibration_moderate_kvg_pv.png")
-
+save_calibration_plot(calib_ipcw_uncensored, paste0("figures/calibration_moderate_kvg_ipcw_uncesnored", gender_in, ".png"))
+save_calibration_plot(calib_smoothed_ht, paste0("figures/calibration_moderate_kvg_ht", gender_in, ".png"))
+save_calibration_plot(calib_pv_ipcw, paste0("figures/calibration_moderate_kvg_pv", gender_in, ".png"))
 
 ###
 ### Function to create a summary table of calibration metrics
@@ -539,6 +535,6 @@ results_table <- create_calibration_summary(
 ### View results
 ###
 print(results_table)
-saveRDS(results_table, "data/calibration_moderate_kvg_metric_table.rds")
-write.csv(results_table, "data/calibration_moderate_kvg_metric_table.csv")
-
+saveRDS(results_table, paste0("data/calibration_moderate_kvg_metric_table", gender_in, ".rds"))
+write.csv(results_table, paste0("data/calibration_moderate_kvg_metric_table", gender_in, ".csv"))
+print(paste("FINISHED", Sys.time()))

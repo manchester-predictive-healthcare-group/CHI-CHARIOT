@@ -1,5 +1,3 @@
-### Assess performance for modified treatment effect in validation cohort
-
 ### Clear workspace
 rm(list=ls())
 Sys.time()

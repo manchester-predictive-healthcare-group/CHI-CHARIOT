@@ -376,7 +376,7 @@ implement the intervention layer</a></li>
 ### Clear workspace
 rm(list=ls())
 Sys.time()</code></pre>
-<pre><code>## [1] &quot;2026-07-15 11:20:30 BST&quot;</code></pre>
+<pre><code>## [1] &quot;2026-08-26 14:03:58 BST&quot;</code></pre>
 <pre class="r"><code>### Define gender
 gender &lt;- 2
 
@@ -386,12 +386,9 @@ library(survival)
 ### Source functions
 R.func.sources = list.files(&quot;R&quot;, full.names = TRUE)
 sapply(R.func.sources, source)</code></pre>
-<pre><code>##         R/db_query.R R/functions_calibration_weighted_OLD.R
-## value   ?            ?                                     
-## visible FALSE        FALSE                                 
-##         R/functions_calibration_weighted.R R/functions.R
-## value   ?                                  ?            
-## visible FALSE                              FALSE</code></pre>
+<pre><code>##         R/db_query.R R/functions_calibration_weighted.R R/functions.R
+## value   ?            ?                                  ?            
+## visible FALSE        FALSE                              FALSE</code></pre>
 <pre class="r"><code>### Define HR for offsets
 ### lnHR_statins and lnHR_ah used when making predictions &#39;on treatment&#39; in the treatment offset and unexposed mediator models
 ### lnHR_sbp, lnHR_bmi and lnHR_nonhdl used when making predictions in the modifiable risk factor model
@@ -400,6 +397,11 @@ lnHR_ah &lt;- readRDS(&quot;data/offsets_total_lnHR_ah.rds&quot;)
 lnHR_sbp &lt;- readRDS(&quot;data/offsets_direct_lnHR_sbp.rds&quot;)
 lnHR_bmi &lt;- readRDS(&quot;data/offsets_direct_lnHR_bmi.rds&quot;)
 lnHR_nonhdl &lt;- readRDS(&quot;data/offsets_direct_lnHR_nonhdl.rds&quot;)
+
+### Define HRs (not log) used for adjusting risks in intervention layer of two-component model
+direct_HR_sbp &lt;- exp(lnHR_sbp)
+direct_HR_bmi &lt;- exp(lnHR_bmi)
+direct_HR_nonhdl &lt;- exp(lnHR_nonhdl)
 
 ### Read in model and baseline hazards
 fit_list &lt;- lapply(1:4, function(x) {readRDS(paste(&quot;data/fit_&quot;, gender, &quot;_model&quot;, x, &quot;.rds&quot;, sep = &quot;&quot;))})
@@ -415,8 +417,8 @@ treatment offset model</h1>
 ### Start by comparing risks for non-causal model (model 0) and treatment offset model (model 1) ###
 ####################################################################################################
 
-### Create a data.frame with the inputs for the indiviudal we are intereseted in
-df_valid &lt;- readRDS(paste(&quot;data/df_imp_valid_&quot;, gender, sep = &quot;&quot;))[1,]
+### Create a data.frame with the required columns
+df_valid &lt;- readRDS(paste(&quot;data/df_imp_valid_&quot;, gender, sep = &quot;&quot;))[0,]
 colnames(df_valid)</code></pre>
 <pre><code>##  [1] &quot;patid&quot;                &quot;pracid&quot;               &quot;gender&quot;              
 ##  [4] &quot;fup_start&quot;            &quot;fup_end&quot;              &quot;age&quot;                 
@@ -433,15 +435,35 @@ colnames(df_valid)</code></pre>
 ## [37] &quot;blood_cancer&quot;         &quot;pre_eclampsia&quot;        &quot;postnatal_depression&quot;
 ## [40] &quot;bmi&quot;                  &quot;sbp&quot;                  &quot;nonhdl&quot;              
 ## [43] &quot;IMD&quot;                  &quot;sbp_unexposed&quot;        &quot;cvd_ev_prim_aj&quot;</code></pre>
-<pre class="r"><code>### Set predictors to be predictors of interest
-df_valid &lt;- dplyr::mutate(df_valid, 
+<pre class="r"><code>### Set predictors to be predictors of interest (all medical history variable except diabetes are healthy, no previous history)
+df_valid &lt;- tibble::add_row(df_valid, 
                           age = 65,
                           sbp = 140, 
                           bmi = 30, 
                           nonhdl = 5, 
                           IMD = 10,
-                          diabetes = factor(&quot;Type2&quot;, levels = levels(diabetes)),
-                          ethnicity = factor(&quot;white&quot;, levels = levels(ethnicity)))
+                          diabetes = factor(&quot;Type2&quot;, levels = levels(df_valid$diabetes)),
+                          ethnicity = factor(&quot;white&quot;, levels = levels(df_valid$ethnicity)),
+                          hypertension      = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          ra                = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          af                = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          ckd               = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          smi               = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          fhcvd             = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          migraine          = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          sle               = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          cortico           = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          antipsy           = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          copd              = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          int_dis           = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          downs             = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          oral_cancer       = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          brain_cancer      = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          lung_cancer       = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          blood_cancer      = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          pre_eclampsia     = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;)),
+                          postnatal_depression = factor(&quot;Absent&quot;, levels = c(&quot;Absent&quot;, &quot;Present&quot;))) |&gt;
+  as.data.frame()
 
 ###
 ### Get predicted risks
@@ -642,7 +664,7 @@ pred_model3_sbp120 &lt;- 1 - df_valid |&gt;
 
 ### Compare risks
 round(100*c(pred_model3_sbp140, pred_model3_sbp130, pred_model3_sbp120), 2)</code></pre>
-<pre><code>## [1] 18.66 14.95 11.92</code></pre>
+<pre><code>## [1] 18.71 14.99 11.95</code></pre>
 <pre class="r"><code>###
 ### Lose 5kg intervention 
 ###
@@ -693,7 +715,7 @@ pred_model3_bmi25 &lt;- 1 - df_valid |&gt;
 
 ### Compare risks
 round(100*pred_model3_bmi25, 2)</code></pre>
-<pre><code>## [1] 16.83</code></pre>
+<pre><code>## [1] 16.87</code></pre>
 <pre class="r"><code>###
 ### Statin intervention
 ###
@@ -737,7 +759,7 @@ pred_model3_statins &lt;- 1 - df_valid |&gt;
 
 ### Compare risks
 round(100*pred_model3_statins, 2)</code></pre>
-<pre><code>## [1] 14.01</code></pre>
+<pre><code>## [1] 14.05</code></pre>
 <pre class="r"><code>###
 ### Reduction of all risk factors to healthy levels
 ###
@@ -770,7 +792,7 @@ pred_model3_healthy &lt;- 1 - df_valid |&gt;
 
 ### Compare risks
 round(100*pred_model3_healthy, 2)</code></pre>
-<pre><code>## [1] 6.92</code></pre>
+<pre><code>## [1] 6.94</code></pre>
 <pre class="r"><code>### Create table
 tbl_model3 &lt;- data.frame(
   &quot;intervention&quot; = c(&quot;No intervention&quot;,
@@ -796,27 +818,27 @@ knitr::kable(tbl_model3)</code></pre>
 <tbody>
 <tr class="odd">
 <td align="left">No intervention</td>
-<td align="right">18.66</td>
+<td align="right">18.71</td>
 </tr>
 <tr class="even">
 <td align="left">SBP 130</td>
-<td align="right">14.95</td>
+<td align="right">14.99</td>
 </tr>
 <tr class="odd">
 <td align="left">SBP 120</td>
-<td align="right">11.92</td>
+<td align="right">11.95</td>
 </tr>
 <tr class="even">
 <td align="left">weight loss</td>
-<td align="right">16.83</td>
+<td align="right">16.87</td>
 </tr>
 <tr class="odd">
 <td align="left">statins</td>
-<td align="right">14.01</td>
+<td align="right">14.05</td>
 </tr>
 <tr class="even">
 <td align="left">healthy</td>
-<td align="right">6.92</td>
+<td align="right">6.94</td>
 </tr>
 </tbody>
 </table>
@@ -854,12 +876,7 @@ pred_model4_visit0_sbp140 &lt;- 1 - df_valid |&gt;
 
 ### Now we apply the relative risk reduction person A, using the intervention layer
 
-### Read in other direct effects, calculated in file p1_data_prep/p8_calculate_treatment_effects.R
-direct_OR_nonhdl &lt;- readRDS(&quot;data/direct_OR_nonhdl.rds&quot;)
-direct_OR_bmi &lt;-  readRDS(&quot;data/direct_OR_bmi.rds&quot;)
-direct_OR_sbp &lt;- readRDS(&quot;data/direct_OR_sbp.rds&quot;)
-
-### Function to apply odds ratio to a risk score, based on change in SBP, BMI and Non-HDL
+### Function to apply odds ratio to a risk score, based on change in SBP, BMI and Non-HDL (old; no longer used)
 convert_risk_odds &lt;- function(p, change_sbp = 0, change_bmi = 0, change_nonhdl = 0){
   
   ### Apply the relative risk change
@@ -885,47 +902,80 @@ convert_risk_odds &lt;- function(p, change_sbp = 0, change_bmi = 0, change_nonhd
   return(new_risk)
 }
 
+### Function to apply hazard ratio to a risk score, based on change in SBP, BMI and Non-HDL
+convert_risk_HR &lt;- function(p, change_sbp = 0, change_bmi = 0, change_nonhdl = 0){
+  
+  ### Get survival probability
+  surv &lt;- 1 - p
+  
+  ### Get survival probability onto the hazard scale by taking logarithm
+  log_surv &lt;- log(surv)
+  
+  ### Apply the relative risk change
+  HR_change_sbp &lt;- direct_HR_sbp^change_sbp
+  HR_change_bmi &lt;- direct_HR_bmi^change_bmi
+  HR_change_nonhdl &lt;- direct_HR_nonhdl^change_nonhdl
+  
+  ### Apply these HRs
+  HR &lt;-
+    HR_change_sbp*
+    HR_change_bmi*
+    HR_change_nonhdl
+  
+  ### Apply hazard ratios
+  log_surv_adjusted &lt;- log_surv*HR
+  
+  ### Calculate survival probability (note, we do not take the negative, 
+  ### as we did not do this when converted back onto the hazard scale)
+  new_surv &lt;- exp(log_surv_adjusted)
+  
+  ### Convert back onto risk scale
+  new_risk &lt;- 1 - new_surv
+  
+  return(new_risk)
+}
+
 ###
 ### Reductions of SBP from 140 to 130 and 120
 ###
 
 ### Apply odds ratio to risk score
-pred_model4_visit0_sbp130 &lt;- convert_risk_odds(p = pred_model4_visit0_sbp140, change_sbp = -10)
-pred_model4_visit0_sbp120 &lt;- convert_risk_odds(p = pred_model4_visit0_sbp140, change_sbp = -20)
+pred_model4_visit0_sbp130 &lt;- convert_risk_HR(p = pred_model4_visit0_sbp140, change_sbp = -10)
+pred_model4_visit0_sbp120 &lt;- convert_risk_HR(p = pred_model4_visit0_sbp140, change_sbp = -20)
 
 ### Compare risks
 round(100*c(pred_model4_visit0_sbp140, pred_model4_visit0_sbp130, pred_model4_visit0_sbp120), 2)</code></pre>
-<pre><code>## [1] 16.88 13.51 10.73</code></pre>
+<pre><code>## [1] 16.88 13.49 10.74</code></pre>
 <pre class="r"><code>###
 ### Reduction of BMI by 5
 ###
-pred_model4_visit0_bmi25 &lt;- convert_risk_odds(p = pred_model4_visit0_sbp140, change_sbp = -wl_sbp_reduction, change_bmi = -wl_bmi_reduction, change_nonhdl = -wl_nonhdl_reduction)
+pred_model4_visit0_bmi25 &lt;- convert_risk_HR(p = pred_model4_visit0_sbp140, change_sbp = -wl_sbp_reduction, change_bmi = -wl_bmi_reduction, change_nonhdl = -wl_nonhdl_reduction)
 
 ### Compare risks
 round(100*pred_model4_visit0_bmi25, 2)</code></pre>
-<pre><code>## [1] 15.22</code></pre>
+<pre><code>## [1] 15.2</code></pre>
 <pre class="r"><code>###
 ### Statins
 ###
-pred_model4_visit0_statins &lt;- convert_risk_odds(p = pred_model4_visit0_sbp140, 
+pred_model4_visit0_statins &lt;- convert_risk_HR(p = pred_model4_visit0_sbp140, 
                                                 change_sbp = statins_change_sbp, 
                                                 change_bmi = statins_change_bmi, 
                                                 change_nonhdl = statins_change_nonhdl)
 
 ### Compare risks
 round(100*pred_model4_visit0_statins, 2)</code></pre>
-<pre><code>## [1] 12.66</code></pre>
+<pre><code>## [1] 12.64</code></pre>
 <pre class="r"><code>###
 ### Reduction of all values to healthy level
 ###
-pred_model4_visit0_healthy &lt;- convert_risk_odds(p = pred_model4_visit0_sbp140, 
+pred_model4_visit0_healthy &lt;- convert_risk_HR(p = pred_model4_visit0_sbp140, 
                                          change_sbp = -20, 
                                          change_bmi = -5, 
                                          change_nonhdl = -2.4)
 
 ### Compare risks
 round(100*pred_model4_visit0_healthy, 2)</code></pre>
-<pre><code>## [1] 6.11</code></pre>
+<pre><code>## [1] 6.22</code></pre>
 <pre class="r"><code>### Create table
 tbl_model4 &lt;- data.frame(
   &quot;intervention&quot; = c(&quot;No intervention&quot;,
@@ -955,23 +1005,23 @@ knitr::kable(tbl_model4)</code></pre>
 </tr>
 <tr class="even">
 <td align="left">SBP 130</td>
-<td align="right">13.51</td>
+<td align="right">13.49</td>
 </tr>
 <tr class="odd">
 <td align="left">SBP 120</td>
-<td align="right">10.73</td>
+<td align="right">10.74</td>
 </tr>
 <tr class="even">
 <td align="left">weight loss</td>
-<td align="right">15.22</td>
+<td align="right">15.20</td>
 </tr>
 <tr class="odd">
 <td align="left">statins</td>
-<td align="right">12.66</td>
+<td align="right">12.64</td>
 </tr>
 <tr class="even">
 <td align="left">healthy</td>
-<td align="right">6.11</td>
+<td align="right">6.22</td>
 </tr>
 </tbody>
 </table>
@@ -1008,27 +1058,27 @@ pred_model4_visit1_sbp140 &lt;- 1 - df_valid |&gt;
 
 ### Get the factual estimated risk based on achieved levels of MFRs
 ### Suppose this individual achieved a reduction of BMI of 5 and reduction in non-HDL cholesterol of 1
-pred_model4_visit1_factual &lt;- convert_risk_odds(p = pred_model4_visit1_sbp140, 
+pred_model4_visit1_factual &lt;- convert_risk_HR(p = pred_model4_visit1_sbp140, 
                                                 change_sbp = 0, 
                                                 change_bmi = -5, 
                                                 change_nonhdl = -1)
 round(100*pred_model4_visit1_factual, 2)</code></pre>
-<pre><code>## [1] 12.82</code></pre>
+<pre><code>## [1] 12.8</code></pre>
 <pre class="r"><code>### Now estimate hypothetical risks, if that individual was to also reduce blood pressure by 10 or 20
-pred_model4_visit1_hypo_sbp130 &lt;- convert_risk_odds(p = pred_model4_visit1_sbp140, 
+pred_model4_visit1_hypo_sbp130 &lt;- convert_risk_HR(p = pred_model4_visit1_sbp140, 
                                                     change_sbp = -10, 
                                                     change_bmi = -5, 
                                                     change_nonhdl = -1)
 
-pred_model4_visit1_hypo_sbp120 &lt;- convert_risk_odds(p = pred_model4_visit1_sbp140, 
+pred_model4_visit1_hypo_sbp120 &lt;- convert_risk_HR(p = pred_model4_visit1_sbp140, 
                                                     change_sbp = -20, 
                                                     change_bmi = -5, 
                                                     change_nonhdl = -1)
 
 round(100*pred_model4_visit1_hypo_sbp130, 2)</code></pre>
-<pre><code>## [1] 10.17</code></pre>
+<pre><code>## [1] 10.18</code></pre>
 <pre class="r"><code>round(100*pred_model4_visit1_hypo_sbp120, 2)</code></pre>
-<pre><code>## [1] 8.01</code></pre>
+<pre><code>## [1] 8.07</code></pre>
 </div>
 <div id="calculations-used-to-showcase-how-to-implement-the-intervention-layer" class="section level1" number="5">
 <h1><span class="header-section-number">5</span> Calculations used to
@@ -1052,11 +1102,8 @@ arbitrary_change_bmi &lt;- -5
 ## non-HDL cholesterol
 arbitrary_change_nonhdl &lt;- -1
 
-### Apply the relative risk change
-(direct_OR_sbp^arbitrary_change_sbp)*(direct_OR_bmi^arbitrary_change_bmi)*(direct_OR_nonhdl^arbitrary_change_nonhdl) # 0.5951709</code></pre>
-<pre><code>## [1] 0.5951709</code></pre>
-<pre class="r"><code>### Calculate risk under intervention
-pred_model4_visit0_arbitrary &lt;- convert_risk_odds(p = pred_model4_visit0_sbp140, 
+### Calculate risk under intervention
+pred_model4_visit0_arbitrary &lt;- convert_risk_HR(p = pred_model4_visit0_sbp140, 
                                                 change_sbp = arbitrary_change_sbp, 
                                                 change_bmi = arbitrary_change_bmi, 
                                                 change_nonhdl = arbitrary_change_nonhdl)

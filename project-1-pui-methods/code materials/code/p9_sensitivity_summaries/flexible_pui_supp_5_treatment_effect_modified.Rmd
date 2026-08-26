@@ -1,12 +1,11 @@
 ---
-title: "Sensitivity analyses looking at miss-specification of the effect of statins and antihypertensives"
+title: "Sensitivity analyses looking at misspecification of the effect of statins and antihypertensives"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
   html_document:
     toc: true
     toc_float: true
     number_sections: true
-    code_folding: show
     df_print: paged
 params:
   genders: [2, 1]
@@ -43,7 +42,7 @@ img, svg {
 ```{r setup, include=FALSE}
 # Global chunk options.
 knitr::opts_chunk$set(
-  echo = TRUE,
+  echo = FALSE,
   message = FALSE,
   warning = FALSE,
   fig.width = 12,
@@ -63,15 +62,15 @@ library(ragg)
 
 **Associated manuscript: A flexible approach to sequential prediction under intervention**
 
-These supplementary analyses validate the model under the assumption that the treatment effect of statins and antihypertensives in the validation dataset are 10% and 20% bigger/smaller than those assumed in the development dataset when building the model. We refer to this as a miss-specification of the treatment effect (i.e., the treatment effect in the development dataset has been miss-specified compared to the true effect in the validation dataset). 
+These supplementary analyses validate the model under the assumption that the treatment effect of statins and antihypertensives in the validation dataset are 10% and 20% bigger/smaller than those assumed in the development dataset when building the model. We refer to this as a misspecification of the treatment effect (i.e., the treatment effect in the development dataset has been misspecified compared to the true effect in the validation dataset). 
 
-We multiply the effect of statins or antihypertensives (on the hazard ratio scale) by values of 0.8, 0.9, 1.1 and 1.2. As the hazard ratios are < 1, multipliers 0.8 and 0.9 correspond to a bigger effect in the validation dataset, and multipliers 1.1 and 1.2 correspond to a smaller effect in the validation dataset.
+We multiply the effect of statins or antihypertensives (on the hazard ratio scale) by values of 0.8, 0.9, 1.1 and 1.2. Given that the hazard ratios for statin and antihypertensive use are < 1, the multipliers 0.8 and 0.9 correspond to a bigger effect in the validation dataset, and multipliers 1.1 and 1.2 correspond to a smaller effect in the validation dataset.
 
-In order to assess the impact of miss-specification, we estimate counterfactual survival times in the validation dataset (see supplementary material for this process) using these miss-specified treatment effects. After this, calibration and discrimination are assessed in the way as described in the main manuscript, and supplementary file 1 (methodology).
+In order to assess the impact of misspecification, we estimate counterfactual survival times in the validation dataset (see supplementary material for this process) using these miss-specified treatment effects. After this, calibration and discrimination are assessed in the way as described in the main manuscript, and supplementary file 1 (methodology).
 
-In section 1, we report calibration and discrimination in the entire validation dataset, for various levels of miss-specification of the treatment effect of statins/antihypertensives. For calibration, we report calibration curves, and the confidence interval for the calibration curve (note, the confidence intervals in section 1 are very small and so are not visible), and summary metrics ICI, E50 and E90. For discrimination, Harrel's C-index is reported. In section 2, we repeat the analyses within subgroups defined by treatment use (either statins or antihypertensives) at baseline. This is because we expect the biggest effect to be among individuals who are on treatment at baseline. The cohort of individuals off treatment at baseline contains a large number of individuals who never receive any treatment, and are therefore unaffected by the miss-specification. 
+In section 1, we report calibration and discrimination in the entire validation dataset, for various levels of misspecification of the treatment effect of statins/antihypertensives. For calibration, we report calibration curves, and the confidence interval for the calibration curve (note, the confidence intervals in section 1 are very small and so are not visible), and summary metrics ICI, E50 and E90. For discrimination, Harrell's C-index is reported. In section 2, we repeat the analyses within subgroups defined by treatment use (either statins or antihypertensives) at baseline. This is because we expect the biggest effect to be among individuals who are on treatment at baseline. The cohort of individuals off treatment at baseline contains a large number of individuals who never receive any treatment, and are therefore unaffected by the misspecification. 
 
-We always compare calibration and discrimination to the values obtained in the main manuscript, when validating the model assuming the same treatment effects as those used to development to model (no miss-specification).
+Calibration and discrimination are always compared with an analysis assuming there is no misspecification of the treatment effects, aligned with the primary analysis from the main manuscript.
 
 ```{r helper-functions, include=FALSE}
 # Scenario grid used by the sensitivity scripts.
@@ -118,7 +117,7 @@ stratum_label <- function(med, type) {
     type == 0 ~ "not on treatment at baseline",
     TRUE ~ paste0("group ", type)
   )
-  paste(med_label, "-", type_label)
+  paste0(med_label, "; ", type_label)
 }
 
 ### Discrimination readers
@@ -292,9 +291,9 @@ curve_ci_df <- function(curve_mat, pred_grid, scenario_label = NULL) {
   # Output tibble
   tibble::tibble(
     pred = pred_grid,
-    lower = q[, "2.5%"],
+    lower_ci = q[, "2.5%"],
     median = q[, "50%"],
-    upper = q[, "97.5%"],
+    upper_ci = q[, "97.5%"],
     scenario_label = scenario_label
   )
 }
@@ -363,7 +362,7 @@ plot_single_calibration <- function(original_curve, scenario_curve, scenario_ci,
   p <- ggplot2::ggplot() +
     ggplot2::geom_line(
       data = original_curve,
-      ggplot2::aes(x = pred, y = pred.obs, colour = "No miss-specification"),
+      ggplot2::aes(x = pred, y = pred.obs, colour = "No misspecification"),
       linewidth = 0.8
     ) +
     # Plot sensitivity scenario curve
@@ -375,10 +374,10 @@ plot_single_calibration <- function(original_curve, scenario_curve, scenario_ci,
     # Plot ribbon for CI for scenario curve
     ggplot2::geom_ribbon(
       data = scenario_ci,
-      ggplot2::aes(x = pred, ymin = lower, ymax = upper, fill = "Sensitivity"),
+      ggplot2::aes(x = pred, ymin = lower_ci, ymax = upper_ci, fill = "Sensitivity"),
       alpha = 0.5
     ) +
-    ggplot2::scale_color_manual(values = c("No miss-specification" = "black", "Sensitivity" = "#2C7FB8",
+    ggplot2::scale_color_manual(values = c("No misspecification" = "black", "Sensitivity" = "#2C7FB8",
                                            name = NULL)) +
     ggplot2::scale_fill_manual(values = c("Sensitivity" = "#2C7FB8")) +
     ggplot2::guides(fill = "none") +
@@ -547,7 +546,6 @@ read_strat_metric_with_ci <- function(gender, med, type, statins_adj, ah_adj) {
 # Function to make stratified metric table
 make_metric_table_stratified <- function(gender, med, type) {
   
-  # Read original values
   original_values <- tibble::tibble(
     metric = c("ICI", "E50", "E90"),
     original = c(
@@ -557,18 +555,24 @@ make_metric_table_stratified <- function(gender, med, type) {
     )
   )
   
-  # Read in sensitivity values
   scenario_grid |>
     dplyr::rowwise() |>
     dplyr::mutate(
-      ICI = read_strat_metric(gender, med, type, statins, ah, "ICI"),
-      E50 = read_strat_metric(gender, med, type, statins, ah, "E50"),
-      E90 = read_strat_metric(gender, med, type, statins, ah, "E90")
+      metric_tbl = list(
+        read_strat_metric_with_ci(
+          gender = gender, med = med, type = type,
+          statins_adj = statins, ah_adj = ah
+        )
+      )
     ) |>
     dplyr::ungroup() |>
-    tidyr::pivot_longer(cols = c(ICI, E50, E90), names_to = "metric", values_to = "value") |>
-    dplyr::left_join(original_values, by = "metric")  |>
-    dplyr::mutate(difference = value - original) |>
+    tidyr::unnest(metric_tbl) |>
+    dplyr::left_join(original_values, by = "metric") |>
+    dplyr::mutate(
+      difference = value - original,
+      metric = factor(metric, levels = c("ICI", "E50", "E90"))
+    ) |>
+    dplyr::arrange(metric, statins, ah) |>
     dplyr::mutate(dplyr::across(where(is.numeric), ~ round(.x, 3)))
 }
 
@@ -583,7 +587,7 @@ format_metric_table <- function(metric_tbl, include_original = TRUE) {
       scenario_label = base::gsub("\\|\\n\\s*", " ", as.character(scenario_label))
     ) |>
     dplyr::arrange(metric, scenario_label) |>  
-    dplyr::rename(`no miss-specification` = original,
+    dplyr::rename(`no misspecification` = original,
                   scenario = scenario_label)
 }
 
@@ -600,7 +604,9 @@ format_discrim_table <- function(discrim_tbl) {
 
 # Sensitivity analysis in entire validation cohort
 
-When the treatment effects are miss-specified by 10%/20% we see negligible changes to model performance. This will be for two reasons. Firstly, the calibration and discrimination metrics are dominated by low risk individuals who have a small probability of receiving treatment, among whom the impact of miss-specification of the treatment is small. Although, it should be noted that miss-specification seems to have minimal effect among high risk individuals too. This could be partially due to the second reason, which is that the cohort is a mix of individuals on and off treatment at baseline. If equal numbers of individuals start/stop taking treatment during follow-up, the effect of the miss-specification would cancel out. This is why we look at stratified analyses within those on/off treatment at baseline (see section 2).
+In the following tables and plots (section 1), 'no misspecification' is the same value from the primary analysis, assuming no misspecification of the treatment effect. 'Difference' is the difference between the sensitivity analysis value, and the 'no misspecification' value.
+
+When the treatment effects are miss-specified by 10%/20% we see negligible changes to model performance. This will be for two reasons. Firstly, the calibration and discrimination metrics are dominated by low risk individuals who have a small probability of receiving treatment, among whom the impact of misspecification of the treatment is small. Although, it should be noted that misspecification seems to have minimal effect among high risk individuals too. This could be partially due to the second reason, which is that the cohort is a mix of individuals on and off treatment at baseline. If equal numbers of individuals start/stop taking treatment during follow-up, the effect of the misspecification would cancel out. This is why we look at stratified analyses within those on/off treatment at baseline (see section 2).
 
 ```{r preload-sensitivity-data, include = FALSE}
 # Preload all sensitivity data into memory to avoid repeated slow disk reads.
@@ -714,7 +720,7 @@ for (gender in params$genders) {
   metric_tbl <- make_metric_table_non_stratified(gender = gender)
   print(knitr::kable(
     format_metric_table(metric_tbl, include_original = TRUE),
-    caption = paste0("Calibration metrics for ", gender_label(gender), ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect")
+    caption = paste0("Calibration metrics for: ", gender_label(gender), ". 'No misspecification' is the value from the main analysis, assuming no misspecification of the treatment effect")
   ))
   
   ## Add discrim
@@ -722,10 +728,10 @@ for (gender in params$genders) {
   
   # --- Original (no misspecification) ---
   disc_original <- tibble::tibble(
-    scenario_label = "No miss-specification",
+    scenario_label = "No misspecification",
     c_index = read_original_discrim(gender)[["index"]],
-    lower = read_original_discrim(gender)[["index_lower"]],
-    upper = read_original_discrim(gender)[["index_upper"]]
+    lower_ci = read_original_discrim(gender)[["index_lower"]],
+    upper_ci = read_original_discrim(gender)[["index_upper"]]
   )
   
   # --- Sensitivity scenarios ---
@@ -733,27 +739,27 @@ for (gender in params$genders) {
     dplyr::rowwise() |>
     dplyr::mutate(
       c_index = read_sens_discrim(gender, statins, ah)[["index"]],
-      lower = read_sens_discrim(gender, statins, ah)[["index_lower"]],
-      upper = read_sens_discrim(gender, statins, ah)[["index_upper"]],
+      lower_ci = read_sens_discrim(gender, statins, ah)[["index_lower"]],
+      upper_ci = read_sens_discrim(gender, statins, ah)[["index_upper"]],
       original = as.numeric(disc_original$c_index),
       difference = c_index - original
     ) |>
     dplyr::ungroup() |>
-    dplyr::select(scenario_label, c_index, lower, upper, original, difference) |>
+    dplyr::select(scenario_label, c_index, lower_ci, upper_ci, original, difference) |>
         dplyr::arrange(scenario_label) |>
     dplyr::mutate(
       scenario_label = base::gsub("\\|\\n\\s*", " ", as.character(scenario_label)),
       dplyr::across(where(is.numeric), ~ round(.x, 3))) |>  
-    dplyr::rename(`no miss-specification` = original,
+    dplyr::rename(`no misspecification` = original,
                   scenario = scenario_label)
   
   # --- Print ---
   print(knitr::kable(
     disc_tbl,
     caption = paste0(
-      "Saved discrimination results for ",
+      "Discrimination results for: ",
       gender_label(gender),
-      ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect."
+      "."
     )
   ))
 }
@@ -761,11 +767,13 @@ for (gender in params$genders) {
 
 # Treatment-stratified sensitivity analysis
 
-As expected, miss-specification of the effects of either statins/anthypertensives has a bigger impact on calibration and discrimination among those on the respective treatment at baseline.
+In the following tables and plots (section 2), 'no misspecification' is an estimate assuming no misspecification of the treatment effect (i.e. aligned with the primary analysis), but stratified to the same subgroup. 'Difference' is the difference between the sensitivity analysis value, and the 'no misspecification' value.
 
-For example, consider section 2.2.1, or 2.6.1. When the effect of statins is bigger in the validation cohort (statins multiplier = 0.8 or 0.9), the calibration curve indicates more over-prediction than the calibration curve under no miss-specification. Similarly, when the effect of statins is smaller in the validation cohort (statins multiplier = 1.1 or 1.2), the calibration curve indicates less over-prediction. Despite this, the magnitude of the difference in the calibration curves is not alarming, and is only visible among higher risk individuals.
+As expected, misspecification of the effects of either statins/antihypertensives has a bigger impact on calibration and discrimination among those on the respective treatment at baseline.
 
-Note, the calibration within subgroups defined by treatment use at baseline is imperfect, even when there is no miss-specification of the treatment effect between development and validation. This will largely be due to the fact that statin and antihypertensive use is a strong predictor of incident cardiovascular disease, which have not been used as a predictors in the model. This effect is much stronger for the statin users group (sections 2.2 and 2.6) compared to the antihypertensive users group (sections 2.4 and 2.8), where the model is reasonably well calibrated across the entire distribution of predicted risk. This trade off between predictive performance in the classical sense, and the ability to use the model for prediction under these interventions, is discussed in the main manuscript. 
+For example, consider section 2.2.1, or 2.6.1. When the effect of statins is bigger in the validation cohort (statins multiplier = 0.8 or 0.9), the calibration curve indicates more over-prediction than the calibration curve under no misspecification. Similarly, when the effect of statins is smaller in the validation cohort (statins multiplier = 1.1 or 1.2), the calibration curve indicates less over-prediction. Despite this, the magnitude of the difference in the calibration curves is not alarming, and is only visible among higher risk individuals.
+
+Note, the calibration within subgroups defined by treatment use at baseline is imperfect, even when there is no misspecification of the treatment effect between development and validation. This will largely be due to the fact that statin and antihypertensive use is a strong predictor of incident cardiovascular disease, which have not been used as predictors in the model. This effect is much stronger for the statin users group (sections 2.2 and 2.6) compared to the antihypertensive users group (sections 2.4 and 2.8), where the model is reasonably well calibrated across the entire distribution of predicted risk. This trade off between predictive performance in the classical sense, and the ability to use the model for prediction under these interventions, is discussed in the main manuscript. 
 
 ```{r cache stratified analyses, include = FALSE}
 # Preload stratified sensitivity data
@@ -803,9 +811,9 @@ for (gender in params$genders) {
   for (med in params$stratified_meds) {
     for (type in params$stratified_types) {
       
-      cat("\n\n## ", gender_label(gender), " - ", stratum_label(med, type), "\n\n", sep = "")
+      cat("\n\n## ", gender_label(gender), "; ", stratum_label(med, type), "\n\n", sep = "")
       
-      # Read the saved curve of the stratified analysis with no miss-specification
+      # Read the saved curve of the stratified analysis with no misspecification
       original_smooth <- coerce_smooth_df(read_strat_smooth(gender, med, type, statins_adj = 1, ah_adj = 1))
       hist_pred <- extract_hist_pred(original_smooth)
       hist_pred <- sample(hist_pred, min(5000, length(hist_pred)), replace = FALSE)
@@ -894,9 +902,9 @@ for (gender in params$genders) {
       print(knitr::kable(
         format_metric_table(metric_tbl, include_original = FALSE),
         caption = paste0(
-          "Saved stratified sensitivity metrics for ",
-          gender_label(gender), ", ",
-          stratum_label(med, type), ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect, but stratified to the same subgroup."
+          "Calibration metrics for: ",
+          gender_label(gender), "; ",
+          stratum_label(med, type), "."
         )
       ))
       
@@ -905,10 +913,10 @@ for (gender in params$genders) {
       
       # --- Original (no misspecification) ---
       disc_original <- tibble::tibble(
-        scenario_label = "No miss-specification",
+        scenario_label = "No misspecification",
         c_index = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index"]],
-        lower = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index_lower"]],
-        upper = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index_upper"]]
+        lower_ci = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index_lower"]],
+        upper_ci = read_strat_discrim(gender, med, type, statins = 1, ah = 1)[["index_upper"]]
       )
       
       # --- Sensitivity scenarios ---
@@ -916,18 +924,18 @@ for (gender in params$genders) {
         dplyr::rowwise() |>
         dplyr::mutate(
           c_index = read_strat_discrim(gender, med, type, statins, ah)[["index"]],
-          lower = read_strat_discrim(gender, med, type, statins, ah)[["index_lower"]],
-          upper = read_strat_discrim(gender, med, type, statins, ah)[["index_upper"]],
+          lower_ci = read_strat_discrim(gender, med, type, statins, ah)[["index_lower"]],
+          upper_ci = read_strat_discrim(gender, med, type, statins, ah)[["index_upper"]],
           original = as.numeric(disc_original$c_index),
           difference = c_index - original
         ) |>
         dplyr::ungroup() |>
-        dplyr::select(scenario_label, c_index, lower, upper, original, difference) |>
+        dplyr::select(scenario_label, c_index, lower_ci, upper_ci, original, difference) |>
         dplyr::arrange(scenario_label) |>
         dplyr::mutate(
           scenario_label = base::gsub("\\|\\n\\s*", " ", as.character(scenario_label)),
           dplyr::across(where(is.numeric), ~ round(.x, 3))) |>  
-        dplyr::rename(`no miss-specification` = original,
+        dplyr::rename(`no misspecification` = original,
                       scenario = scenario_label
         )
       
@@ -935,18 +943,12 @@ for (gender in params$genders) {
       print(knitr::kable(
         disc_tbl,
         caption = paste0(
-          "Saved discrimination results for ",
-          gender_label(gender),", ",
-          stratum_label(med, type), ". No-miss specification is the value from the main analysis, assuming no miss-specification of the treatment effect, but stratified to the same subgroup."
+          "Discrimination results for: ",
+          gender_label(gender),"; ",
+          stratum_label(med, type), ". 'No misspecification' is the value from the main analysis, assuming no misspecification of the treatment effect, but stratified to the same subgroup."
         )
       ))
     }
   }
 }
-```
-
-# Session information
-
-```{r session-info}
-utils::sessionInfo()
 ```

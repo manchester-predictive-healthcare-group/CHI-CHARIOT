@@ -1,5 +1,5 @@
 ###
-### Extract all prescriptions for statins and antihypertensives, and save to disk, so we can more easily access when parallelising
+### Extract all prescriptions for statinsantihypertensives, and save to disk, so we can more easily access when parallelising
 ### functions which require access to this data
 ###
 
@@ -8,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("")
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -35,7 +35,7 @@ extract_pres <- function(med){
   ### Query database for relevant prescriptions
   db_qry <- db_query(db.filepath = file.path(common.data.dir, "Aurum_Jun2021_extract/data/sql/aurum.sqlite"),
                      tab = "drug",
-                     codelist.vec = codelist$prodcodeid)
+                     codelist.vector = codelist$prodcodeid)
   
   print(paste("query complete", Sys.time()))
   str(db_qry)
