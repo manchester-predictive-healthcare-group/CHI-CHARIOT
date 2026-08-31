@@ -1,0 +1,15 @@
+source,target
+SBP,CVD
+NonHDL,SBP
+NonHDL,CVD
+BMI,SBP
+BMI,NonHDL
+BMI,CVD
+Arbitrary Intervention,BMI
+Arbitrary Intervention,SBP
+Arbitrary Intervention,SBP
+Arbitrary Intervention,CVD
+Statin,BMI
+Statin,NonHDL
+Statin,SBP
+Antihypertensive,SBP
