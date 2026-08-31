@@ -1,0 +1,10 @@
+reference,source,target,effect_type,study_type,effect,measure,source_unit,target_unit
+7ettehad,SBP,CVD,direct,rct-ma,1.02464,HR,mmHg,
+5liu,NonHDL,SBP,direct,mendelian-randomisation,0.2749577,,mmol/L,mmHg
+"3jbs,18baigent",NonHDL,CVD,total,causal-mediation,1.219512195,HR,mmol/L,
+11holmes,BMI,SBP,total,mendelian-randomisation,0.7,,kg/m2,mmHg
+4xu,BMI,NonHDL,direct,???,0.1043451,,kg/m2,mmol/L
+8lu,BMI,CVD,direct,mendelian-randomisation,1.0215,HR,kg/m2,
+14lee,Statin,BMI,total,mendelian-randomisation,0.33,,,
+15,Statin,NonHDL,total,rct-ma,-1.3268,,,mmol/L
+16,Statin,SBP,total,rct-ma,-2.62,,,mmHg
