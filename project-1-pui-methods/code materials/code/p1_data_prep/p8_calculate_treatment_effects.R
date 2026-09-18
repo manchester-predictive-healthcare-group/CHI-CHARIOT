@@ -1,4 +1,4 @@
-### Code written by Bowen Jiang and edited by Alex Pate
+### Code written by Bowen Jiang
 # Goal: Estsimate the effects from the DAG presented in supplementary material, and used to drive the intervention layer of the CHARIOT model
 # R script organization:
 # 1. Define functions for effect size conversions (OR ↔ RR ↔ HR)
@@ -217,12 +217,11 @@ HR_BMI_direct # HR = 1.021503 (per 1 BMI unit increase)
 ### We have RR from literature
 RR_ah_total <- 0.74
 
-
 ### Now find the first value that matches the target
-HR_ah_total <- convert_RR_to_HR_lt1_numerical_search(RR_ah_total, w_in = 0.000001, u_in = 0.3)
+HR_ah_total <- convert_RR_to_HR_lt1_numerical_search(RR_ah_total, w_in = 0.00001, u_in = 0.3)
 
 ### Double check these conversions make sense, by converting the HR back to RR
-convert_HR_to_RR_HRlt1(HR_ah_total, w = 0.000001, u = 0.3)
+convert_HR_to_RR_HRlt1(HR_ah_total, w = 0.00001, u = 0.3)
 RR_ah_total
 
 ###
@@ -234,7 +233,7 @@ RR_ah_total
 RR_statins_total <- 0.75
 
 ### Now find the first value that matches the target
-HR_statins_total <- convert_RR_to_HR_lt1_numerical_search(RR_statins_total, w_in = 0.000001, u_in = 0.3)
+HR_statins_total <- convert_RR_to_HR_lt1_numerical_search(RR_statins_total, w_in = 0.00001, u_in = 0.3)
 
 ### Double check these conversions make sense, by converting the HR back to RR
 convert_HR_to_RR_HRlt1(HR_statins_total, w = 0.00001, u = 0.3)
