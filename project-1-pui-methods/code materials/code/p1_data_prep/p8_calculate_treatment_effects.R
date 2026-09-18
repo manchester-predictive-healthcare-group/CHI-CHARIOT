@@ -1,4 +1,4 @@
-### Code written by Bowen Jiang
+### Code written by Bowen Jiang and edited by Alex Pate
 # Goal: Estsimate the effects from the DAG presented in supplementary material, and used to drive the intervention layer of the CHARIOT model
 # R script organization:
 # 1. Define functions for effect size conversions (OR ↔ RR ↔ HR)
@@ -210,28 +210,6 @@ HR_BMI_direct # HR = 1.021503 (per 1 BMI unit increase)
 #########################################################################################################
 
 ###
-### To convert RR to either HR or OR, we will find the inverse solution to the above equation using a numerical search
-### To do this, we create a vector of possible HRs or ORs, that we will put into the function, in order to find a matching
-### RR to the RR we are trying to convert.
-###
-
-### Create a vector of possible HRs
-HRs_possible_gt1 <- seq(1,2,0.00001)
-HRs_possible_lt1 <- seq(0,1,0.00001)
-
-### Convert these to RRs
-RRs_possible_HRs_gt1 <- sapply(HRs_possible_gt1, convert_HR_to_RR_HRgt1, w = 0.00001, u = 0.3)
-RRs_possible_HRs_lt1 <- sapply(HRs_possible_lt1, convert_HR_to_RR_HRlt1, w = 0.00001, u = 0.3)
-
-### Create a vector of possible ORs
-ORs_possible_gt1 <- seq(1,2,0.00001)
-ORs_possible_lt1 <- seq(0,1,0.00001)
-
-### Convert these to RRs
-RRs_possible_ORs_gt1 <- sapply(ORs_possible_gt1, convert_OR_to_RR_HRgt1, w = 0.00001, u = 0.3)
-RRs_possible_ORs_lt1 <- sapply(ORs_possible_lt1, convert_OR_to_RR_HRlt1, w = 0.00001, u = 0.3)
-
-###
 ### Antihypertensives
 ### Want to convert to HR for adjusting for treatment drop in during model fitting
 ###
@@ -239,12 +217,12 @@ RRs_possible_ORs_lt1 <- sapply(ORs_possible_lt1, convert_OR_to_RR_HRlt1, w = 0.0
 ### We have RR from literature
 RR_ah_total <- 0.74
 
+
 ### Now find the first value that matches the target
-HR_ah_total <- HRs_possible_lt1[min(which(RRs_possible_HRs_lt1 > RR_ah_total))]
-HR_ah_total # 0.72285
+HR_ah_total <- convert_RR_to_HR_lt1_numerical_search(RR_ah_total, w_in = 0.000001, u_in = 0.3)
 
 ### Double check these conversions make sense, by converting the HR back to RR
-convert_HR_to_RR_HRlt1(HR_ah_total, w = 0.00001, u = 0.3)
+convert_HR_to_RR_HRlt1(HR_ah_total, w = 0.000001, u = 0.3)
 RR_ah_total
 
 ###
@@ -256,13 +234,11 @@ RR_ah_total
 RR_statins_total <- 0.75
 
 ### Now find the first value that matches the target
-HR_statins_total <- HRs_possible_lt1[min(which(RRs_possible_HRs_lt1 > RR_statins_total))]
-HR_statins_total # 0.73327
+HR_statins_total <- convert_RR_to_HR_lt1_numerical_search(RR_statins_total, w_in = 0.000001, u_in = 0.3)
 
 ### Double check these conversions make sense, by converting the HR back to RR
 convert_HR_to_RR_HRlt1(HR_statins_total, w = 0.00001, u = 0.3)
 RR_statins_total
-
 
 #############################
 ### 4. Consistency checks ###
