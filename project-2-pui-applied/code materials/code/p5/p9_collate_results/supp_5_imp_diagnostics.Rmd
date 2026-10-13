@@ -1,0 +1,103 @@
+---
+title: "Multiple imputation diagnostics"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+### Read outputs relative to the project directory
+knitr::opts_knit$set(root.dir = "../../../")
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+```
+
+# Introduction
+
+We present the amount of missingness, followed by congerence plots from the 10 imputation streams, and then compare the distributions of imputed and observed data.
+
+There is strong convergence after a small number of iterations. The density plots look normal. There is minimal differences across different imputation chains. For systolic blood pressure, non-HDL cholesterol, and body mass index, imputed values are generally slightly higher (less healthy) than observed values, which is in-line with existing knowledge, that we are more likely to observe test data for unhealthier individuals.
+
+## Proportion missing before imputation
+
+```{r missingness, results='asis'}
+### Load missingness data
+missingness_female <- readRDS("data/p5/imputation_diagnostics_missingness_proportions_2.rds") |>
+  dplyr::mutate(gender = "female") |>
+  dplyr::relocate(gender)
+missingness_male <- readRDS("data/p5/imputation_diagnostics_missingness_proportions_1.rds") |>
+  dplyr::mutate(gender = "male") |>
+  dplyr::relocate(gender)
+
+### Combine 
+missingness <- rbind(missingness_female, missingness_male)
+
+### Display as percentages
+missingness$proportion_missing <- 100 * missingness$proportion_missing
+
+### Present
+knitr::kable(missingness, digits = 2, row.names = FALSE,
+             col.names = c("Gender", "Variable", "Missing (%)"))
+```
+
+## Convergence plots
+
+**Female:**
+
+```{r female-convergence, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/convergence_plot_prototype32.png"), rel_path = FALSE)
+```
+
+**Male:**
+
+```{r male-convergence, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/convergence_plot_prototype31.png"), rel_path = FALSE)
+```
+
+## Density plots for imputed continuous variables
+
+**Female:**
+
+```{r female-density, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/density_plot_prototype32.png"), rel_path = FALSE)
+```
+
+**Male:**
+
+```{r male-density, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/density_plot_prototype31.png"), rel_path = FALSE)
+```
+
+## Category percentages for imputed categorical variables or interger-based continuous variables (IMD)
+
+The observed row includes participants with a recorded value for the variable. Each imputation row includes the completed data. Values are percentages within each row.
+
+**Female:**
+
+```{r female-category-tables, results='asis'}
+### Display the IMD, ethnicity and smoking tables saved for females
+for (variable in c("IMD", "ethnicity", "smoking")) {
+  category_table <- readRDS(paste0(
+    "data/p5/imputation_diagnostics_", variable,
+    "_percentage_table2.rds"
+  ))
+  cat("### ", variable, "\n\n", sep = "")
+  print(knitr::kable(category_table, digits = 3))
+  cat("\n\n")
+}
+```
+
+**Male:**
+
+```{r male-category-tables, results='asis'}
+### Display the IMD, ethnicity and smoking tables saved for males
+for (variable in c("IMD", "ethnicity", "smoking")) {
+  category_table <- readRDS(paste0(
+    "data/p5/imputation_diagnostics_", variable,
+    "_percentage_table1.rds"
+  ))
+  cat("### ", variable, "\n\n", sep = "")
+  print(knitr::kable(category_table, digits = 3))
+  cat("\n\n")
+}
+```

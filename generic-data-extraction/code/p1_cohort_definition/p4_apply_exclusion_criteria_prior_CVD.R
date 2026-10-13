@@ -47,12 +47,10 @@ str(cohort)
 ### Load the linkage file
 linkage.type1 <- extract_txt("data/unzip/Linkage_type1/Type_1/22_002333_icd_aurum_hesapc.txt", colClasses = "character")
 linkage.type1 <- data.table::as.data.table(linkage.type1)
-str(linkage.type1)
 
 ### Load the ICD10 code list for which exclusion will be applied
 cvd_hist_icd_type1_exclusion <- data.table::fread(file = paste(getwd(),"/codelists/analysis/cvd_hist_icd_type1_exclusion.csv", sep = ""), 
                                                   sep = ",", header = TRUE, colClasses = "character")
-str(cvd_hist_icd_type1_exclusion)
 
 ### Only retain values in linkage.type1, that are in our exclusion code list
 linkage.type1$exclude <- as.integer(!is.na(fastmatch::fmatch(linkage.type1$ICD, cvd_hist_icd_type1_exclusion$CODE)))
@@ -61,8 +59,6 @@ table(linkage.type1$ICD)
 
 ### Format eventdate into a numeric date value
 linkage.type1$eventdate <- as.Date(linkage.type1$eventdate, format = "%d/%m/%Y")
-str(linkage.type1)
-testthat::expect_true(as.Date(as.numeric(linkage.type1$eventdate[1]), origin = "1970-01-01") == "2014-05-30")
 
 ### Merge
 paste("merge", Sys.time())
@@ -82,8 +78,6 @@ cohort$prior_CVD_hes <- as.integer(!is.na(fastmatch::fmatch(cohort$patid, patids
 ### Run the exclusion
 cohort <- dplyr::filter(cohort, prior_CVD_hes == 0)
 print(paste("Cohort after exclusion of CVD in HES", Sys.time()))
-str(cohort)
-
 
 ###
 ### Save final list of patids
@@ -99,7 +93,7 @@ write(cohort$patid, "data/extraction/cohort_exclu2_patid.txt")
 ## Create
 cohort.linkage.request <- cohort[,c("patid", "hes_apc_e", "ons_death_e", "lsoa_e")]
 print("cohort for linkage request")
-str(cohort.linkage.request)
+
 ## Save as tab delimited file with appropriate name
 write.table(cohort.linkage.request, "data/extraction/22_002333_university_of_manchester_patientlist.txt",
             sep = "\t", quote = FALSE, row.names = FALSE)
@@ -109,7 +103,6 @@ print(paste("CREATED TYPE2 PATID FILE", Sys.time()))
 ### There is a limit of file size 20MB when requesting linkage. Therefore wan to split patients up into groups of size 1 million
 cohort.linkage.request <- dplyr::arrange(cohort.linkage.request, patid)
 cohort.linkage.request.list <- split(cohort.linkage.request, rep(1:21, each = 1000000)[1:nrow(cohort.linkage.request)])
-str(cohort.linkage.request.list)
 
 ### Save each list element as a text file
 lapply(1:21, function(x) {write.table(cohort.linkage.request.list[[x]], 

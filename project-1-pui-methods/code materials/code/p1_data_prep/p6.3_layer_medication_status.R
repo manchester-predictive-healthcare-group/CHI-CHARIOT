@@ -63,8 +63,7 @@ cohort_split_times_ah <- merge(dplyr::select(cohort, c("patid")),
 ### Fuction written to be applied in conjunction with dplyr::group_modify
 ###
 get_cut_surv_times_stat_ah <- function(data, id){
-  #     id <-1011847520626
-  #     data <- subset(data.valid.split, patid == id)
+ 
   ### Break the input data dependent on whether its statins or ah
   pat_statins <- subset(data, treatment == "statins")
   pat_ah <- subset(data, treatment == "ah")

@@ -1,0 +1,10 @@
+MedCodeId	Observations	OriginalReadCode	CleansedReadCode	Term	SnomedCTConceptId	SnomedCTDescriptionId	EmisCodeCategoryId
+259266018	400000	44R3	44R3.00	Lipoprotein electroph. - HDL	166854003	259266018	34
+458313013	3000000	44dA	44dA.00	Plasma HDL (high density lipoprotein) cholesterol level	1010581000000101	2557051000000110	34
+259242012	300000	44PB	44PB.00	Serum fasting HDL (high density lipoprotein) cholesterol level	1026451000000102	2599931000000119	34
+259243019	100000	44PC	44PC.00	Serum random HDL (high density lipoprotein) cholesterol level	1026461000000104	2599971000000117	34
+855771000006118	100000	EGTONHD1		HDL cholesterol level	855771000006102	855771000006118	34
+1822511000006110	100000	EMISREQ|44P5.	44P5.00	Test request : Serum HDL cholesterol level	1822511000006106	1822511000006110	46
+259564016	30000	44d2	44d2.00	Plasma random HDL (high density lipoprotein) cholesterol level	1028831000000106	2600041000000114	34
+259567011	40000	44d3	44d3.00	Plasma fasting HDL (high density lipoprotein) cholesterol level	1028841000000102	2600031000000117	34
+259232010	70000000	44P5	44P5.00	Serum high density lipoprotein cholesterol level	1005681000000107	2577901000000110	34

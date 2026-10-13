@@ -3,157 +3,123 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/")
 getwd()
 
 ###
 ### Read in female and male models
 ###
 
-### Read in prototye3
-fit.prototype3.female <- lapply(1:1, function(x) {readRDS(paste("data/p4/prototype3_4knots_cox_", 2, "_imp", x, ".rds", sep = ""))})
-bhaz.prototype3.female <- lapply(1:1, function(x) {readRDS(paste("data/p4/prototype3_4knots_cox_bhaz_", 2, "_imp", x, ".rds", sep = ""))})
+### Read in 
+### - pui model (lists of 10)
+### - bhaz (list of 10 vectors, each containing baseline hazard at years 1:10)
+### - mean offsets (used to estimate risk scores)
+### These are the small versions of the model objects, which are lightweight and redacted
 
-### Standard model
-fit.standard.female <- lapply(1:1, function(x) {readRDS(paste("data/standard_cox_", 2, "_imp", x, ".rds", sep = ""))})
-bhaz.standard.female <- lapply(1:1, function(x) {readRDS(paste("data/standard_cox_bhaz_", 2, "_imp", x, ".rds", sep = ""))})
+# Female
+fit_pui_female <- readRDS("data/p5/small_fits_model_female.rds")
+bhaz_pui_female <- readRDS("data/p5/small_bhaz_model_female.rds")
+means_pui_female <- readRDS("data/p5/small_means_model_female.rds")
 
-### Read in prototype3
-fit.prototype3.male <- lapply(1:1, function(x) {readRDS(paste("data/p4/prototype3_4knots_cox_", 1, "_imp", x, ".rds", sep = ""))})
-bhaz.prototype3.male <- lapply(1:1, function(x) {readRDS(paste("data/p4/prototype3_4knots_cox_bhaz_", 1, "_imp", x, ".rds", sep = ""))})
-
-### Standard model
-fit.standard.male <- lapply(1:1, function(x) {readRDS(paste("data/standard_cox_", 1, "_imp", x, ".rds", sep = ""))})
-bhaz.standard.male <- lapply(1:1, function(x) {readRDS(paste("data/standard_cox_bhaz_", 1, "_imp", x, ".rds", sep = ""))})
-
-
-### Extract development means for offset models
-means.prototype3.female <- vector("list", 4)
-means.prototype3.female[[1]] <- lapply(fit.prototype3.female, function(x) {mean(x$model[,"offset(offset_statins_timevar_lnHR)"])})
-means.prototype3.female[[2]] <- lapply(fit.prototype3.female, function(x) {mean(x$model[,"offset(offset_ah_timevar_lnHR)"])})
-means.prototype3.female[[3]] <- lapply(fit.prototype3.female, function(x) {mean(x$model[,"offset(offset_smoking_timevar_dummy1_lnHR)"])})
-means.prototype3.female[[4]] <- lapply(fit.prototype3.female, function(x) {mean(x$model[,"offset(offset_smoking_timevar_dummy2_lnHR)"])})
-names(means.prototype3.female) <- c("statins", "ah", "smoking1", "smoking2")
-
-means.prototype3.male <- vector("list", 4)
-means.prototype3.male[[1]] <- lapply(fit.prototype3.male, function(x) {mean(x$model[,"offset(offset_statins_timevar_lnHR)"])})
-means.prototype3.male[[2]] <- lapply(fit.prototype3.male, function(x) {mean(x$model[,"offset(offset_ah_timevar_lnHR)"])})
-means.prototype3.male[[3]] <- lapply(fit.prototype3.male, function(x) {mean(x$model[,"offset(offset_smoking_timevar_dummy1_lnHR)"])})
-means.prototype3.male[[4]] <- lapply(fit.prototype3.male, function(x) {mean(x$model[,"offset(offset_smoking_timevar_dummy2_lnHR)"])})
-names(means.prototype3.male) <- c("statins", "ah", "smoking1", "smoking2")
-
-### Get rid of patient level data from model objects
-fit.prototype3.male <- lapply(fit.prototype3.male, function(x) {
-  x[names(x) == "model"] <- "DELETED"
-  x[names(x) == "y"] <- "DELETED"
-  x[names(x) == "linear.predictors"] <- "DELETED"
-  x[names(x) == "residuals"] <- "DELETED"
-  return(x)})
-
-fit.standard.male <- lapply(fit.standard.male, function(x) {
-  x[names(x) == "model"] <- "DELETED"
-  x[names(x) == "y"] <- "DELETED"
-  x[names(x) == "linear.predictors"] <- "DELETED"
-  x[names(x) == "residuals"] <- "DELETED"
-  return(x)})
-
-fit.prototype3.female <- lapply(fit.prototype3.female, function(x) {
-  x[names(x) == "model"] <- "DELETED"
-  x[names(x) == "y"] <- "DELETED"
-  x[names(x) == "linear.predictors"] <- "DELETED"
-  x[names(x) == "residuals"] <- "DELETED"
-  return(x)})
-
-fit.standard.female <- lapply(fit.standard.female, function(x) {
-  x[names(x) == "model"] <- "DELETED"
-  x[names(x) == "y"] <- "DELETED"
-  x[names(x) == "linear.predictors"] <- "DELETED"
-  x[names(x) == "residuals"] <- "DELETED"
-  return(x)})
-
-
-### Reduce size of bhaz object
-bhaz.prototype3.male <- lapply(bhaz.prototype3.male, function(x) {
-  return(x$hazard[max(which(x$time <= 10*365.25))])}
-  )
-
-bhaz.standard.male <- lapply(bhaz.standard.male, function(x) {
-  return(x$hazard[max(which(x$time <= 10*365.25))])})
-
-bhaz.prototype3.female <- lapply(bhaz.prototype3.female, function(x) {
-  return(x$hazard[max(which(x$time <= 10*365.25))])})
-
-bhaz.standard.female <- lapply(bhaz.standard.female, function(x) {
-  return(x$hazard[max(which(x$time <= 10*365.25))])})
-
+# Male
+fit_pui_male <- readRDS("data/p5/small_fits_model_male.rds")
+bhaz_pui_male <- readRDS("data/p5/small_bhaz_model_male.rds")
+means_pui_male <- readRDS("data/p5/small_means_model_male.rds")
 
 ### Save these to Rshiny folder
-saveRDS(fit.prototype3.female, "code/p4/p7_rshiny/data/fit.prototype3.female.rds")
-saveRDS(means.prototype3.female, "code/p4/p7_rshiny/data/means.prototype3.female.rds")
-saveRDS(fit.standard.female, "code/p4/p7_rshiny/data/fit.standard.female.rds")
-saveRDS(bhaz.prototype3.female, "code/p4/p7_rshiny/data/bhaz.prototype3.female.rds")
-saveRDS(bhaz.standard.female, "code/p4/p7_rshiny/data/bhaz.standard.female.rds")
+saveRDS(fit_pui_female, "code/p5/p7_rshiny/data/fit_pui_female.rds")
+saveRDS(bhaz_pui_female, "code/p5/p7_rshiny/data/bhaz_pui_female.rds")
+saveRDS(means_pui_female, "code/p5/p7_rshiny/data/means_pui_female.rds")
 
-saveRDS(fit.prototype3.male, "code/p4/p7_rshiny/data/fit.prototype3.male.rds")
-saveRDS(means.prototype3.male, "code/p4/p7_rshiny/data/means.prototype3.male.rds")
-saveRDS(fit.standard.male, "code/p4/p7_rshiny/data/fit.standard.male.rds")
-saveRDS(bhaz.prototype3.male, "code/p4/p7_rshiny/data/bhaz.prototype3.male.rds")
-saveRDS(bhaz.standard.male, "code/p4/p7_rshiny/data/bhaz.standard.male.rds")
+saveRDS(fit_pui_male, "code/p5/p7_rshiny/data/fit_pui_male.rds")
+saveRDS(bhaz_pui_male, "code/p5/p7_rshiny/data/bhaz_pui_male.rds")
+saveRDS(means_pui_male, "code/p5/p7_rshiny/data/means_pui_male.rds")
 
-### Read in validation datasets
-imps.valid <- readRDS(paste("data/p4/dfs_valid_", "female", ".rds", sep = ""))
+###
+### Create a default patient
+###
 
-### Pick one
-data.valid <- imps.valid[[1]]
+### Read in dataset to use for formatting (select no rows/data)
+pat <- readRDS("data/p5/cohort_prototype3.rds")[0,]
 
-### Obtain a patient
-pat <- data.valid[1, ]
+### Create fake patient
+pat <- tibble::add_row(pat, 
+                       age = 60,
+                       sbp = 130, 
+                       bmi = 25, 
+                       nonhdl = 3, 
+                       IMD = 10,
+                       diabetes = factor("Absent", levels = levels(pat$diabetes)),
+                       smoking = factor("Non-smoker", levels = levels(pat$smoking)),
+                       ethnicity = factor("white", levels = levels(pat$ethnicity)),
+                       hypertension      = factor("Absent", levels = c("Absent", "Present")),
+                       ra                = factor("Absent", levels = c("Absent", "Present")),
+                       af                = factor("Absent", levels = c("Absent", "Present")),
+                       ckd               = factor("Absent", levels = c("Absent", "Present")),
+                       smi               = factor("Absent", levels = c("Absent", "Present")),
+                       fhcvd             = factor("Absent", levels = c("Absent", "Present")),
+                       migraine          = factor("Absent", levels = c("Absent", "Present")),
+                       sle               = factor("Absent", levels = c("Absent", "Present")),
+                       cortico           = factor("Absent", levels = c("Absent", "Present")),
+                       antipsy           = factor("Absent", levels = c("Absent", "Present")),
+                       copd              = factor("Absent", levels = c("Absent", "Present")),
+                       int_dis           = factor("Absent", levels = c("Absent", "Present")),
+                       downs             = factor("Absent", levels = c("Absent", "Present")),
+                       oral_cancer       = factor("Absent", levels = c("Absent", "Present")),
+                       brain_cancer      = factor("Absent", levels = c("Absent", "Present")),
+                       lung_cancer       = factor("Absent", levels = c("Absent", "Present")),
+                       blood_cancer      = factor("Absent", levels = c("Absent", "Present")),
+                       pre_eclampsia     = factor("Absent", levels = c("Absent", "Present")),
+                       postnatal_depression = factor("Absent", levels = c("Absent", "Present"))) |>
+  dplyr::mutate(caltime = 5537) |>
+  as.data.frame()
 
-### Assign all variables and de-identfiy...
+## Remove unnecessary variable (these will be missing anyway)
 pat <- dplyr::select(pat, -c(cvd_time, cvd_indicator, cvd_time_prim, cvd_indicator_prim,
-                        cvd_time_hes, cvd_indicator_hes, cvd_time_death, cvd_indicator_death,
-                        patid, pracid, gender, cvd_ev_prim_aj, statins, antihypertensives))
-pat$age <- 50
-pat$bmi <- 25
-pat$sbp_unexposed <- 130
-pat$nonhdl <- 3
-pat$smoking[1] <- "Non-smoker"
-pat$ethnicity[1] <- "white"
-pat$IMD <- 10
+                             cvd_time_hes, cvd_indicator_hes, cvd_time_death, cvd_indicator_death,
+                             patid, pracid, gender, statins, antihypertensives))
 
-### The prototype3 dataset didn't have sbp variability
-### I am therefore going to put in a mean value for when estimating the risks of the standard model, meaning
-### the two aren't directly comparable
-imps.valid.standard <- readRDS(paste("data/dfs_valid_", "female", ".rds", sep = ""))
-pat$sbp_var <- mean(imps.valid.standard[[1]]$sbp_var)
-pat$cholhdl_ratio <- mean(imps.valid.standard[[1]]$cholhdl_ratio)
+### Set the offsets for predicting continue on current treatment
+pat <- dplyr::mutate(pat, 
+                     offset_ah_timevar_lnHR = 0,
+                     offset_statins_timevar_lnHR = 0,
+                     offset_smoking_timevar_dummy1_lnHR = 0,
+                     offset_smoking_timevar_dummy2_lnHR = 0)
 
-saveRDS(pat, "code/p4/p7_rshiny/data/fake.pat.rds")
+saveRDS(pat, "code/p5/p7_rshiny/data/fake_pat.rds")
 
 
-### Save the HRs/ORs
+###
+### Read in HRs
+###
 
 ### Total effects
-total_hr_ah <- readRDS("data/p4/offsets_lnHR_ah.rds")
-total_hr_statins <- readRDS("data/p4/offsets_lnHR_statins.rds")
-total_hr_smoking1 <- readRDS("data/p4/offsets_lnHR_smoking_dummy1_total.rds")
-total_hr_smoking2 <- readRDS("data/p4/offsets_lnHR_smoking_dummy2_total.rds")
-
-saveRDS(total_hr_ah, "code/p4/p7_rshiny/data/offsets_lnHR_ah.rds")
-saveRDS(total_hr_statins, "code/p4/p7_rshiny/data/offsets_lnHR_statins.rds")
-saveRDS(total_hr_smoking1, "code/p4/p7_rshiny/data/offsets_lnHR_smoking_dummy1_total.rds")
-saveRDS(total_hr_smoking2, "code/p4/p7_rshiny/data/offsets_lnHR_smoking_dummy2_total.rds")
+HR_ah_total <- exp(readRDS("data/p5/offsets_total_lnHR_ah.rds"))
+HR_statins_total <- exp(readRDS("data/p5/offsets_total_lnHR_statins.rds"))
+HR_smok_init_total <- exp(readRDS("data/p5/offsets_total_lnHR_smok_init.rds"))
+HR_smok_cess_total <- exp(readRDS("data/p5/offsets_total_lnHR_smok_cess.rds"))
 
 ### Direct effects
-direct_OR_smoking_initiation <- readRDS("data/p4/direct_OR_smoking_initiation")
-direct_OR_smoking_cessation <- readRDS("data/p4/direct_OR_smoking_cessation")
-direct_OR_nonhdl <- readRDS("data/p4/direct_OR_nonhdl")
-direct_OR_bmi <- readRDS("data/p4/direct_OR_bmi")
-direct_OR_sbp <- readRDS("data/p4/direct_OR_sbp")
+HR_sbp_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_sbp.rds"))
+HR_nonhdl_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_nonhdl.rds"))
+HR_bmi_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_bmi.rds"))
+HR_smok_init_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_smok_init.rds"))
+HR_smok_cess_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_smok_cess.rds"))
 
-saveRDS(direct_OR_smoking_initiation, "code/p4/p7_rshiny/data/direct_OR_smoking_initiation.rds")
-saveRDS(direct_OR_smoking_cessation, "code/p4/p7_rshiny/data/direct_OR_smoking_cessation.rds")
-saveRDS(direct_OR_nonhdl, "code/p4/p7_rshiny/data/direct_OR_nonhdl.rds")
-saveRDS(direct_OR_bmi, "code/p4/p7_rshiny/data/direct_OR_bmi.rds")
-saveRDS(direct_OR_sbp, "code/p4/p7_rshiny/data/direct_OR_sbp.rds")
+###
+### Save HRs to shiny data folder (not log HRs)
+### 
+
+### Total effects
+saveRDS(HR_statins_total, "code/p5/p7_rshiny/data/offsets_total_HR_statins.rds")
+saveRDS(HR_ah_total, "code/p5/p7_rshiny/data/offsets_total_HR_ah.rds")
+saveRDS(HR_smok_init_total, "code/p5/p7_rshiny/data/offsets_total_HR_smok_init.rds")
+saveRDS(HR_smok_cess_total, "code/p5/p7_rshiny/data/offsets_total_HR_smok_cess.rds")
+
+### Direct effects
+saveRDS(HR_sbp_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_sbp.rds")
+saveRDS(HR_nonhdl_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_nonhdl.rds")
+saveRDS(HR_bmi_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_bmi.rds")
+saveRDS(HR_smok_init_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_smok_init.rds")
+saveRDS(HR_smok_cess_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_smok_cess.rds")
 print("FINISHED")

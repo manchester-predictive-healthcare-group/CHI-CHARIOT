@@ -3,233 +3,169 @@
 #################
 
 ###
+### Function to calculate survival probability for a single redacted model and baseline hazard.
+###
+### - fit is a single model
+### - bhaz is a single cumulative baseline hazard at time t
+### - offset_means is a vector of the mean offset values used for model development (on log-hazard scale)
+est_surv_offset_prototype3_redacted <- function(newdata, fit, bhaz, offset_means){
+  
+  ### Calculate lp
+  lp <- predict(fit, newdata = newdata, reference = "sample") - sum(offset_means)
+  
+  ### Calculate survival prob
+  surv <- as.numeric(exp(-exp(lp) * bhaz))
+  
+  ### Return
+  return(surv)
+  
+}
+
+###
+### Function to calculate survival probability for a list of models and baseline hazards, estimated from
+### different multiple imputation chains, which have been redacted. The risk scores are calculated, and then combined on
+### log-cumulative hazard scale.
+###
+### - fit is a list of models
+### - bhaz is a list of cumulative baseline hazard at time t
+### - offset_means is is a list of the mean offset values used for model development (on log-hazard scale)
+est_surv_offset_prototype3_redacted_mi <- function(newdata, fit_list, bhaz_list, offset_means_list){
+  
+  if (length(fit_list) != length(bhaz_list) || length(fit_list) != length(offset_means_list)){
+    stop("inputs should be same length")
+  }
+  
+  ### Calculate surv probs
+  surv_list <- lapply(seq_along(fit_list), function(x){
+    est_surv_offset_prototype3_redacted(newdata = newdata, 
+                                        fit = fit_list[[x]], 
+                                        bhaz = bhaz_list[[x]], 
+                                        offset_means = offset_means_list[[x]])
+  })
+  
+  ### Put onto log cumulative hazard scale 
+  surv_loglog_list <- lapply(surv_list, function(x){log(-log(x))})
+  
+  ### cbind and take average
+  surv_loglog <- do.call("cbind", surv_loglog_list) 
+  surv_loglog_av <- rowMeans(surv_loglog)
+  
+  ### Turn back to surv prob
+  surv_av <- exp(-exp(surv_loglog_av))
+  
+  return(surv_av)
+  
+}
+
+###
 ### Function to estimate survival probability for a given set of models and fitted baseline hazards,
 ### where each model was developed using a different imputed dataset.
 ### Survival probabilities are estimated using each model seperately, then combined on the cloglog scale
 ### NB: Baseline hazards must have been fitted using basehaz(surv.obj, centered = TRUE)
 ###
 ### Standard cox model
-est_surv_mi <- function(newdata, fit.list, bhaz.list, time){
-
-  #   newdata <- imps.valid[[1]][1:100, ]
-  #   bhaz.list[[1]]$time
+est_surv_mi <- function(newdata, fit_list, bhaz_list, time){
+  
+  #   newdata <- imps_valid[[1]][1:100, ]
+  #   bhaz_list[[1]]$time
   #   time <- 10*365.25
-
+  
   ### Get the lp
-  lp <- lapply(fit.list, function(x) {predict(x, newdata = newdata, reference = "sample")})
-
+  lp <- lapply(fit_list, function(x) {predict(x, newdata = newdata, reference = "sample")})
+  
   ### Get the linear predictor for ne wdata
-  surv <- lapply(1:length(fit.list), function(x) {
-    bhaz <- bhaz.list[[x]]
+  surv <- lapply(1:length(fit_list), function(x) {
+    bhaz <- bhaz_list[[x]]
     as.numeric(exp(-exp(lp[[x]])*bhaz))
   })
-
+  
   ### Now get average on cloglog scale
-  surv.average <- exp(-exp(rowMeans(do.call("cbind", lapply(surv, function(x) {log(-log(x))})))))
-
+  surv_average <- exp(-exp(rowMeans(do.call("cbind", lapply(surv, function(x) {log(-log(x))})))))
+  
   ### Return
-  return(surv.average)
-
+  return(surv_average)
+  
 }
 
-
-###
-### Function to estimate survival probability for a given set of models and fitted baseline hazards,
-### where each model was developed using a different imputed dataset.
-### Survival probabilities are estimated using each model seperately, then combined on the cloglog scale
-### NB: Baseline hazards must have been fitted using basehaz(surv.obj, centered = TRUE)
-###
-### Prototype 3 model
-est_surv_offset_prototype3_mi <- function(newdata, fit.list, bhaz.list,
-                                          means.statins, means.ah, means.smoking1, means.smoking2,
-                                          time){
-
-  #   newdata <- imps.valid[[1]][1:100, ]
-  #   bhaz.list[[1]]$time
-  #   time <- 10*365.25
-
-  # newdata = pat.prototype3.baseline
-  # fit.list = fit.prototype3
-  # bhaz.list = bhaz.prototype3
-  # means.statins = means.statins
-  # means.ah = means.ah
-  # means.smoking1 = means.smoking1
-  # means.smoking2 = means.smoking2
-
-  ### Get the lp
-  lp <- lapply(1:length(fit.list), function(x) {
-
-    ## Get lp
-    lp.out <- predict(fit.list[[x]], newdata = newdata, reference = "sample")
-
-    ## Adjust for offsets
-    lp.out <- lp.out - means.statins[[x]] - means.ah[[x]] - means.smoking1[[x]] - means.smoking2[[x]]
-
-    return(lp.out)
-  })
-
-  ### Get the survival probabilities
-  surv <- lapply(1:length(fit.list), function(x) {
-    bhaz <- bhaz.list[[x]]
-    as.numeric(exp(-exp(lp[[x]])*bhaz))
-  })
-
-  ### Now get average on cloglog scale
-  surv.average <- exp(-exp(rowMeans(do.call("cbind", lapply(surv, function(x) {log(-log(x))})))))
-
-  ### Return
-  return(surv.average)
-
-}
-
-###
-### Function to adjust a risk score based on an odds ratio
-###
-convert_risk_odds <- function(p, OR){
-
-  ### Get odds of risk score
-  odds <- p/(1-p)
-
-  ### Calculate new odds
-  new_odds <- odds*OR
-
-  ### Covert back onto risk scale
-  new_risk <- new_odds/(1+new_odds)
-
+### Function to apply hazard ratio to a risk score
+convert_risk_HR <- function(p, HR){
+  
+  ### Get survival probability
+  surv <- 1 - p
+  
+  ### Get survival probability onto the hazard scale by taking logarithm
+  log_surv <- log(surv)
+  
+  ### Apply hazard ratios
+  log_surv_adjusted <- log_surv*HR
+  
+  ### Calculate survival probability (note, we do not take the negative, 
+  ### as we did not do this when converted back onto the hazard scale)
+  new_surv <- exp(log_surv_adjusted)
+  
+  ### Convert back onto risk scale
+  new_risk <- 1 - new_surv
+  
   return(new_risk)
 }
+
 
 ###
 ### Function to create table of risks for a given patient at various ages
 ###
 create_table <- function(pat,
-                         fit.prototype3, bhaz.prototype3,
-                         means.statins, means.ah, means.smoking1, means.smoking2,
-                         fit.standard, bhaz.standard,
-                         or.change.total,
-                         or.change.smoking,
-                         or.change.sbp,
-                         or.change.bmi,
-                         or.change.nonhdl,
+                         fit_pui_list, bhaz_pui_list, means_pui_list,
+                         HR_change_total,
                          input_type){
-
+  
   # pat
-  # fit.tn = fit.tn
-  # bhaz.tn = bhaz.tn
-  # means.statins = means.tn[["statins"]]
-  # means.ah = means.tn[["ah"]]
-  # fit.standard = fit.standard
-  # bhaz.standard = bhaz.standard
-
+  # fit_tn = fit_tn
+  # bhaz_tn = bhaz_tn
+  # means_statins = means_tn[["statins"]]
+  # means_ah = means_tn[["ah"]]
+  # fit_standard = fit_standard
+  # bhaz_standard = bhaz_standard
+  
   ### Define decimal places
   dp <- 2
-
+  
   ### Create output data.frame
-  # pat.risks <- data.frame(matrix(NA, nrow = 1, ncol = 5))
-  pat.risks <- vector("character", 4)
-
-  ###
-  ### Estimate a risk for this individual according to standard cox model
-  ###
-
-  ### Create new dataset for the old model
-  ### TO DELETE ONCE OLD MODEL REFITTED WITH APPROPRIATE SMOKING TERMS
-  # pat_original <- dplyr::mutate(pat, smoking = dplyr::case_when(smoking == "Current" ~ "Light",
-  #                                                      TRUE ~ smoking))
-  # risk <- 1 - est_surv_mi(newdata = pat_original,
-  #                         fit.list = fit.standard,
-  #                         bhaz.list = bhaz.standard,
-  #                         time = 10*365.25)
-  # pat.risks[1] <- paste(round(100*risk,dp), "%", sep = "")
-
+  # pat_risks <- data.frame(matrix(NA, nrow = 1, ncol = 5))
+  pat_risks <- vector("character", 2)
+  
   ###
   ### Estimate a risk using our offset model
   ###
-
+  
   ### Assign treatment statuses to pat
-  pat.prototype3.baseline <- dplyr::mutate(pat,
-                                           offset_ah_timevar_lnHR = 0,
-                                           offset_statins_timevar_lnHR = 0,
-                                           offset_smoking_timevar_dummy1_lnHR = 0,
-                                           offset_smoking_timevar_dummy2_lnHR = 0)
-  # pat.on.statins <- dplyr::mutate(pat.off, med_status_statins = lnHR.statins)
-  # pat.on.ah <- dplyr::mutate(pat.off, med_status_ah = lnHR.ah)
-  # pat.on <- dplyr::mutate(pat.off, med_status_statins = lnHR.statins, med_status_ah = lnHR.ah)
-
+  pat_pui_baseline <- dplyr::mutate(pat,
+                                    offset_ah_timevar_lnHR = 0,
+                                    offset_statins_timevar_lnHR = 0,
+                                    offset_smoking_timevar_dummy1_lnHR = 0,
+                                    offset_smoking_timevar_dummy2_lnHR = 0)
+  
+  ### Restrict baseline hazards to chosen time point
+  bhaz_pui_list_y <- lapply(bhaz_pui_list, function(x){x[[10]]})
+  
   ### Estimate risk from baseline layer
-  baseline.risk  <- 1 - est_surv_offset_prototype3_mi(newdata = pat.prototype3.baseline,
-                                                      fit.list = fit.prototype3,
-                                                      bhaz.list = bhaz.prototype3,
-                                                      means.statins = means.statins,
-                                                      means.ah = means.ah,
-                                                      means.smoking1 = means.smoking1,
-                                                      means.smoking2 = means.smoking2,
-                                                      time = 10*365.25)
-  pat.risks[1] <- paste(round(100*baseline.risk,dp), "%", sep = "")
-
+  baseline_risk  <- 1 - est_surv_offset_prototype3_redacted_mi(newdata = pat_pui_baseline,
+                                                      fit_list = fit_pui_list,
+                                                      bhaz_list = bhaz_pui_list_y,
+                                                      offset_means_list = means_pui_list)
+  pat_risks[1] <- paste(round(100*baseline_risk,dp), "%", sep = "")
+  
   ### Adjust from interventional layer
-  intervention.risk <- convert_risk_odds(baseline.risk, or.change.total)
-
+  intervention_risk <- convert_risk_HR(baseline_risk, HR_change_total)
+  
   ### Save it
-  pat.risks[2] <- paste(round(100*intervention.risk,dp), "%", sep = "")
-
-  # ### Create predictors being on statins
-  # if (pat$cholhdl_ratio > 3){
-  #   risk <- 1 - est_surv_offset_mi(newdata = pat.on.statins,
-  #                                  fit.list = fit.prototype3,
-  #                                  bhaz.list = bhaz.prototype3,
-  #                                  means.statins = means.statins,
-  #                                  means.ah = means.ah,
-  #                                  time = 10*365.25)
-  #   pat.risks[3] <- paste(round(100*risk,dp), "%", sep = "")
-  # } else {
-  #   pat.risks[3] <- "Not eligible"
-  # }
-  #
-  # ### Create predictors being on antihypertensives
-  # if (pat$sbp > 135){
-  #   risk <- 1 - est_surv_offset_mi(newdata = pat.on.ah,
-  #                                  fit.list = fit.prototype3,
-  #                                  bhaz.list = bhaz.prototype3,
-  #                                  means.statins = means.statins,
-  #                                  means.ah = means.ah,
-  #                                  time = 10*365.25)
-  #   pat.risks[4] <- paste(round(100*risk,dp), "%", sep = "")
-  # } else {
-  #   pat.risks[4] <- "Not eligible"
-  # }
-  #
-  # ### Create predictors being on both treatment
-  # if (pat$cholhdl_ratio > 3 & pat$sbp > 135){
-  #   risk <- 1 - est_surv_offset_mi(newdata = pat.on,
-  #                                  fit.list = fit.prototype3,
-  #                                  bhaz.list = bhaz.prototype3,
-  #                                  means.statins = means.statins,
-  #                                  means.ah = means.ah,
-  #                                  time = 10*365.25)
-  #   pat.risks[5] <- paste(round(100*risk,dp), "%", sep = "")
-  #
-  # } else {
-  #   pat.risks[5] <- "Not eligible"
-  # }
-
-  pat.risks[3] <- round(or.change.total, dp)
-  pat.risks[4] <- round(or.change.sbp, dp)
-  pat.risks[5] <- round(or.change.bmi, dp)
-  pat.risks[6] <- round(or.change.nonhdl, dp)
-  pat.risks[7] <- round(or.change.smoking, dp)
-
+  pat_risks[2] <- paste(round(100*intervention_risk,dp), "%", sep = "")
+  
   ### Put into a table
-  # pat.risks <- apply(round(100*pat.risks, 2), 2, function(x) paste(x, "%", sep = ""))
-  pat.risks <- matrix(pat.risks, nrow = 1)
-  pat.risks <- datatable(pat.risks, colnames = c("10-year risk with\nno change to treatment",
-                                                 "10-year risk\nunder intervention",
-                                                 "Relative risk reduction under intervention",
-                                                 "Relative risk reduction due to change in SBP",
-                                                 "Relative risk reduction due to change in BMI",
-                                                 "Relative risk reduction due to change in Non-HDL cholesterol",
-                                                 "Relative risk reduction due to change in smoking status"))
-
-  return(pat.risks)
-
+  # pat_risks <- apply(round(100*pat_risks, 2), 2, function(x) paste(x, "%", sep = ""))
+  pat_risks <- matrix(pat_risks, nrow = 1)
+  pat_risks <- datatable(pat_risks, colnames = c("10-year risk with\nno change to treatment",
+                                                 "10-year risk\nunder intervention"))
+  
+  return(pat_risks)
+  
 }
