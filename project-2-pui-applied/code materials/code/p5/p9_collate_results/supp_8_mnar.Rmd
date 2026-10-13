@@ -1,0 +1,387 @@
+---
+title: "MNAR sensitivity analysis of internal validation"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+---
+
+# Overview
+
+## Aims
+
+This report assesses how sensitive the internal-validation results for the existing prediction model are to departures from the missing-at-random (MAR) assumption for three continuous baseline predictors: systolic blood pressure (SBP), non-HDL cholesterol and body mass index (BMI). In particular, it asks how calibration and discrimination would change if the values that were originally missing were systematically lower or higher than their imputed (from multiple imputation procedure) values at the model validation stage.
+
+## Methods
+
+For each variable in isolation, missing values were shifted from their imputed values by delta = -0.50, -0.25, +0.25 or +0.50 times the standard deviation of the observed values for that variable and sex. Values originally observed, and the other predictors, were unchanged. The existing model and baseline hazard were held fixed, i.e., no new prediction model was developed. For each scenario, the adjusted predictor values were used to recalculate predicted 10-year risk. The existing counterfactual survival outcomes from the main internal validation were retained, before calculating calibration and discrimination. This sensitivity analysis was carried out in a single imputation chain, given the small variance in results across the imputation chains in the main analysis. Results are compared against performance when the multiply imputed values are used, i.e., aligned with the main internal validation, where delta = 0.
+
+## Summary {#summary}
+
+This MNAR sensitivity analysis had a minimal impact on calibration and discrimination. See change in whole cohort performance relative to the main analysis. This reinforces the validity of findings given the potential risk of the MAR assumption not holding (see supplementary data file 6).
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center"
+)
+
+### Set working directory as in the accompanying summary report
+knitr::opts_knit$set(root.dir = "../../../")
+
+### Load packages used only for presenting the saved results
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+### Define presentation labels
+variable_labels <- c(
+  sbp = "Systolic blood pressure",
+  nonhdl = "Non-HDL cholesterol",
+  bmi = "Body mass index"
+)
+variable_order <- c("sbp", "nonhdl", "bmi")
+delta_values <- c(-0.50, -0.25, 0.25, 0.50)
+scenario_levels <- c("MAR", "-0.50 SD", "-0.25 SD", "+0.25 SD", "+0.50 SD")
+scenario_colours <- c(
+  "MAR" = "#222222",
+  "-0.50 SD" = "#2166AC",
+  "-0.25 SD" = "#67A9CF",
+  "+0.25 SD" = "#EF8A62",
+  "+0.50 SD" = "#B2182B"
+)
+
+### Format numerical results
+format_3dp <- function(x){
+  sprintf("%.3f", x)
+}
+
+### Create a label for each delta, matching the analysis file's saved names
+scenario_label <- function(delta){
+  ifelse(delta < 0,
+         paste0(sprintf("%.2f", delta), " SD"),
+         paste0("+", sprintf("%.2f", delta), " SD"))
+}
+
+delta_filename <- function(delta){
+  paste0(
+    ifelse(delta < 0, "minus_", "plus_"),
+    gsub(".", "p", as.character(abs(delta)), fixed = TRUE)
+  )
+}
+
+```
+
+```{r read-results, include=FALSE}
+### Check that all saved results needed for this report are present
+### This is a separate chunk so root.dir from setup applies to file checks
+required_files <- c(
+  "data/p5/mnar_adjustment_summary.rds",
+  "data/p5/mnar_internal_validation_summary.rds"
+)
+for (gender_number in c(2, 1)){
+  required_files <- c(
+    required_files,
+    paste0("data/p5/calib_ph_", gender_number, "_1.rds"),
+    paste0("data/p5/calib_km_group_", gender_number, "_1.rds"),
+    paste0("data/p5/discrim_", gender_number, "_1.rds")
+  )
+  for (variable_name in variable_order){
+    for (delta in delta_values){
+      suffix <- paste0(gender_number, "_", variable_name,
+                       "_delta_", delta_filename(delta))
+      required_files <- c(
+        required_files,
+        paste0("data/p5/mnar_calib_ph_", suffix, ".rds"),
+        paste0("data/p5/mnar_calib_km_group_", suffix, ".rds"),
+        paste0("data/p5/mnar_discrim_", suffix, ".rds")
+      )
+    }
+  }
+}
+missing_files <- required_files[!file.exists(required_files)]
+if (length(missing_files) > 0){
+  stop(
+    "Project directory: ", getwd(), "\n",
+    "Missing result files (first 10 of ", length(missing_files), "):\n",
+    paste(utils::head(missing_files, 10), collapse = "\n"), "\n",
+    "If the MAR files are missing, check the project directory. ",
+    "If the MNAR files are missing, check that the MNAR analysis finished."
+  )
+}
+
+### Read the compact MNAR summaries (four non-zero deltas only)
+performance <- readRDS("data/p5/mnar_internal_validation_summary.rds")
+adjustments <- readRDS("data/p5/mnar_adjustment_summary.rds")
+
+### Read the MAR performance metrics from the main analysis, imputation 1
+mar_reference <- dplyr::bind_rows(lapply(c(2, 1), function(gender_number){
+  calibration <- readRDS(
+    paste0("data/p5/calib_ph_", gender_number, "_1.rds")
+  )
+  discrimination <- readRDS(
+    paste0("data/p5/discrim_", gender_number, "_1.rds")
+  )
+  data.frame(
+    gender = c("male", "female")[gender_number],
+    imputation = 1,
+    variable = "MAR reference",
+    delta_sd = 0,
+    ICI = as.numeric(calibration$ICI),
+    E50 = as.numeric(calibration$E50),
+    E90 = as.numeric(calibration$E90),
+    Cstat = unname(discrimination$concordance)
+  )
+}))
+
+### Calculate MNAR minus sex-specific MAR differences
+mar_metrics <- mar_reference |>
+  dplyr::transmute(
+    gender,
+    mar_ICI = ICI,
+    mar_E50 = E50,
+    mar_E90 = E90,
+    mar_Cstat = Cstat
+  )
+performance <- performance |>
+  dplyr::left_join(mar_metrics, by = "gender") |>
+  dplyr::mutate(
+    change_ICI = ICI - mar_ICI,
+    change_E50 = E50 - mar_E50,
+    change_E90 = E90 - mar_E90,
+    change_Cstat = Cstat - mar_Cstat
+  ) |>
+  dplyr::select(-mar_ICI, -mar_E50, -mar_E90, -mar_Cstat)
+
+### Add the two main-analysis MAR rows for the absolute performance table
+performance <- dplyr::bind_rows(performance, mar_reference)
+
+### Check that the report uses only the first imputation and expected scenarios
+stopifnot(all(performance$imputation == 1), all(adjustments$imputation == 1))
+stopifnot(sum(performance$variable == "MAR reference") == 2L)
+stopifnot(nrow(performance) == 26L, nrow(adjustments) == 24L)
+stopifnot(all(performance$delta_sd[performance$variable != "MAR reference"] %in% delta_values))
+stopifnot(all(adjustments$delta_sd %in% delta_values))
+for (gender_name in c("female", "male")){
+  for (variable_name in variable_order){
+    this_scenario <- performance |>
+      dplyr::filter(gender == gender_name, variable == variable_name)
+    stopifnot(nrow(this_scenario) == 4L,
+              identical(sort(this_scenario$delta_sd), sort(delta_values)))
+  }
+}
+```
+
+# Entire cohort validation {#results}
+
+## Metrics
+
+The reference is the results from the main internal-validation for imputation stream 1, where there is no change from the imputed values. Each MNAR scenario changes adjusts (by delta) of one predictor (SBP, non-HDL cholesterol, BMI) at a time. Only values which were originally missing are adjusting (i.e. observed values are still used).
+
+```{r non-stratified-results}
+### Repeat each sex-specific MAR result beside each of the three variables
+mar_reference <- performance |>
+  dplyr::filter(variable == "MAR reference")
+mar_repeated <- dplyr::bind_rows(lapply(variable_order, function(variable_name){
+  mar_reference |>
+    dplyr::mutate(variable = variable_name)
+}))
+
+### Combine MAR and MNAR results for presentation
+performance_display <- dplyr::bind_rows(
+  mar_repeated,
+  performance |> dplyr::filter(variable != "MAR reference")
+) |>
+  dplyr::mutate(
+    Gender = factor(gender, levels = c("female", "male"),
+                    labels = c("Female", "Male")),
+    Variable = factor(variable, levels = variable_order,
+                      labels = unname(variable_labels[variable_order])),
+    Scenario = ifelse(delta_sd == 0, "MAR", scenario_label(delta_sd)),
+    Scenario = factor(Scenario, levels = scenario_levels)
+  ) |>
+  dplyr::arrange(Gender, Variable, Scenario)
+
+### Present the absolute performance metrics
+performance_display |>
+  dplyr::transmute(
+    Gender, Variable, Scenario = ifelse(Scenario == "MAR", "0 SD (main)", as.character(Scenario)),
+    ICI = format_3dp(ICI),
+    E50 = format_3dp(E50),
+    E90 = format_3dp(E90),
+    `C-statistic` = format_3dp(Cstat)
+  ) |>
+  knitr::kable(caption = "Whole-cohort performance under MAR and MNAR scenarios")
+```
+
+Differences below are calculated as MNAR scenario minus the sex-specific MAR reference. Therefore, a positive difference in ICI, E50 or E90 indicates worse calibration; a negative difference in the C-statistic indicates worse discrimination.
+ 
+```{r non-stratified-difference-table}
+### Present differences calculated against the main-analysis MAR reference
+performance_display |>
+  dplyr::filter(Scenario != "MAR") |>
+  dplyr::transmute(
+    Gender, Variable, Scenario,
+    `Difference in ICI` = format_3dp(change_ICI),
+    `Difference in E50` = format_3dp(change_E50),
+    `Difference in E90` = format_3dp(change_E90),
+    `Difference in C-statistic` = format_3dp(change_Cstat)
+  ) |>
+  knitr::kable(caption = "Change in whole-cohort performance relative to main analysis (delta = 0)")
+```
+
+## Calibration plots
+
+```{r non-stratified-calibration-function, include=FALSE}
+### Read the saved calibration grid without retaining the large patient-level data
+read_ph_grid <- function(gender_number, variable_name = NULL, delta = NULL){
+  if (is.null(variable_name)){
+    filename <- paste0("data/p5/calib_ph_", gender_number, "_1.rds")
+  } else {
+    filename <- paste0(
+      "data/p5/mnar_calib_ph_", gender_number, "_", variable_name,
+      "_delta_", delta_filename(delta), ".rds"
+    )
+  }
+  result <- readRDS(filename)
+  stopifnot(all(c("pred", "pred.obs") %in% names(result$calib_data_plot)))
+  result$calib_data_plot
+}
+
+### Create a calibration plot with an aligned, one-fifth-height histogram
+create_calibration_plot <- function(gender_number, variable_name,
+                                    mar_grid, mar_histogram, x_max){
+  ### Read each scenario's saved curve separately, then discard its full object
+  plot_data <- dplyr::bind_rows(
+    mar_grid |> dplyr::mutate(Scenario = "MAR"),
+    lapply(delta_values, function(delta){
+      read_ph_grid(gender_number, variable_name, delta) |>
+        dplyr::mutate(Scenario = scenario_label(delta))
+    })
+  ) |>
+    dplyr::mutate(Scenario = factor(Scenario, levels = scenario_levels)) |>
+    dplyr::arrange(Scenario, pred)
+
+  ### Use the same limits for the histogram and both calibration axes
+  limits <- c(0, x_max)
+  title <- paste(c("Male", "Female")[gender_number],
+                 variable_labels[[variable_name]], sep = "; ")
+
+  histogram_plot <- ggplot2::ggplot(
+    mar_histogram, ggplot2::aes(x = pred)
+  ) +
+    ggplot2::geom_histogram(bins = 50, fill = "grey65",
+                            colour = "white", linewidth = 0.15) +
+    ggplot2::coord_cartesian(xlim = limits, expand = FALSE) +
+    ggplot2::labs(title = title, x = NULL, y = NULL) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      axis.text = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      panel.grid = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(5.5, 5.5, 0, 5.5)
+    )
+
+  calibration_plot <- ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(x = pred, y = pred.obs,
+                 colour = Scenario, linetype = Scenario, group = Scenario)
+  ) +
+    ggplot2::geom_abline(slope = 1, intercept = 0,
+                          linetype = "dashed", colour = "grey55") +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::scale_colour_manual(
+  values = scenario_colours,
+  labels = function(x) ifelse(x == "MAR", "No change", x),
+  drop = FALSE
+    ) +
+    ggplot2::scale_linetype_manual(
+      values = c("solid", "dashed", "dashed", "dotted", "dotted"),
+      labels = function(x) ifelse(x == "MAR", "No change", x),
+      drop = FALSE
+    ) +
+    ggplot2::coord_cartesian(xlim = limits, ylim = limits, expand = FALSE) +
+    ggplot2::labs(x = "Predicted risk", y = "Observed risk") +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(legend.position = "bottom",
+                   plot.margin = ggplot2::margin(0, 5.5, 5.5, 5.5))
+
+  patchwork::wrap_plots(histogram_plot, calibration_plot,
+                        ncol = 1, heights = c(1, 5))
+}
+
+### Read the large MAR calibration objects once per sex
+### Retain only the curve and a reproducible subsample of predicted risks
+set.seed(20260925)
+mar_plot_inputs <- lapply(c(2, 1), function(gender_number){
+  reference <- readRDS(paste0("data/p5/calib_ph_", gender_number, "_1.rds"))
+  stopifnot("pred" %in% names(reference$calib_data))
+  x_max <- as.numeric(stats::quantile(
+    reference$calib_data$pred, 0.99, na.rm = TRUE, names = FALSE
+  ))
+  stopifnot(is.finite(x_max), x_max > 0)
+  risk <- reference$calib_data$pred
+  sampled <- sample.int(length(risk), min(100000L, length(risk)))
+  histogram <- data.frame(pred = risk[sampled]) |>
+    dplyr::filter(is.finite(pred), pred >= 0, pred <= x_max)
+  result <- list(grid = reference$calib_data_plot,
+                 histogram = histogram, x_max = x_max)
+  rm(reference, risk, sampled, histogram)
+  result
+})
+names(mar_plot_inputs) <- c("2", "1")
+```
+
+```{r non-stratified-calibration-grid, fig.width=15, fig.height=11}
+### Female plots first, then male plots; three variables per row
+calibration_plots <- lapply(c(2, 1), function(gender_number){
+  lapply(variable_order, function(variable_name){
+    inputs <- mar_plot_inputs[[as.character(gender_number)]]
+    create_calibration_plot(
+      gender_number = gender_number,
+      variable_name = variable_name,
+      mar_grid = inputs$grid,
+      mar_histogram = inputs$histogram,
+      x_max = inputs$x_max
+    )
+  })
+}) |>
+  unlist(recursive = FALSE)
+
+patchwork::wrap_plots(calibration_plots, ncol = 3, guides = "collect") &
+  ggplot2::theme(legend.position = "bottom")
+```
+
+# Adjustment values {#adjustments}
+
+The following table reports the observed standard deviation used to set each delta, the resulting change in the predictor's original units, and the number of values originally missing. The mean before and after adjustment is calculated only among people whose value were missing (i.e. observed values are not included in this calculation).
+
+```{r adjustment-values}
+adjustments |>
+  dplyr::mutate(
+    Gender = factor(gender, levels = c("female", "male"),
+                    labels = c("Female", "Male")),
+    Variable = factor(variable, levels = variable_order,
+                      labels = unname(variable_labels[variable_order])),
+    Scenario = factor(scenario_label(delta_sd), levels = scenario_levels[-1])
+  ) |>
+  dplyr::arrange(Gender, Variable, Scenario) |>
+  dplyr::transmute(
+    Gender, Variable, Scenario,
+    `Originally missing, N` = N_originally_missing,
+    `Originally missing, %` = format_3dp(100 * proportion_originally_missing),
+    `Observed SD` = format_3dp(observed_sd),
+    `Shift in original units` = format_3dp(delta_original_units),
+    `Mean before` = format_3dp(mean_before_missing),
+    `Mean after` = format_3dp(mean_after_missing),
+    `Minimum after` = format_3dp(min_after_missing),
+    `Maximum after` = format_3dp(max_after_missing)
+  ) |>
+  knitr::kable(caption = "MNAR adjustments applied to originally missing values")
+```

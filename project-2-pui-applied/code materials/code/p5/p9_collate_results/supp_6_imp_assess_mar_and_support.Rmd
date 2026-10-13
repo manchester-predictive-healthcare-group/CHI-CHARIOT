@@ -1,0 +1,134 @@
+---
+title: "Missingness and observed-data support"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+  word_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+### Set the project directory for all R Markdown chunks
+knitr::opts_knit$set(root.dir = "../../../")
+
+### Set default chunk options
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.width = 10, fig.height = 7)
+```
+
+# Introduction
+
+This report explores the plausibility of the missing at random (MAR) assumption, separately for females and males. For each variable, a logistic regression model was built to predict whether its value is missing, using predictors with no missing data. Section 2 looks at the C-statistic and R-squared of these models. Section 3 then compares the distribution of predicted missingness between people with observed and missing values to assess overlap.
+
+These are diagnostics, not a test of the missing-at-random (MAR) assumption. The C-statistics and Nagelkerke R-squared values describe apparent performance in the data used to fit the missingness models. High performance metrics and strong overlap do not provide evidence that the MAR assumption holds, as this assumption is untestable. These results should be interpreted alongside the imputation diagnostics and sensitivity analyses under plausible departures from MAR.
+
+To summarise, the model predicting non-HDL cholesterol had a high C-statistic, suggesting that the measured covariates discriminated well between participants with and without a recorded value. This is consistent with the plausibility of a MAR assumption, provided the predictors, which are strongly predictive of whether we observed non-HDL cholesterol or not, are included in the imputation model. There was good overlap for most variables across the full range of predicted missingness. The biggest difference was for non-HDL cholesterol, where the median missing probability among those with missing data, was above the 90th percentile of missing probability among those with observed values. Despite this, the 99th percentiles were aligned.
+
+```{r prelim, include = FALSE}
+### Load packages used in this report
+library(dplyr)
+library(ggplot2)
+
+### Use the variable order in the analysis script
+missing_variables <- c("ethnicity", "smoking", "bmi", "sbp", "nonhdl", "IMD")
+variable_labels <- c(
+  ethnicity = "Ethnicity", smoking = "Smoking", bmi = "BMI",
+  sbp = "SBP", nonhdl = "Non-HDL cholesterol", IMD = "IMD"
+)
+
+### Read the exact numeric-suffix RDS outputs from the final analysis script
+performance <- dplyr::bind_rows(lapply(c(2, 1), function(gender) {
+  readRDS(paste0(
+    "data/p5/sens_imputation_missingness_model_performance_", gender, ".rds"
+  ))
+}))
+
+prediction_summary_overlap <- dplyr::bind_rows(lapply(c(2, 1), function(gender) {
+  readRDS(paste0(
+    "data/p5/sens_imputation_prediction_summary_overlap_", gender, ".rds"
+  ))
+}))
+
+### Label the gender and missingness groups for presentation
+performance <- performance |>
+  dplyr::mutate(
+    gender = factor(gender, levels = c("female", "male"),
+                    labels = c("Female", "Male")),
+    variable = factor(variable, levels = missing_variables,
+                      labels = unname(variable_labels[missing_variables]))
+  )
+
+prediction_summary_overlap <- prediction_summary_overlap |>
+  dplyr::mutate(
+    gender = factor(gender, levels = c("female", "male"),
+                    labels = c("Female", "Male")),
+    variable = factor(variable, levels = missing_variables,
+                      labels = unname(variable_labels[missing_variables])),
+    status = factor(missing_indicator, levels = c(0, 1),
+                    labels = c("Observed", "Missing"))
+  )
+```
+
+# Missingness and model performance
+
+A higher C-statistic means the model better distinguishes people with missing values from people with observed values.
+
+```{r performance-table}
+### Present missing proportions and apparent model performance
+performance |>
+  dplyr::transmute(
+    Gender = gender,
+    Variable = variable,
+    `Missing (%)` = 100 * missing_proportion,
+    `C-statistic` = c_statistic,
+    `Nagelkerke R-squared` = nagelkerke_r_squared
+  ) |>
+  knitr::kable(digits = 3,
+               caption = "Missingness proportions and apparent model performance")
+```
+
+# Predicted-missingness overlap
+
+The plot and table compare the distributions of predicted probabilities of missingness, also available in the table.
+
+```{r overlap-table}
+### Present saved quantiles separately for observed and missing values
+prediction_summary_overlap |>
+  dplyr::transmute(
+    Gender = gender,
+    Variable = variable,
+    Status = status,
+    `1st percentile` = q01,
+    `10th percentile` = q10,
+    Median = median,
+    `90th percentile` = q90,
+    `99th percentile` = q99
+  ) |>
+  knitr::kable(digits = 3,
+               caption = "Quantiles of predicted probability of missingness")
+```
+
+```{r overlap-plot}
+### Plot the saved 1st-99th and 10th-90th percentile ranges and medians
+plot_data <- prediction_summary_overlap |>
+  dplyr::mutate(group = interaction(variable, status, sep = ": "))
+
+ggplot2::ggplot(plot_data, ggplot2::aes(y = group, colour = status)) +
+  ggplot2::geom_segment(ggplot2::aes(x = q01, xend = q99, yend = group),
+                        linewidth = 0.5) +
+  ggplot2::geom_segment(ggplot2::aes(x = q10, xend = q90, yend = group),
+                        linewidth = 2) +
+  ggplot2::geom_point(ggplot2::aes(x = median), size = 2) +
+  ggplot2::facet_wrap(~ gender, ncol = 1) +
+  ggplot2::scale_x_continuous(limits = c(0, 1),
+                              labels = function(x) paste0(round(100 * x), "%")) +
+  ggplot2::labs(
+    x = "Predicted probability of missingness", y = NULL,
+    colour = "Value status",
+    caption = "Thin: 1st-99th percentiles; thick: 10th-90th percentiles; point: median"
+  ) +
+  ggplot2::theme_bw() +
+  ggplot2::theme(legend.position = "top")
+```

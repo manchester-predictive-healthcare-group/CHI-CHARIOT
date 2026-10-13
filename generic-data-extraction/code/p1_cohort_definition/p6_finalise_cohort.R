@@ -33,17 +33,14 @@ cvd_hist <- extract_ho(cohort = cohort,
 
 ### Remove prior_CVD_hes from cohort, from when we applied exclusion criteria with type 1 linked data
 cohort <- cohort[,-c("prior_CVD_hes")]
-str(cohort)
 
 ### Merge with cohort.base
 cohort <- merge(cohort, cvd_hist, by.x = "patid", by.y = "patid", all.x = TRUE)
 print("AFTER MERGE")
-str(cohort)
 
 ### Run the exclusion
 cohort <- dplyr::filter(cohort, prior_CVD_hes == 0)
 print(paste("Cohort after exclusion of CVD in secondary care", Sys.time()))
-str(cohort)
 
 ###
 ### Extract death dates and compare  ONS/CPRD
@@ -104,11 +101,9 @@ cohort <- dplyr::mutate(cohort,
 ### Subset to those where fup_start < fup_end
 cohort <- subset(cohort, fup_start < fup_end)
 print(paste("number of patients after requiring >= 1 day valid follow up = ", nrow(cohort), sep = ""))
-str(cohort)
 
 ### Subset to those where start of follow up is younger than 86
 cohort <- subset(cohort, fup_start < do86)
-str(cohort)
 
 ###
 ### Save the cohort with all variables from the patient file

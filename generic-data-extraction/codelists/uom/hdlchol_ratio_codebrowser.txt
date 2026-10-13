@@ -1,0 +1,2 @@
+MedCodeId	Observations	OriginalReadCode	CleansedReadCode	Term	SnomedCTConceptId	SnomedCTDescriptionId	EmisCodeCategoryId
+279462018	2000000	44PG	44PG.00	High density lipoprotein/total cholesterol ratio	1031421000000101	2602691000000112	34

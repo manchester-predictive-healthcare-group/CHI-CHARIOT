@@ -1,0 +1,497 @@
+---
+title: "Manuscript validation results"
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    self_contained: true
+    number_sections: true
+  word_document:
+    toc: true
+    toc_depth: 4
+---
+
+```{r setup, include=FALSE}
+### Read outputs relative to the project directory
+knitr::opts_knit$set(root.dir = "../../../")
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r prep, include = FALSE}
+### Format tables in both HTML and Word, without format-specific markup
+make_table <- function(x, caption) {
+  ft <- flextable::flextable(x)
+  ft <- flextable::theme_booktabs(ft)
+  ft <- flextable::bold(ft, part = "header")
+  ft <- flextable::align(ft, align = "left", part = "all")
+  ft <- flextable::set_caption(ft, caption = caption)
+  flextable::set_table_properties(ft, layout = "autofit", width = 1)
+}
+
+### Set counters for numbering tables and figures
+table_number <- 0
+figure_number <- 0
+
+### Helper functions for figure and table numbering
+next_table_caption <- function(caption){
+  table_number <<- table_number + 1
+  paste0("Table S", table_number, ". ", caption)
+}
+
+next_figure_caption <- function(caption){
+  figure_number <<- figure_number + 1
+  paste0("Figure S", figure_number, ". ", caption)
+}
+
+
+### Function to extract and format optimism metrics table for a given gender
+internal_table <- function(gender_in) {
+  ### Read in the already calculated optimism results
+  optimism_results <- readRDS("data/p5/optimism_adjusted_performance_metrics.rds")$results
+  ### Check for required variables
+  required <- c("Gender", "Analysis", "Subgroup", "N", "Metric",
+                "Apparent performance (median)", "Optimism-adjusted performance",
+                "Optimism 2.5th percentile", "Optimism 97.5th percentile")
+  if (!all(required %in% names(optimism_results)))
+    stop("Missing optimism result column(s): ",
+         paste(setdiff(required, names(optimism_results)), collapse = ", "))
+  ### Extract results for correct gender
+  x <- optimism_results[optimism_results$Gender == gender_in, required, drop = FALSE]
+  ### Format variables
+  x$Analysis <- factor(x$Analysis, levels = c("Overall", "Ethnicity", "Age Cat", "Region"), labels = c("Overall", "Ethnicity", "Age", "Region"))
+  x$Metric <- factor(x$Metric, levels = c("ICI", "E50", "E90", "Discrimination"))
+  x <- x[order(x$Analysis, x$Subgroup, x$Metric), , drop = FALSE]
+  if (!nrow(x) || anyNA(x$N)) stop("Missing N for ", gender_in)
+  data.frame(
+    Analysis = as.character(x$Analysis),
+    Subgroup = as.character(x$Subgroup),
+    N = format(round(x$N), big.mark = ",", trim = TRUE, scientific = FALSE),
+    Metric = as.character(x$Metric),
+    Apparent = sprintf("%.3f", x[["Apparent performance (median)"]]),
+    `Optimism-adjusted` = sprintf("%.3f", x[["Optimism-adjusted performance"]]),
+    `Optimism (p2.5 - p97.5)` = sprintf("%.3f - %.3f",
+                                        x[["Optimism 2.5th percentile"]], x[["Optimism 97.5th percentile"]]),
+    check.names = FALSE
+  )
+}
+
+### Read in and format temporal validation table (metrics)
+temporal_table <- function(gender_in, interventional = FALSE) {
+  summary_file <- if (interventional)
+    "data/p5/temporal_validation_interventional_performance_metrics.rds" else
+    "data/p5/temporal_validation_performance_metrics.rds"
+  if (!file.exists(summary_file)) stop("Missing summary: ", summary_file)
+  x <- readRDS(summary_file)$tables_3dp[[gender_in]]
+  if (is.null(x)) stop("Missing ", gender_in, " table in ", summary_file)
+  expected <- c(if (interventional) "Risk factor", "Follow-up index (years)", "Prediction interval", "N",
+                "ICI", "E50", "E90", "Discrimination")
+  if (!identical(names(x), expected))
+    stop("Unexpected columns in ", summary_file, " for ", gender_in)
+  x[["Follow-up index (years)"]] <- as.integer(x[["Follow-up index (years)"]])
+  for (metric in c("ICI", "E50", "E90", "Discrimination"))
+    x[[metric]] <- sprintf("%.3f", x[[metric]])
+  x
+}
+
+### Read variation in test performance across boostrap iterations
+variance_results <- readRDS("data/p5/variance_bootstrap_test_metrics.rds")
+variance_percentiles <- variance_results$percentiles_3dp
+
+### Prelim for shape of non-linear predictor effects from restricted cubic spline modelling
+### Read variable groups
+var_binary <- readRDS("data/p5/var_binary.rds")
+var_poly <- readRDS("data/p5/var_poly.rds")
+var_cont <- readRDS("data/p5/var_cont.rds")
+
+### Calendar time is also presented with the continuous predictors
+var_cont <- c("caltime", var_cont)
+
+### Filename separator used by p2_assess_nonlinear.R
+nonlinear_savename <- "_"
+```
+
+This document presents outcome incidence rates, shape of the non-linear effects of variables, internal validation and optimism-adjusted results, instability results, and temporal validation results.
+
+# Cardiovascular disease incidence rates
+
+## By year
+
+Annual incidence rates were calculated in the complete development cohort, separately for the female and male models. Event free follow-up was split across calendar years, from start of ofllow-up until the first cardiovascular event or censoring. For each calendar year, the total number of cardiovascular events is divided by the total event free follow-up time. Rates are expressed in per 1,000 person-years..
+
+```{r annual-incidence}
+outcome_incidence_by_year <- readRDS("data/p5/outcome_incidence_by_year.rds")
+make_table(outcome_incidence_by_year, next_table_caption("Annual cardiovascular outcome incidence rates."))
+```
+
+## By outcome type
+
+Incidence rates in the entire cohort, stratified by outcome type: primary care, hospital episode statistics (seondary care), office for national statistics (death).
+
+```{r type-incidence}
+outcome_incidence_all <- readRDS("data/p5/outcome_incidence_all.rds")
+outcome_incidence_primary <- readRDS("data/p5/outcome_incidence_primary.rds")
+outcome_incidence_secondary <- readRDS("data/p5/outcome_incidence_secondary.rds")
+outcome_incidence_ons <- readRDS("data/p5/outcome_incidence_ons.rds")
+make_table(outcome_incidence_all, next_table_caption("Overall incidence rates, all outcome types."))
+make_table(outcome_incidence_primary, next_table_caption("Overall incidence rates, primary care."))
+make_table(outcome_incidence_secondary, next_table_caption("Overall incidence rates, secondary care."))
+make_table(outcome_incidence_ons, next_table_caption("Overall incidence rates, cvd-related death (ONS)."))
+```
+
+# Shape of non-linear predictor effects and interactions with age
+
+The following figures show the fitted nonlinear effects and interactions with age in the final female and male models. Age was modeled using restricted cubic splines with knots at 25, 40, 57.5 and 75 years. Other continuous variables were modeled with three knots at default locations (10th, 50th and 90th percentile). These are the shapes resulting from the model fitted on imputation chain 1.
+
+## Interaction with binary predictors
+
+These plots show how the hazard ratio for each binary predictor varies over different ages.
+
+**`r next_figure_caption("Age interaction with binary predictors.")`**
+
+```{r nonlinear-binary, out.width='25%', fig.show='hold', fig.align='default'}
+knitr::include_graphics(normalizePath(paste0("figures/p5/model_assess_nonlinear",nonlinear_savename,var_binary,".png")), rel_path = FALSE)
+```
+
+## Interaction with polytomous predictors
+
+These plots show how the hazard ratio for each polytomous predictor varies over different ages.
+
+**`r next_figure_caption("Age interaction with polytomous predictors, female model.")`**
+
+```{r nonlinear-polytomous-female, out.width='33%', fig.show='hold', fig.align='default'}
+knitr::include_graphics(normalizePath(paste0("figures/p5/model_assess_nonlinear",nonlinear_savename,"2_",var_poly,".png")), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Age interaction with polytomous predictors, male model.")`**
+
+```{r nonlinear-polytomous-male, out.width='33%', fig.show='hold', fig.align='default'}
+knitr::include_graphics(normalizePath(paste0("figures/p5/model_assess_nonlinear",nonlinear_savename,"1_",var_poly,".png")), rel_path = FALSE)
+```
+
+## Interaction with continuous predictors
+
+These plots show how the hazard ratio for each continuous predictor varies over its displayed range at different ages.
+
+**`r next_figure_caption("Age interaction with continuous predictors, female model.")`**
+
+```{r nonlinear-continuous-female, out.width='33%', fig.show='hold', fig.align='default'}
+knitr::include_graphics(normalizePath(paste0("figures/p5/model_assess_nonlinear",nonlinear_savename,"2_",var_cont, ".png")), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Age interaction with continuous predictors, male model.")`**
+
+```{r nonlinear-continuous-male, out.width='33%', fig.show='hold', fig.align='default'}
+knitr::include_graphics(normalizePath(paste0("figures/p5/model_assess_nonlinear",nonlinear_savename,"1_",var_cont,".png")), rel_path = FALSE)
+```
+
+## Hazard ratio for age
+
+The hazard ratio for age is evaluated at the reference values of the categorical predictors and the specified values of the continuous predictors, relative to age 40 years.
+
+**`r next_figure_caption("Hazard ratio for age.")`**
+
+```{r nonlinear-age, out.width='100%', fig.show='hold', fig.align='default'}
+knitr::include_graphics(normalizePath(paste0("figures/p5/model_assess_nonlinear",nonlinear_savename,"age.png")), rel_path = FALSE)
+```
+
+# Internal validation (optimism-adjusted values)
+
+## ICI, E50, E90 and discrimination by subgroup
+
+The optimism-adjusted estimate is apparent performance minus mean paired optimism. The **Optimism (p2.5 - p97.5)** column shows percentiles of the optimism distribution, not a confidence interval for the optimism-adjusted estimate. N is displayed as a whole number; for ethnicity, the underlying N is the mean across imputations.
+
+```{r table-s1}
+make_table(internal_table("Female"),
+           next_table_caption("Internal validation performance, female model."))
+```
+
+```{r table-s2}
+make_table(internal_table("Male"),
+           next_table_caption("Internal validation performance, male model."))
+```
+
+## Calibration plots
+
+### Entire cohort: median curves and median observed versus expected
+
+**`r next_figure_caption("Internal-validation calibration, entire cohort (female and male models).")`**
+
+```{r fig-s1, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/internal_validation_calibration.png"), rel_path = FALSE)
+```
+
+### Within subgroups: median curves and median observed versus expected
+
+**`r next_figure_caption("Internal-validation calibration by ethnicity, female model.")`**
+
+```{r fig-s2, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/internal_validation_calibration_female_by_ethnicity.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Internal-validation calibration by ethnicity, male model.")`**
+
+```{r fig-s3, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/internal_validation_calibration_male_by_ethnicity.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Internal-validation calibration by age category, female model.")`**
+
+```{r fig-s4, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/internal_validation_calibration_female_by_age_cat.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Internal-validation calibration by age category, male model.")`**
+
+```{r fig-s5, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/internal_validation_calibration_male_by_age_cat.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Internal-validation calibration by region, female model.")`**
+
+```{r fig-s6, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/internal_validation_calibration_female_by_region.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Internal-validation calibration by region, male model.")`**
+
+```{r fig-s7, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/internal_validation_calibration_male_by_region.png"), rel_path = FALSE)
+```
+
+# Instability analysis
+
+## Variation of performance metrics across the bootstrap iterations (test performance)
+
+The following tables show the 2.5th, 50th and 97.5th percentiles of test performance across the bootstrap iterations. These percentiles describe variation in performance when models developed in bootstrap samples were evaluated in the corresponding original imputed datasets. They are not confidence intervals for the optimism-adjusted estimates.
+
+```{r test-performance-variance-female}
+female_variance_table <- variance_percentiles[
+  variance_percentiles$Gender == "Female",
+  c(
+    "Metric",
+    "2.5th percentile",
+    "50th percentile",
+    "97.5th percentile"
+  ),
+  drop = FALSE
+]
+
+make_table(
+  female_variance_table,
+  next_table_caption(
+    "Distribution of test performance across bootstrap iterations, female model."
+  )
+)
+```
+
+```{r test-performance-variance-male}
+male_variance_table <- variance_percentiles[
+  variance_percentiles$Gender == "Male",
+  c(
+    "Metric",
+    "2.5th percentile",
+    "50th percentile",
+    "97.5th percentile"
+  ),
+  drop = FALSE
+]
+
+make_table(
+  male_variance_table,
+  next_table_caption(
+    "Distribution of test performance across bootstrap iterations, male model."
+  )
+)
+```
+
+## Variation of calibration curves across the bootstrap iterations (test performance)
+
+These curves illustrate variation in calibration when models developed in bootstrap samples were evaluated in the corresponding original imputed datasets.
+
+**`r next_figure_caption("Bootstrapped test calibration curves, female and male models.")`**
+
+```{r fig-s8, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/bootstrap_test_calibration_curves.png"), rel_path = FALSE)
+```
+
+## Instability plots for individual risk
+
+These plot illustrate variance in risk on the individual level across the different bootstrapped models. All individual risks are based on synthetic data.
+
+**`r next_figure_caption("Individual-risk instability, female model.")`**
+
+```{r fig-s9, out.width='85%'}
+knitr::include_graphics(normalizePath("figures/p5/stability_plot_synthetic_2_10_m500.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Individual-risk instability, male model.")`**
+
+```{r fig-s10, out.width='85%'}
+knitr::include_graphics(normalizePath("figures/p5/stability_plot_synthetic_1_10_m500.png"), rel_path = FALSE)
+```
+
+# Temporal validation
+
+## Calibration of the initial risk-estimation component (baseline layer)
+
+### ICI, E50, E90 and discrimination
+
+Performance values are shown to three decimal places; follow-up years are whole numbers. These are not optimism-adjusted estimates.
+
+```{r table-s3}
+make_table(temporal_table("Female"),
+          next_table_caption("Temporal initial risk-estimation performance, female model."))
+```
+
+```{r table-s4}
+make_table(temporal_table("Male"),
+           next_table_caption("Temporal initial risk-estimation performance, male model."))
+```
+
+### Calibration plots
+
+Each image is a five-panel grid for follow-up index dates 1 to 5 years after baseline.
+
+**`r next_figure_caption("Temporal initial risk-estimation calibration, female model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_female_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal initial risk-estimation calibration, male model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_male_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal initial risk-estimation calibration, female model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_female_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal initial risk-estimation calibration, male model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_male_teval10.png"), rel_path = FALSE)
+```
+
+## Calibration of the interventional component
+
+### ICI, E50, E90 and discrimination
+
+The interventional results cover SBP, non-HDL cholesterol, BMI and smoking. Performance values are shown to three decimal places; follow-up years are whole numbers.
+
+```{r table-s5}
+make_table(temporal_table("Female", interventional = TRUE),
+           next_table_caption("Temporal interventional performance, female model."))
+```
+
+```{r table-s6}
+make_table(temporal_table("Male", interventional = TRUE),
+           next_table_caption("Temporal interventional performance, male model."))
+```
+
+### Calibration plots (5-year prediction interval)
+
+Each image is a five-panel grid for follow-up index dates 1 to 5 years after baseline.
+
+**`r next_figure_caption("Temporal interventional calibration for SBP, female model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_sbp_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for SBP, male model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_sbp_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for non-HDL cholesterol, female model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_nonhdl_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for non-HDL cholesterol, male model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_nonhdl_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for BMI, female model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_bmi_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for BMI, male model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_bmi_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for smoking, female model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_smoking_teval5.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for smoking, male model, 5-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_smoking_teval5.png"), rel_path = FALSE)
+```
+
+### Calibration plots (10-year prediction interval)
+
+Each image is a five-panel grid for follow-up index dates 1 to 5 years after baseline.
+
+**`r next_figure_caption("Temporal interventional calibration for SBP, female model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_sbp_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for SBP, male model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_sbp_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for non-HDL cholesterol, female model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_nonhdl_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for non-HDL cholesterol, male model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_nonhdl_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for BMI, female model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_bmi_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for BMI, male model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_bmi_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for smoking, female model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_female_smoking_teval10.png"), rel_path = FALSE)
+```
+
+**`r next_figure_caption("Temporal interventional calibration for smoking, male model, 10-year prediciton interval.")`**
+
+```{r, out.width='100%'}
+knitr::include_graphics(normalizePath("figures/p5/temporal_validation_calibration_interventional_male_smoking_teval10.png"), rel_path = FALSE)
+```

@@ -1,0 +1,218 @@
+"prodcodeid","dmdid","Term.from.EMIS","ProductName","Formulation","RouteOfAdministration","DrugSubstanceName","SubstanceStrength","BNFChapter","Release"
+"3092241000033113","317971007","Furosemide 20mg tablets","Furosemide 20mg tablets","Tablet","Oral","furosemide","20.000mg","2020200",NA
+"3092341000033115","317972000","Furosemide 40mg tablets","Furosemide 40mg tablets","Tablet","Oral","furosemide","40.000mg","2020200",NA
+"3092441000033114","317973005","Furosemide 500mg tablets","Furosemide 500mg tablets","Tablet","Oral","furosemide","500.000mg","2020200",NA
+"172441000033118","318021009","Bumetanide 1mg tablets","Bumetanide 1mg tablets","Tablet","Oral","bumetanide","1.000mg","2020200",NA
+"172541000033117","318022002","Bumetanide 5mg tablets","Bumetanide 5mg tablets","Tablet","Oral","bumetanide","5.000mg","2020200",NA
+"169041000033112","318023007","Bumetanide 1mg/5ml oral solution sugar free","Bumetanide 1mg/5ml oral solution sugar free","Oral solution","Oral","bumetanide","200.000microgram/1.000ml","2020200",NA
+"57141000033118","318052005","Amiloride 5mg tablets","Amiloride 5mg tablets","Tablet","Oral","amiloride hydrochloride","5.000mg","2020300",NA
+"1374241000033118","318056008","Spironolactone 25mg tablets","Spironolactone 25mg tablets","Tablet","Oral","spironolactone","25.000mg","2020300",NA
+"1374341000033111","318057004","Spironolactone 50mg tablets","Spironolactone 50mg tablets","Tablet","Oral","spironolactone","50.000mg","2020300",NA
+"1374141000033113","318058009","Spironolactone 100mg tablets","Spironolactone 100mg tablets","Tablet","Oral","spironolactone","100.000mg","2020300",NA
+"1455341000033115","318082004","Triamterene 50mg capsules","Triamterene 50mg capsules","Capsule","Oral","triamterene","50.000mg","2020300",NA
+"1903541000033116","318096005","Amiloride 2.5mg / Cyclopenthiazide 250microgram tablets","Amiloride 2.5mg / Cyclopenthiazide 250microgram tablets","Tablet","Oral","amiloride hydrochloride/ cyclopenthiazide","2.500mg + 250.000microgram","2020400",NA
+"1845641000033119","318097001","Amiloride 5mg / Bumetanide 1mg tablets","Amiloride 5mg / Bumetanide 1mg tablets","Tablet","Oral","amiloride hydrochloride/ bumetanide","5.000mg + 1.000mg","2020400",NA
+"3161941000033119","318098006","Triamterene 50mg / Benzthiazide 25mg capsules","Triamterene 50mg / Benzthiazide 25mg capsules","Capsule","Oral","benzthiazide/ triamterene","25.000mg + 50.000mg","",NA
+"3162341000033110","318100006","Triamterene 50mg / Chlortalidone 50mg tablets","Triamterene 50mg / Chlortalidone 50mg tablets","Tablet","Oral","chlortalidone/ triamterene","50.000mg + 50.000mg","2020400",NA
+"3092741000033119","318101005","Triamterene 50mg / Furosemide 40mg tablets","Triamterene 50mg / Furosemide 40mg tablets","Tablet","Oral","furosemide/ triamterene","40.000mg + 50.000mg","2020400",NA
+"3162541000033115","318102003","Spironolactone 50mg / Furosemide 20mg capsules","Spironolactone 50mg / Furosemide 20mg capsules","Capsule","Oral","furosemide/ spironolactone","20.000mg + 50.000mg","2020400",NA
+"376941000033117","318121006","Co-amilozide 2.5mg/25mg tablets","Co-amilozide 2.5mg/25mg tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","2.500mg + 25.000mg","2020400",NA
+"377041000033116","318127005","Co-flumactone 25mg/25mg tablets","Co-flumactone 25mg/25mg tablets","Tablet","Oral","hydroflumethiazide/ spironolactone","25.000mg + 25.000mg","2020400",NA
+"377141000033117","318128000","Co-flumactone 50mg/50mg tablets","Co-flumactone 50mg/50mg tablets","Tablet","Oral","hydroflumethiazide/ spironolactone","50.000mg + 50.000mg","2020400",NA
+"376841000033113","318135008","Co-amilofruse 2.5mg/20mg tablets","Co-amilofruse 2.5mg/20mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","2.500mg + 20.000mg","2020400",NA
+"376641000033112","318136009","Co-amilofruse 5mg/40mg tablets","Co-amilofruse 5mg/40mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","5.000mg + 40.000mg","2020400",NA
+"376741000033115","318137000","Co-amilofruse 10mg/80mg tablets","Co-amilofruse 10mg/80mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","10.000mg + 80.000mg","2020400",NA
+"741941000033113","318649003","Hydralazine 25mg tablets","Hydralazine 25mg tablets","Tablet","Oral","hydralazine hydrochloride","25.000mg","2050100",NA
+"742041000033119","318650003","Hydralazine 50mg tablets","Hydralazine 50mg tablets","Tablet","Oral","hydralazine hydrochloride","50.000mg","2050100",NA
+"920841000033118","318655008","Minoxidil 2.5mg tablets","Minoxidil 2.5mg tablets","Tablet","Oral","minoxidil","2.500mg","2050100",NA
+"920941000033114","318656009","Minoxidil 5mg tablets","Minoxidil 5mg tablets","Tablet","Oral","minoxidil","5.000mg","2050100",NA
+"920641000033119","318657000","Minoxidil 10mg tablets","Minoxidil 10mg tablets","Tablet","Oral","minoxidil","10.000mg","2050100",NA
+"285841000033118","318667005","Clonidine 100microgram tablets","Clonidine 100microgram tablets","Tablet","Oral","clonidine hydrochloride","100.000microgram","6040101",NA
+"287241000033110","318668000","Clonidine 300microgram tablets","Clonidine 300microgram tablets","Tablet","Oral","clonidine hydrochloride","300.000microgram","6040101",NA
+"897341000033110","318671008","Methyldopa 125mg tablets","Methyldopa 125mg tablets","Tablet","Oral","methyldopa anhydrous","125.000mg","2050200",NA
+"897441000033116","318672001","Methyldopa 250mg tablets","Methyldopa 250mg tablets","Tablet","Oral","methyldopa anhydrous","250.000mg","2050200",NA
+"897541000033115","318673006","Methyldopa 500mg tablets","Methyldopa 500mg tablets","Tablet","Oral","methyldopa anhydrous","500.000mg","2050200",NA
+"938541000033115","318707000","Moxonidine 200microgram tablets","Moxonidine 200microgram tablets","Tablet","Oral","moxonidine","200.000microgram","2050200",NA
+"938641000033119","318708005","Moxonidine 400microgram tablets","Moxonidine 400microgram tablets","Tablet","Oral","moxonidine","400.000microgram","2050200",NA
+"1131341000033118","318767003","Prazosin 500microgram tablets","Prazosin 500microgram tablets","Tablet","Oral","prazosin hydrochloride","500.000microgram","7040100",NA
+"1131441000033112","318768008","Prazosin 1mg tablets","Prazosin 1mg tablets","Tablet","Oral","prazosin hydrochloride","1.000mg","7040100",NA
+"1131541000033113","318769000","Prazosin 2mg tablets","Prazosin 2mg tablets","Tablet","Oral","prazosin hydrochloride","2.000mg","7040100",NA
+"1131641000033114","318770004","Prazosin 5mg tablets","Prazosin 5mg tablets","Tablet","Oral","prazosin hydrochloride","5.000mg","2050400",NA
+"1429141000033119","318776005","Terazosin 5mg tablets","Terazosin 5mg tablets","Tablet","Oral","terazosin hydrochloride","5.000mg","7040100",NA
+"1429041000033118","318777001","Terazosin 10mg tablets","Terazosin 10mg tablets","Tablet","Oral","terazosin hydrochloride","10.000mg","7040100",NA
+"1425341000033119","318779003","Terazosin 2mg tablets","Terazosin 2mg tablets","Tablet","Oral","terazosin hydrochloride","2.000mg","7040100",NA
+"480641000033111","318781001","Doxazosin 1mg tablets","Doxazosin 1mg tablets","Tablet","Oral","doxazosin mesilate","1.000mg","7040100",NA
+"480741000033119","318782008","Doxazosin 2mg tablets","Doxazosin 2mg tablets","Tablet","Oral","doxazosin mesilate","2.000mg","7040100",NA
+"480841000033112","318783003","Doxazosin 4mg tablets","Doxazosin 4mg tablets","Tablet","Oral","doxazosin mesilate","4.000mg","7040100",NA
+"285941000033114","322840006","Clonidine 25microgram tablets","Clonidine 25microgram tablets","Tablet","Oral","clonidine hydrochloride","25.000microgram","6040101",NA
+"73641000033115","330873002","Apraclonidine 5mg/ml eye drops","Apraclonidine 5mg/ml eye drops","Eye drops","Ocular","apraclonidine hydrochloride","5.000mg/1.000ml","11080200",NA
+"369141000033118","377566005","Co-amilozide 5mg/50mg tablets","Co-amilozide 5mg/50mg tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","5.000mg + 50.000mg","2020400",NA
+"3198841000033117","407011007","Eplerenone 25mg tablets","Eplerenone 25mg tablets","Tablet","Oral","eplerenone","25.000mg","2020300",NA
+"3198941000033113","407012000","Eplerenone 50mg tablets","Eplerenone 50mg tablets","Tablet","Oral","eplerenone","50.000mg","2020300",NA
+"2635641000033111","408604009","Moxonidine 300microgram tablets","Moxonidine 300microgram tablets","Tablet","Oral","moxonidine","300.000microgram","2050200",NA
+"370241000033111","410896007","Co-triamterzide 50mg/25mg tablets","Co-triamterzide 50mg/25mg tablets","Tablet","Oral","hydrochlorothiazide/ triamterene","25.000mg + 50.000mg","2020400",NA
+"12877141000033119","414426001","Hydralazine 10mg tablets","Hydralazine 10mg tablets","Tablet","Oral","hydralazine hydrochloride","10.000mg","",NA
+"12682141000033115","421069003","Doxazosin 8mg tablets","Doxazosin 8mg tablets","Tablet","Oral","doxazosin mesilate","8.000mg","",NA
+"6448341000033111","421143007","Minoxidil 5% foam","Minoxidil 5% foam","Foam","Cutaneous","minoxidil","50.000mg/1.000gram","13090000",NA
+"1374541000033116","3411000001104","Spirospare 100 tablets (Ashbourne Pharmaceuticals Ltd)","Spirospare 100 tablets","Tablet","Oral","spironolactone","100.000mg","2020300",NA
+"811841000033111","9611000001104","Lasix 20mg/2ml solution for injection ampoules (Sanofi)","Lasix 20mg/2ml solution for injection ampoules","Solution for injection","Intramuscular/ Intravenous","furosemide","10.000mg/1.000ml","2020200",NA
+"615041000033112","25411000001108","Frusene 50mg/40mg tablets (Orion Pharma (UK) Ltd)","Frusene 50mg/40mg tablets","Tablet","Oral","furosemide/ triamterene","40.000mg + 50.000mg","2020400",NA
+"172341000033112","33911000001104","Burinex A 5mg/1mg tablets (LEO Pharma)","Burinex A 5mg/1mg tablets","Tablet","Oral","amiloride hydrochloride/ bumetanide","5.000mg + 1.000mg","",NA
+"1080841000033119","41111000001102","Physiotens 200microgram tablets (Mylan)","Physiotens 200microgram tablets","Tablet","Oral","moxonidine","200.000microgram","2050200",NA
+"216841000033113","41811000001109","Cardura 2mg tablets (Upjohn UK Ltd)","Cardura 2mg tablets","Tablet","Oral","doxazosin mesilate","2.000mg","7040100",NA
+"41041000033111","73611000001108","Aldomet 500mg tablets (Aspen Pharma Trading Ltd)","Aldomet 500mg tablets","Tablet","Oral","methyldopa anhydrous","500.000mg","2050200",NA
+"935341000033118","74311000001101","Moducren tablets (Organon Pharma (UK) Ltd)","Moducren tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide/ timolol maleate","2.500mg + 25.000mg + 10.000mg","",NA
+"37941000033115","74711000001102","Alphavase 5 tablets (Ashbourne Pharmaceuticals Ltd)","Alphavase 5 tablets","Tablet","Oral","prazosin hydrochloride","5.000mg","",NA
+"816441000033118","79411000001107","Lasix 40mg tablets (Sanofi)","Lasix 40mg tablets","Tablet","Oral","furosemide","40.000mg","2020200",NA
+"615641000033118","82611000001106","Frumil Forte 10mg/80mg tablets (Sanofi)","Frumil Forte 10mg/80mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","10.000mg + 80.000mg","2020400",NA
+"615141000033111","99311000001108","Frusid 40mg tablets (Dr Reddy's Laboratories (UK) Ltd)","Frusid 40mg tablets","Tablet","Oral","furosemide","40.000mg","",NA
+"2274041000033118","123911000001106","Cardura XL 4mg tablets (Upjohn UK Ltd)","Cardura XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","7040100",NA
+"492341000033115","132811000001106","Dyazide 50mg/25mg tablets (Advanz Pharma)","Dyazide 50mg/25mg tablets","Tablet","Oral","hydrochlorothiazide/ triamterene","25.000mg + 50.000mg","2020400",NA
+"1080941000033110","142811000001107","Physiotens 400microgram tablets (Mylan)","Physiotens 400microgram tablets","Tablet","Oral","moxonidine","400.000microgram","2050200",NA
+"743741000033114","150911000001104","Hypovase 2mg tablets (Pfizer Ltd)","Hypovase 2mg tablets","Tablet","Oral","prazosin hydrochloride","2.000mg","2060401/ 7040100",NA
+"2760141000033114","179311000001107","Cascor 4mg tablets (Ranbaxy (UK) Ltd)","Cascor 4mg tablets","Tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"1470341000033112","191211000001106","Triam-Co 50mg/25mg tablets (IVAX Pharmaceuticals UK Ltd)","Triam-Co 50mg/25mg tablets","Tablet","Oral","hydrochlorothiazide/ triamterene","25.000mg + 50.000mg","2020400",NA
+"215341000033112","215111000001101","Catapres 100microgram tablets (Boehringer Ingelheim Ltd)","Catapres 100microgram tablets","Tablet","Oral","clonidine hydrochloride","100.000microgram","2050200",NA
+"2956041000033112","220711000001102","Amoride 5mg tablets (Dr Reddy's Laboratories (UK) Ltd)","Amoride 5mg tablets","Tablet","Oral","amiloride hydrochloride","5.000mg","",NA
+"793741000033117","237011000001100","Kalten capsules (M & A Pharmachem Ltd)","Kalten capsules","Capsule","Oral","amiloride hydrochloride/ atenolol/ hydrochlorothiazide","2.500mg + 50.000mg + 25.000mg","2040000",NA
+"40941000033118","253711000001107","Aldomet 250mg tablets (Aspen Pharma Trading Ltd)","Aldomet 250mg tablets","Tablet","Oral","methyldopa anhydrous","250.000mg","2050200",NA
+"935441000033112","314211000001100","Moduret 25 tablets (Organon Pharma (UK) Ltd)","Moduret 25 tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","2.500mg + 25.000mg","2020400",NA
+"743541000033118","321311000001100","Hypovase 500microgram tablets (Pfizer Ltd)","Hypovase 500microgram tablets","Tablet","Oral","prazosin hydrochloride","500.000microgram","2060401/ 7040100",NA
+"1611441000033117","331311000001103","Froop Co 5mg/40mg tablets (Ashbourne Pharmaceuticals Ltd)","Froop Co 5mg/40mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","5.000mg + 40.000mg","2020400",NA
+"464341000033111","344511000001105","Dixarit 25microgram tablets (Boehringer Ingelheim Ltd)","Dixarit 25microgram tablets","Tablet","Oral","clonidine hydrochloride","25.000microgram","4070402",NA
+"743641000033117","347411000001101","Hypovase 1mg tablets (Pfizer Ltd)","Hypovase 1mg tablets","Tablet","Oral","prazosin hydrochloride","1.000mg","2060401/ 7040100",NA
+"196241000033111","364911000001108","Catapres 150micrograms/1ml solution for injection ampoules (Boehringer Ingelheim Ltd)","Catapres 150micrograms/1ml solution for injection ampoules","Solution for injection","Intravenous","clonidine hydrochloride","150.000microgram/1.000ml","",NA
+"215441000033118","368711000001103","Catapres 300microgram tablets (Boehringer Ingelheim Ltd)","Catapres 300microgram tablets","Tablet","Oral","clonidine hydrochloride","300.000microgram","2050200",NA
+"40441000033111","421611000001100","Aldactone 100mg tablets (Pfizer Ltd)","Aldactone 100mg tablets","Tablet","Oral","spironolactone","100.000mg","2020300",NA
+"614641000033117","427411000001106","Frumil 40mg/5mg tablets (Sanofi)","Frumil 40mg/5mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","5.000mg + 40.000mg","2020400",NA
+"935541000033113","453811000001103","Moduretic 5mg/50mg tablets (Merck Sharp & Dohme (UK) Ltd)","Moduretic 5mg/50mg tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","5.000mg + 50.000mg","2020400",NA
+"2955841000033110","465111000001101","Synuretic 25 tablets (Dr Reddy's Laboratories (UK) Ltd)","Synuretic 25 tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","2.500mg + 25.000mg","",NA
+"1731641000033119","494811000001105","Frusol 40mg/5ml oral solution (Rosemont Pharmaceuticals Ltd)","Frusol 40mg/5ml oral solution","Oral solution","Gastroenteral/ Oral","furosemide","8.000mg/1.000ml","2020200",NA
+"172841000033115","521811000001107","Burinex 5mg tablets (LEO Pharma)","Burinex 5mg tablets","Tablet","Oral","bumetanide","5.000mg","",NA
+"2635741000033119","522011000001109","Physiotens 300microgram tablets (Mylan)","Physiotens 300microgram tablets","Tablet","Oral","moxonidine","300.000microgram","2050200",NA
+"956741000033114","535711000001100","Navispare 2.5mg/250microgram tablets (Advanz Pharma)","Navispare 2.5mg/250microgram tablets","Tablet","Oral","amiloride hydrochloride/ cyclopenthiazide","2.500mg + 250.000microgram","2020400",NA
+"614341000033113","550711000001106","Frumil LS 20mg/2.5mg tablets (Sanofi)","Frumil LS 20mg/2.5mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","2.500mg + 20.000mg","2020400",NA
+"37841000033111","570011000001106","Alphavase 2 tablets (Ashbourne Pharmaceuticals Ltd)","Alphavase 2 tablets","Tablet","Oral","prazosin hydrochloride","2.000mg","",NA
+"2955741000033117","601011000001103","Synuretic 50 tablets (Dr Reddy's Laboratories (UK) Ltd)","Synuretic 50 tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","5.000mg + 50.000mg","",NA
+"1731541000033115","602811000001100","Frusol 20mg/5ml oral solution (Rosemont Pharmaceuticals Ltd)","Frusol 20mg/5ml oral solution","Oral solution","Oral","furosemide","4.000mg/1.000ml","2020200",NA
+"60341000033110","636611000001107","Amil-Co 5mg/50mg tablets (IVAX Pharmaceuticals UK Ltd)","Amil-Co 5mg/50mg tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","5.000mg + 50.000mg","2020400",NA
+"74341000033114","657011000001101","Apresoline 25mg tablets (Advanz Pharma)","Apresoline 25mg tablets","Tablet","Oral","hydralazine hydrochloride","25.000mg","2050100",NA
+"818941000033112","678511000001106","Lasoride 5mg/40mg tablets (Sanofi)","Lasoride 5mg/40mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","5.000mg + 40.000mg","2020400",NA
+"812041000033114","701111000001105","Lasix 5mg/5ml oral solution (Borg Medicare)","Lasix 5mg/5ml oral solution","Oral solution","Oral","furosemide","1.000mg/1.000ml","",NA
+"816341000033112","701611000001102","Lasix 20mg tablets (Borg Medicare)","Lasix 20mg tablets","Tablet","Oral","furosemide","20.000mg","2020200",NA
+"57341000033115","712211000001108","Amilmaxco 5mg/50mg tablets (Ashbourne Pharmaceuticals Ltd)","Amilmaxco 5mg/50mg tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide","5.000mg + 50.000mg","",NA
+"615541000033119","714311000001107","Froop 40mg tablets (Ashbourne Pharmaceuticals Ltd)","Froop 40mg tablets","Tablet","Oral","furosemide","40.000mg","2020200",NA
+"491741000033113","714911000001108","Dytide capsules (Mercury Pharma Group Ltd)","Dytide capsules","Capsule","Oral","benzthiazide/ triamterene","25.000mg + 50.000mg","",NA
+"1468141000033118","721311000001104","Triamaxco 50mg/25mg tablets (Ashbourne Pharmaceuticals Ltd)","Triamaxco 50mg/25mg tablets","Tablet","Oral","hydrochlorothiazide/ triamterene","25.000mg + 50.000mg","2020400",NA
+"40241000033110","762511000001105","Aldactide 25 tablets (Pfizer Ltd)","Aldactide 25 tablets","Tablet","Oral","hydroflumethiazide/ spironolactone","25.000mg + 25.000mg","2020400",NA
+"2101641000033119","799711000001108","Amilamont 5mg/5ml oral solution sugar free (Rosemont Pharmaceuticals Ltd)","Amilamont 5mg/5ml oral solution sugar free","Oral solution","Oral","amiloride hydrochloride","1.000mg/1.000ml","2020300",NA
+"615241000033116","818511000001106","Fru-Co 5mg/40mg tablets (Teva UK Ltd)","Fru-Co 5mg/40mg tablets","Tablet","Oral","amiloride hydrochloride/ furosemide","5.000mg + 40.000mg","2020400",NA
+"816541000033117","829911000001102","Lasix 500mg tablets (Sanofi)","Lasix 500mg tablets","Tablet","Oral","furosemide","500.000mg","2020200",NA
+"172741000033113","846411000001100","Burinex 1mg tablets (LEO Pharma)","Burinex 1mg tablets","Tablet","Oral","bumetanide","1.000mg","",NA
+"1731741000033111","855611000001109","Frusol 50mg/5ml oral solution (Rosemont Pharmaceuticals Ltd)","Frusol 50mg/5ml oral solution","Oral solution","Oral","furosemide","10.000mg/1.000ml","2020200",NA
+"2274141000033119","873411000001109","Cardura XL 8mg tablets (Upjohn UK Ltd)","Cardura XL 8mg tablets","Modified-release tablet","Oral","doxazosin mesilate","8.000mg","7040100",NA
+"2760041000033110","904511000001107","Cascor 2mg tablets (Ranbaxy (UK) Ltd)","Cascor 2mg tablets","Tablet","Oral","doxazosin mesilate","2.000mg","",NA
+"216741000033115","907711000001109","Cardura 1mg tablets (Upjohn UK Ltd)","Cardura 1mg tablets","Tablet","Oral","doxazosin mesilate","1.000mg","7040100",NA
+"40641000033113","921811000001103","Aldactone 50mg tablets (Pfizer Ltd)","Aldactone 50mg tablets","Tablet","Oral","spironolactone","50.000mg","2020300",NA
+"40541000033112","930511000001105","Aldactone 25mg tablets (Pfizer Ltd)","Aldactone 25mg tablets","Tablet","Oral","spironolactone","25.000mg","2020300",NA
+"37741000033118","934411000001100","Alphavase 1 tablets (Ashbourne Pharmaceuticals Ltd)","Alphavase 1 tablets","Tablet","Oral","prazosin hydrochloride","1.000mg","",NA
+"3092641000033111","2898811000001106","Furosemide 80mg/8ml solution for injection Minijet pre-filled syringes (UCB Pharma Ltd)","Furosemide 80mg/8ml solution for injection Minijet pre-filled syringes","Solution for injection","Intramuscular/ Intravenous","furosemide","10.000mg/1.000ml","",NA
+"745741000033113","3147611000001100","Hytrin 2mg tablets (Advanz Pharma)","Hytrin 2mg tablets","Tablet","Oral","terazosin hydrochloride","2.000mg","7040100",NA
+"745641000033116","3150911000001107","Hytrin 10mg tablets (Advanz Pharma)","Hytrin 10mg tablets","Tablet","Oral","terazosin hydrochloride","10.000mg","7040100",NA
+"745841000033115","3154311000001103","Hytrin 5mg tablets (Advanz Pharma)","Hytrin 5mg tablets","Tablet","Oral","terazosin hydrochloride","5.000mg","7040100",NA
+"796541000033115","3252011000001105","Kalspare tablets (DHP Healthcare Ltd)","Kalspare tablets","Tablet","Oral","chlortalidone/ triamterene","50.000mg + 50.000mg","2020400",NA
+"172941000033111","3290211000001109","Burinex K modified-release tablets (LEO Pharma)","Burinex K modified-release tablets","Modified-release tablet","Oral","bumetanide/ potassium chloride","500.000microgram + 573.000mg","",NA
+"808841000033119","3645811000001107","Lasilactone 20mg/50mg capsules (Sanofi)","Lasilactone 20mg/50mg capsules","Capsule","Oral","furosemide/ spironolactone","20.000mg + 50.000mg","2020400",NA
+"850641000033114","3666411000001106","Loniten 5mg tablets (Pfizer Ltd)","Loniten 5mg tablets","Tablet","Oral","minoxidil","5.000mg","2050100",NA
+"850441000033112","3666711000001100","Loniten 10mg tablets (Pfizer Ltd)","Loniten 10mg tablets","Tablet","Oral","minoxidil","10.000mg","2050100",NA
+"850541000033113","3667011000001104","Loniten 2.5mg tablets (Pfizer Ltd)","Loniten 2.5mg tablets","Tablet","Oral","minoxidil","2.500mg","2050100",NA
+"816141000033114","3704811000001105","Lasikal modified-release tablets (Borg Medicare)","Lasikal modified-release tablets","Modified-release tablet","Oral","furosemide/ potassium chloride","20.000mg + 750.000mg","",NA
+"771841000033116","3799011000001100","Iopidine 5mg/ml eye drops (Novartis Pharmaceuticals UK Ltd)","Iopidine 5mg/ml eye drops","Eye drops","Ocular","apraclonidine hydrochloride","5.000mg/1.000ml","11080200",NA
+"491641000033116","3907911000001100","Dytac 50mg capsules (Advanz Pharma)","Dytac 50mg capsules","Capsule","Oral","triamterene","50.000mg","",NA
+"73441000033117","3925011000001100","Apresoline 20mg powder for solution for injection ampoules (Advanz Pharma)","Apresoline 20mg powder for solution for injection ampoules","Powder for solution for injection","Intravenous","hydralazine hydrochloride","20.000mg","2050100",NA
+"771741000033114","3956211000001103","Iopidine 1% eye drops 0.25ml unit dose (Novartis Pharmaceuticals UK Ltd)","Iopidine 1% eye drops 0.25ml unit dose","Eye drops","Ocular","apraclonidine hydrochloride","10.000mg/1.000ml","11080200",NA
+"73541000033116","3958011000001107","Apraclonidine 1% eye drops 0.25ml unit dose preservative free","Apraclonidine 1% eye drops 0.25ml unit dose preservative free","Eye drops","Ocular","apraclonidine hydrochloride","10.000mg/1.000ml","11080200",NA
+"470541000033117","4540011000001102","Diumide-K Continus tablets (Teofarma)","Diumide-K Continus tablets","Modified-release tablet","Oral","furosemide/ potassium chloride","40.000mg + 600.000mg","",NA
+"3161841000033110","4557711000001102","Furosemide 40mg / Potassium chloride 600mg (potassium 8mmol) modified-release tablets","Furosemide 40mg / Potassium chloride 600mg (potassium 8mmol) modified-release tablets","Modified-release tablet","Oral","furosemide/ potassium chloride","40.000mg + 600.000mg","",NA
+"40341000033117","4669111000001107","Aldactide 50 tablets (Pfizer Ltd)","Aldactide 50 tablets","Tablet","Oral","hydroflumethiazide/ spironolactone","50.000mg + 50.000mg","2020400",NA
+"2957941000033110","4857511000001108","Doxadura 1mg tablets (Dexcel-Pharma Ltd)","Doxadura 1mg tablets","Tablet","Oral","doxazosin mesilate","1.000mg","7040100",NA
+"2958041000033113","4857711000001103","Doxadura 2mg tablets (Dexcel-Pharma Ltd)","Doxadura 2mg tablets","Tablet","Oral","doxazosin mesilate","2.000mg","7040100",NA
+"2958141000033112","4858111000001103","Doxadura 4mg tablets (Dexcel-Pharma Ltd)","Doxadura 4mg tablets","Tablet","Oral","doxazosin mesilate","4.000mg","7040100",NA
+"12117941000033118","7657311000001101","Catapres TTS 2 patches (Imported (Germany))","Catapres TTS 2 patches","Transdermal patch","","clonidine","200.000microgram/24.000hour","",NA
+"5289041000033110","7660211000001104","Clonidine 200micrograms/24hours transdermal patches","Clonidine 200micrograms/24hours transdermal patches","Transdermal patch","Transdermal","clonidine","200.000microgram/24.000hour","",NA
+"5900141000033118","8398511000001100","Clonidine 50micrograms/5ml oral solution","Clonidine 50micrograms/5ml oral solution","Oral solution","Oral","clonidine hydrochloride","10.000microgram/1.000ml","",NA
+"5900241000033113","8398611000001101","Clonidine 50micrograms/5ml oral suspension","Clonidine 50micrograms/5ml oral suspension","Oral suspension","Oral","clonidine hydrochloride","10.000microgram/1.000ml","",NA
+"5710441000033117","8427011000001108","Co-amilofruse 5mg/40mg/5ml oral suspension","Co-amilofruse 5mg/40mg/5ml oral suspension","Oral suspension","Oral","amiloride hydrochloride/ furosemide","1.000mg/1.000ml + 8.000mg/1.000ml","",NA
+"3199041000033116","8477211000001104","Inspra 25mg tablets (Upjohn UK Ltd)","Inspra 25mg tablets","Tablet","Oral","eplerenone","25.000mg","2020300",NA
+"3199141000033117","8479811000001106","Inspra 50mg tablets (Upjohn UK Ltd)","Inspra 50mg tablets","Tablet","Oral","eplerenone","50.000mg","2020300",NA
+"4432941000033119","8483411000001101","Doxazosin 1mg/5ml oral suspension","Doxazosin 1mg/5ml oral suspension","Oral suspension","Oral","doxazosin mesilate","200.000microgram/1.000ml","",NA
+"5138341000033111","8483511000001102","Doxazosin 4mg/5ml oral suspension","Doxazosin 4mg/5ml oral suspension","Oral suspension","Oral","doxazosin mesilate","800.000microgram/1.000ml","",NA
+"4456241000033111","8528611000001105","Hydralazine 10mg/5ml oral suspension","Hydralazine 10mg/5ml oral suspension","Oral suspension","Oral","hydralazine hydrochloride","2.000mg/1.000ml","",NA
+"11072741000033116","8580911000001106","Hydralazine 25mg/5ml oral solution","Hydralazine 25mg/5ml oral solution","Oral solution","Oral","hydralazine hydrochloride","5.000mg/1.000ml","",NA
+"892341000033112","8667311000001100","Methyldopa 250mg/5ml oral suspension","Methyldopa 250mg/5ml oral suspension","Oral suspension","Oral","methyldopa anhydrous","50.000mg/1.000ml","",NA
+"1371141000033111","8726311000001103","Spironolactone 5mg/5ml oral suspension","Spironolactone 5mg/5ml oral suspension","Oral suspension","Oral","spironolactone","1.000mg/1.000ml","",NA
+"1371341000033114","8726411000001105","Spironolactone 50mg/5ml oral suspension","Spironolactone 50mg/5ml oral suspension","Oral suspension","Oral","spironolactone","10.000mg/1.000ml","",NA
+"1371041000033112","8726511000001109","Spironolactone 25mg/5ml oral suspension","Spironolactone 25mg/5ml oral suspension","Oral suspension","Oral","spironolactone","5.000mg/1.000ml","",NA
+"5975441000033113","8727011000001103","Spironolactone 15mg/5ml oral suspension","Spironolactone 15mg/5ml oral suspension","Oral suspension","Oral","spironolactone","3.000mg/1.000ml","",NA
+"1371241000033116","8727311000001100","Spironolactone 10mg/5ml oral suspension","Spironolactone 10mg/5ml oral suspension","Oral suspension","Oral","spironolactone","2.000mg/1.000ml","",NA
+"2011541000033114","8727611000001105","Spironolactone 100mg/5ml oral suspension","Spironolactone 100mg/5ml oral suspension","Oral suspension","Oral","spironolactone","20.000mg/1.000ml","",NA
+"351941000033111","8792311000001109","Co-amilozide 5mg/50mg/5ml oral solution","Co-amilozide 5mg/50mg/5ml oral solution","Oral solution","Oral","amiloride hydrochloride/ hydrochlorothiazide","1.000mg/1.000ml + 10.000mg/1.000ml","",NA
+"4026341000033113","9524011000001105","Regaine for Women Regular Strength 2% solution (McNeil Products Ltd)","Regaine for Women Regular Strength 2% solution","Liquid","Cutaneous","minoxidil","20.000mg/1.000ml","13090000",NA
+"4026741000033114","9524811000001104","Regaine for Men Regular Strength 2% solution (McNeil Products Ltd)","Regaine for Men Regular Strength 2% solution","Liquid","Cutaneous","minoxidil","20.000mg/1.000ml","",NA
+"4026941000033112","9525311000001107","Regaine for Men Extra Strength 5% scalp solution (Johnson & Johnson Ltd)","Regaine for Men Extra Strength 5% scalp solution","Liquid","Cutaneous","minoxidil","50.000mg/1.000ml","13090000",NA
+"12106941000033117","10448511000001104","Clonidine 100micrograms/24hours transdermal patches","Clonidine 100micrograms/24hours transdermal patches","Transdermal patch","Transdermal","clonidine","100.000microgram/24.000hour","",NA
+"12107141000033117","10448811000001101","Catapres TTS 1 patches (Imported (Germany))","Catapres TTS 1 patches","Transdermal patch","","clonidine","100.000microgram/24.000hour","",NA
+"12107041000033116","10449111000001101","Clonidine 300micrograms/24hours transdermal patches","Clonidine 300micrograms/24hours transdermal patches","Transdermal patch","Transdermal","clonidine","300.000microgram/24.000hour","",NA
+"12118541000033113","10449311000001104","Catapres TTS 3 patches (Imported (Germany))","Catapres TTS 3 patches","Transdermal patch","","clonidine","300.000microgram/24.000hour","",NA
+"12877241000033114","10637411000001100","Apo-Hydralazine 10mg tablets (Imported (United States))","Apo-Hydralazine 10mg tablets","Tablet","","hydralazine hydrochloride","10.000mg","",NA
+"4021141000033118","11098311000001104","Slocinx XL 4mg tablets (Zentiva)","Slocinx XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"4063741000033112","11269911000001101","Doxadura XL 4mg tablets (Dexcel-Pharma Ltd)","Doxadura XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"4125341000033111","11465411000001105","Regaine for Men 2% gel (McNeil Products Ltd)","Regaine for Men 2% gel","Gel","Cutaneous","minoxidil","20.000mg/1.000gram","",NA
+"4125241000033118","11472511000001105","Minoxidil 2% gel","Minoxidil 2% gel","Gel","Cutaneous","minoxidil","20.000mg/1.000gram","",NA
+"5403641000033117","11757711000001107","Colixil XL 4mg tablets (Sandoz Ltd)","Colixil XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"4288341000033111","11812211000001105","Oxandosin XL 4mg tablets (Ratiopharm UK Ltd)","Oxandosin XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"12569041000033115","11813011000001109","Clonidine 100micrograms/5ml oral suspension","Clonidine 100micrograms/5ml oral suspension","Oral suspension","Oral","clonidine hydrochloride","20.000microgram/1.000ml","",NA
+"11567441000033119","13078011000001104","Prazosin 500micrograms/5ml oral solution","Prazosin 500micrograms/5ml oral solution","Oral solution","Oral","prazosin hydrochloride","100.000microgram/1.000ml","",NA
+"5975541000033114","13353511000001101","Spironolactone 250mg/5ml oral solution","Spironolactone 250mg/5ml oral solution","Oral solution","Oral","spironolactone","25.000mg/1.000ml","",NA
+"5975641000033110","13353611000001102","Spironolactone 250mg/5ml oral suspension","Spironolactone 250mg/5ml oral suspension","Oral suspension","Oral","spironolactone","25.000mg/1.000ml","",NA
+"4575941000033115","13811611000001108","Doxzogen XL 4mg tablets (Mylan)","Doxzogen XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"3924941000033113","13893411000001108","Furosemide 5mg/5ml oral solution","Furosemide 5mg/5ml oral solution","Oral solution","Oral","furosemide","1.000mg/1.000ml","",NA
+"5993341000033112","13893511000001107","Furosemide 5mg/5ml oral suspension","Furosemide 5mg/5ml oral suspension","Oral suspension","Oral","furosemide","1.000mg/1.000ml","",NA
+"5999141000033111","13894611000001109","Spironolactone 100mg/5ml oral solution","Spironolactone 100mg/5ml oral solution","Oral solution","Oral","spironolactone","20.000mg/1.000ml","",NA
+"5999241000033116","13894711000001100","Spironolactone 10mg/5ml oral solution","Spironolactone 10mg/5ml oral solution","Oral solution","Oral","spironolactone","2.000mg/1.000ml","",NA
+"5890141000033112","13894811000001108","Spironolactone 25mg/5ml oral solution","Spironolactone 25mg/5ml oral solution","Oral solution","Oral","spironolactone","5.000mg/1.000ml","",NA
+"5890441000033116","13894911000001103","Spironolactone 50mg/5ml oral solution","Spironolactone 50mg/5ml oral solution","Oral solution","Oral","spironolactone","10.000mg/1.000ml","",NA
+"5999341000033114","13895011000001103","Spironolactone 5mg/5ml oral solution","Spironolactone 5mg/5ml oral solution","Oral solution","Oral","spironolactone","1.000mg/1.000ml","",NA
+"9278541000033112","16072811000001103","Spironolactone 3mg / Chlorothiazide 30mg capsules","Spironolactone 3mg / Chlorothiazide 30mg capsules","Capsule","Oral","chlorothiazide/ spironolactone","30.000mg + 3.000mg","",NA
+"5376441000033114","16458411000001107","Timolol 10mg / Amiloride 2.5mg / Hydrochlorothiazide 25mg tablets (Essential Generics Ltd)","Timolol 10mg / Amiloride 2.5mg / Hydrochlorothiazide 25mg tablets","Tablet","Oral","amiloride hydrochloride/ hydrochlorothiazide/ timolol maleate","2.500mg + 25.000mg + 10.000mg","",NA
+"5809641000033111","17338211000001104","Larbex XL 4mg tablets (Teva UK Ltd)","Larbex XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"6036141000033119","18164911000001108","Raporsin XL 4mg tablets (Accord Healthcare Ltd)","Raporsin XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"4936841000033112","18197411000001107","Cardozin XL 4mg tablets (Almus Pharmaceuticals Ltd)","Cardozin XL 4mg tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","",NA
+"7681541000033117","18520511000001107","Spironolactone 4mg / Chlorothiazide 40mg capsules","Spironolactone 4mg / Chlorothiazide 40mg capsules","Capsule","Oral","chlorothiazide/ spironolactone","40.000mg + 4.000mg","",NA
+"6448241000033118","18550611000001107","Regaine for Men Extra Strength 5% scalp foam (McNeil Products Ltd)","Regaine for Men Extra Strength 5% scalp foam","Foam","Cutaneous","minoxidil","50.000mg/1.000gram","13090000",NA
+"8870641000033119","23466611000001105","Doxazosin 4mg/5ml oral solution","Doxazosin 4mg/5ml oral solution","Oral solution","Oral","doxazosin mesilate","800.000microgram/1.000ml","",NA
+"9173941000033111","24509711000001103","Doxazosin 1mg/5ml oral solution","Doxazosin 1mg/5ml oral solution","Oral solution","Oral","doxazosin mesilate","200.000microgram/1.000ml","",NA
+"9808241000033110","27992311000001106","Diuresal 500mg tablets (Ennogen Pharma Ltd)","Diuresal 500mg tablets","Tablet","Oral","furosemide","500.000mg","",NA
+"10713941000033113","30798811000001102","Bumetanide 5mg/5ml oral suspension","Bumetanide 5mg/5ml oral suspension","Oral suspension","Oral","bumetanide","1.000mg/1.000ml","",NA
+"11803241000033110","32066411000001107","Regaine for Women Once a Day 5% scalp foam (McNeil Products Ltd)","Regaine for Women Once a Day 5% scalp foam","Foam","Cutaneous","minoxidil","50.000mg/1.000gram","",NA
+"11807841000033119","33628611000001102","Benph 5mg tablets (Mylan)","Benph 5mg tablets","Tablet","Oral","terazosin hydrochloride","5.000mg","",NA
+"11799841000033112","33630711000001107","Benph 2mg tablets (Mylan)","Benph 2mg tablets","Tablet","Oral","terazosin hydrochloride","2.000mg","",NA
+"3954441000033119","34193711000001108","Furosemide 250mg/25ml solution for injection ampoules","Furosemide 250mg/25ml solution for injection ampoules","Solution for injection","Intravenous/ Intramuscular","furosemide","10.000mg/1.000ml","",NA
+"734141000033114","34193811000001100","Hydralazine 20mg powder for solution for injection ampoules","Hydralazine 20mg powder for solution for injection ampoules","Powder for solution for injection","Intravenous","hydralazine hydrochloride","20.000mg","2050100",NA
+"53841000033117","35900111000001108","Amiloride 5mg/5ml oral solution sugar free","Amiloride 5mg/5ml oral solution sugar free","Oral solution","Oral","amiloride hydrochloride","1.000mg/1.000ml","2020300",NA
+"3858741000033112","35912911000001108","Bumetanide 2mg/4ml solution for injection ampoules","Bumetanide 2mg/4ml solution for injection ampoules","Solution for injection","Intravenous/ Intramuscular","bumetanide","500.000microgram/1.000ml","2020200",NA
+"1845741000033111","35913011000001100","Bumetanide 500microgram / Potassium chloride 573mg (potassium 7.7mmol) modified-release tablets","Bumetanide 500microgram / Potassium chloride 573mg (potassium 7.7mmol) modified-release tablets","Modified-release tablet","Oral","bumetanide/ potassium chloride","500.000microgram + 573.000mg","",NA
+"921941000033115","36036211000001103","Minoxidil 2% solution","Minoxidil 2% solution","Liquid","Cutaneous","minoxidil","20.000mg/1.000ml","13090000",NA
+"921841000033111","36036311000001106","Minoxidil 5% solution","Minoxidil 5% solution","Liquid","Cutaneous","minoxidil","50.000mg/1.000ml","13090000",NA
+"3162441000033116","36061311000001109","Furosemide 20mg / Potassium chloride 750mg (potassium 10mmol) modified-release tablets","Furosemide 20mg / Potassium chloride 750mg (potassium 10mmol) modified-release tablets","Modified-release tablet","Oral","furosemide/ potassium chloride","20.000mg + 750.000mg","",NA
+"3091841000033115","36061411000001102","Furosemide 20mg/2ml solution for injection ampoules","Furosemide 20mg/2ml solution for injection ampoules","Solution for injection","Intramuscular/ Intravenous","furosemide","10.000mg/1.000ml","2020200",NA
+"3091741000033113","36061511000001103","Furosemide 50mg/5ml solution for injection ampoules","Furosemide 50mg/5ml solution for injection ampoules","Solution for injection","Intramuscular/ Intravenous","furosemide","10.000mg/1.000ml","",NA
+"3092541000033110","36061611000001104","Furosemide 80mg/8ml solution for injection pre-filled syringes","Furosemide 80mg/8ml solution for injection pre-filled syringes","Solution for injection","Intravenous/ Intramuscular","furosemide","10.000mg/1.000ml","",NA
+"275641000033110","36089211000001103","Clonidine 150micrograms/1ml solution for injection ampoules","Clonidine 150micrograms/1ml solution for injection ampoules","Solution for injection","Intravenous","clonidine hydrochloride","150.000microgram/1.000ml","",NA
+"261841000033118","36089511000001100","Clonidine 250microgram modified-release capsules","Clonidine 250microgram modified-release capsules","Modified-release capsule","Oral","clonidine hydrochloride","250.000microgram","",NA
+"12684041000033114","36392711000001102","Clonidine 50micrograms/5ml oral solution sugar free","Clonidine 50micrograms/5ml oral solution sugar free","Oral solution","Oral","clonidine hydrochloride","10.000microgram/1.000ml","",NA
+"3092141000033118","36564411000001102","Furosemide 50mg/5ml oral solution sugar free","Furosemide 50mg/5ml oral solution sugar free","Oral solution","Oral","furosemide","10.000mg/1.000ml","2020200",NA
+"2273841000033111","39020411000001106","Doxazosin 4mg modified-release tablets","Doxazosin 4mg modified-release tablets","Modified-release tablet","Oral","doxazosin mesilate","4.000mg","7040100",NA
+"2273941000033115","39021111000001107","Doxazosin 8mg modified-release tablets","Doxazosin 8mg modified-release tablets","Modified-release tablet","Oral","doxazosin mesilate","8.000mg","7040100",NA
+"3092041000033117","39021211000001101","Furosemide 40mg/5ml oral solution sugar free","Furosemide 40mg/5ml oral solution sugar free","Oral solution","Gastroenteral/ Oral","furosemide","8.000mg/1.000ml","2020200",NA
+"3091941000033111","39108611000001107","Furosemide 20mg/5ml oral solution sugar free","Furosemide 20mg/5ml oral solution sugar free","Oral solution","Oral","furosemide","4.000mg/1.000ml","2020200",NA

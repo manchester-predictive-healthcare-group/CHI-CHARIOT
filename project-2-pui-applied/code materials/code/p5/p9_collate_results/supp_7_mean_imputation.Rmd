@@ -1,0 +1,846 @@
+---
+title: "Sensitivity analysis of age-stratified mean imputation"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  message = FALSE,
+  warning = FALSE,
+  fig.align = "center"
+)
+
+### Set working directory
+knitr::opts_knit$set(root.dir = "../../../")
+
+### Define presentation labels
+variable_labels <- c(
+  sbp = "Systolic blood pressure",
+  nonhdl = "Non-HDL cholesterol",
+  bmi = "Body mass index"
+)
+
+imputation_labels <- c(
+  "Multiple imputation",
+  "Age-stratified mean imputation"
+)
+
+### Format all reported performance metrics to three decimal places
+format_3dp <- function(x){
+  sprintf("%.3f", x)
+}
+
+### Load packages
+library(patchwork)
+```
+
+# Overview
+
+## Aims
+
+This report aims to assess the impact of using mean-imputation at model deployment, as opposed to collecting true values.
+
+## Methods
+
+To do this, we evaluate model performance when systolic blood pressure (SBP), non-HDL cholesterol (non-HDL) and body mass index (BMI) are imputed with gender-specific means calculated within five-year age bands (referred to as *age-stratified mean imputation* throughout), prior to assessing model performance. This is compared to performance when using multiple imputation, which is our closest estimate of potential true values. Model development always takes place using the multiply imputed data, and uses the same model developed in the main manuscript. What is changed in this analysis is the imputation procedure when estimating risk scores for model validation. We choose one of the stochastically imputed datasets from the multiple imputation procedure, and evalute performance solely within this dataset, due to variance in performance across the imputed datasets being minimal. The effect of using age-stratified mean imputation is evaluated for each variable (SBP, non-HDL and BMI) in isolation.
+
+The process is as follows:
+
+- Step 1: Take one dataset imputed using multiple imputation from the main manuscript, and the corresponding prediction model that was developed on it.
+- Step 2: Estimate counterfactual survival times.
+- Step 3: Evaluate performance using predictions based on the multiply imputed values
+- Step 4: For each of SBP, non-HDL and BMI, evaluate performance using predictions based on age-stratified means of either SBP, non-HDL or BMI. Means for all ages are calculated within rolling five year age bands. All values are replaced with the age-stratified means, to replicate the process of using mean imputation on all individuals at deployment.
+- Step 5: Repeat steps 3 and 4, within subgroups defined by the multiply imputed values of SBP, non-HDL and BMI. This is because mean imputation may on average result in well calibrated predictions, but a drop in performance among those with values further from the means.
+
+Note steps 1 - 3 align with the analysis from the main paper. In step 5, stratified analyses are undertaken in groups based on the values of SBP, non-HDL and BMI. The values defining the groups are those from the multiple imputation. Equal width ranges were preferred to equal sized quantile groups, which would have been predominantly in the healthy range. Values from female and male cohorts were pooled to create six equally spaced groups from min to max. However, for non-HDL cholesterol, a sparse upper tail produced very small groups, so values up to 6.33mmol/L were divided into five more closely spaced ranges, and all values above 6.33 mmol/L were combined into a single group. The ranges are therefore equal in width where specified, but they are not expected to contain equal numbers of individuals.
+
+Steps 1 - 5 were carried out separately for females and males. [Entire cohort validation](#nonstrat) reports performance in the entire population. [Stratified analysis](#strat) reports performance within six ranges defined using the original multiply imputed values. Within each range, performance using age-stratified mean imputation is compared with performance using multiple imputation. [mean-imputation values](#mean_imp_val) presents the age-stratified means for each variable.
+
+## Summary
+
+There is minimal impact on either calibration or discrimination in the entire cohort (see [Entire cohort validation](#nonstrat)). There is also minimal impact on discrimination, within subgroups defined by SBP, non-HDL and BMI values, see [stratified analysis](#strat). However, we do see a worsening of calibration when using mean imputation, among individuals with SBP, non-HDL or BMI values which are at the ends of the respective distributions for each of these variables. Generally, for people with higher values of the risk factors, mean imputation results in under-prediction of risk, and for those with lower values, mean imputation results in over-prediction of risk.
+
+# Entire cohort validation {#nonstrat}
+
+## Metrics 
+
+Model performance metrics using multiple imputation are compared with performance after age-stratified mean imputation, in the entire cohort.
+
+```{r non-stratified-results}
+### Read age-stratified mean-imputation results
+performance_non_stratified_mean <- readRDS(
+  "data/p5/sens_mean_imputation_table.rds"
+) |>
+  dplyr::mutate(
+    Gender = factor(
+      gender,
+      levels = c("female", "male"),
+      labels = c("Female", "Male")
+    ),
+    Variable = factor(
+      variable,
+      levels = c("sbp", "nonhdl", "bmi"),
+      labels = unname(variable_labels[c("sbp", "nonhdl", "bmi")])
+    )
+  ) |>
+  dplyr::select(
+    Gender,
+    Variable,
+    ICI,
+    E50,
+    E90,
+    discrimination
+  )
+
+### Read one main internal-validation metric across imputations
+### Read one main internal-validation metric from imputation stream 1
+read_main_metric <- function(gender, metric){
+
+  ### Read discrimination result
+  if (metric == "Discrimination"){
+
+    result <- readRDS(
+      paste0(
+        "data/p5/discrim_",
+        gender,
+        "_1.rds"
+      )
+    )
+
+    return(
+      unname(result$concordance)
+    )
+  }
+
+  ### Read calibration result
+  result <- readRDS(
+    paste0(
+      "data/p5/calib_ph_",
+      gender,
+      "_1.rds"
+    )
+  )
+
+  ### Return selected calibration metric
+  return(
+    as.numeric(result[[metric]])
+  )
+}
+
+### Summarise main internal-validation results using multiple imputation
+performance_main <- lapply(c(2, 1), function(gender){
+  data.frame(
+    Gender = c("Male", "Female")[gender],
+    ICI = read_main_metric(gender, "ICI"),
+    E50 = read_main_metric(gender, "E50"),
+    E90 = read_main_metric(gender, "E90"),
+    discrimination = read_main_metric(gender, "Discrimination")
+  )
+}) |>
+  dplyr::bind_rows()
+
+### Repeat main results for each variable being assessed
+performance_main <- tidyr::crossing(
+  performance_main,
+  Variable = factor(
+    unname(variable_labels[c("sbp", "nonhdl", "bmi")]),
+    levels = unname(variable_labels[c("sbp", "nonhdl", "bmi")])
+  )
+)
+
+### Combine both imputation approaches
+performance_non_stratified <- dplyr::bind_rows(
+  performance_main |>
+    dplyr::mutate(`Imputation approach` = "Multiple imputation"),
+  performance_non_stratified_mean |>
+    dplyr::mutate(`Imputation approach` = "Age-stratified mean imputation")
+) |>
+  dplyr::mutate(
+    Gender = factor(Gender, levels = c("Female", "Male")),
+    `Imputation approach` = factor(
+      `Imputation approach`,
+      levels = imputation_labels
+    )
+  ) |>
+  dplyr::arrange(Gender, Variable, `Imputation approach`)
+
+### Present comparison table
+performance_non_stratified |>
+  dplyr::transmute(
+    Gender,
+    Variable,
+    `Imputation approach`,
+    ICI = format_3dp(ICI),
+    E50 = format_3dp(E50),
+    E90 = format_3dp(E90),
+    Discrimination = format_3dp(discrimination)
+  ) |>
+  knitr::kable(
+    caption = "Performance in the entire validation population"
+  )
+```
+
+Lower ICI, E50 and E90 indicate better calibration. Higher discrimination indicates better separation of individuals with different event times. Differences are calculated as age-stratified mean imputation minus multiple imputation.
+
+- For **ICI, E50 and E90**, a positive difference indicates worsened calibration.
+- For **discrimination**, a negative difference indicates worsened discrimination.
+
+```{r non-stratified-difference-table}
+### Put both imputation approaches on the same row
+comparison_non_stratified <- performance_non_stratified |>
+  tidyr::pivot_wider(
+    names_from = `Imputation approach`,
+    values_from = c(ICI, E50, E90, discrimination),
+    names_sep = "__"
+  ) |>
+  dplyr::mutate(
+    difference_ICI = .data[["ICI__Age-stratified mean imputation"]] - .data[["ICI__Multiple imputation"]],
+    difference_E50 = .data[["E50__Age-stratified mean imputation"]] - .data[["E50__Multiple imputation"]],
+    difference_E90 = .data[["E90__Age-stratified mean imputation"]] - .data[["E90__Multiple imputation"]],
+    difference_discrimination = .data[["discrimination__Age-stratified mean imputation"]] - .data[["discrimination__Multiple imputation"]]
+  ) |>
+  dplyr::arrange(Gender, Variable)
+
+### Present difference table
+comparison_non_stratified |>
+  dplyr::transmute(
+    Gender,
+    Variable,
+    `Difference in ICI` = format_3dp(difference_ICI),
+    `Difference in E50` = format_3dp(difference_E50),
+    `Difference in E90` = format_3dp(difference_E90),
+    `Difference in discrimination` = format_3dp(difference_discrimination)
+  ) |>
+  knitr::kable(
+    caption = "Difference in performance using age-stratified mean imputation as opposed to multiple imputation, in the entire population"
+  )
+```
+
+## Calibration plots
+
+Calibration curves using multiple imputation are compared with performance after age-stratified mean imputation, in the entire cohort.
+
+```{r non-stratified-calibration-function, include=FALSE}
+### Create whole-population calibration plot with aligned marginal histogram
+create_non_stratified_calibration_plot <- function(gender_number, variable_name){
+  
+  ### Read calibration results using multiple imputation stream 1
+  calib_multiple <- readRDS(
+    paste0(
+      "data/p5/calib_ph_",
+      gender_number,
+      "_1.rds"
+    )
+  )
+  
+  ### Read calibration results using age-stratified mean imputation
+  calib_mean <- readRDS(
+    paste0(
+      "data/p5/sens_mean_imputation_calib_ph_",
+      gender_number,
+      "_",
+      variable_name,
+      ".rds"
+    )
+  )
+  
+  ### Combine ordered calibration-grid data
+  plot_data <- dplyr::bind_rows(
+    calib_multiple$calib_data_plot |>
+      dplyr::mutate(
+        imputation_approach = "Multiple imputation"
+      ),
+    calib_mean$calib_data_plot |>
+      dplyr::mutate(
+        imputation_approach = "Age-stratified mean imputation"
+      )
+  ) |>
+    dplyr::mutate(
+      imputation_approach = factor(
+        imputation_approach,
+        levels = imputation_labels
+      )
+    ) |>
+    dplyr::arrange(imputation_approach, pred)
+  
+  ### Use the full multiple-imputation risk distribution to set the plot limits
+  x_max <- as.numeric(stats::quantile(
+    calib_multiple$calib_data$pred,
+    probs = 0.99,
+    na.rm = TRUE,
+    names = FALSE
+  ))
+  stopifnot(is.finite(x_max), x_max > 0)
+  x_limits <- c(0, x_max)
+  
+  ### Sample multiply imputed predicted risks for the marginal histogram
+  histogram_data <- calib_multiple$calib_data |>
+    dplyr::select(pred)
+  histogram_data <- histogram_data |>
+    dplyr::slice_sample(n = min(100000L, nrow(histogram_data))) |>
+    dplyr::filter(is.finite(pred), pred >= 0, pred <= x_max)
+  
+  ### Create plot title
+  plot_title <- paste(
+    c("Male", "Female")[gender_number],
+    variable_labels[[variable_name]], sep = "; "
+  )
+  
+  ### Create marginal histogram
+  histogram_plot <- ggplot2::ggplot(
+    histogram_data,
+    ggplot2::aes(x = pred)
+  ) +
+    ggplot2::geom_histogram(
+      bins = 50,
+      fill = "grey65",
+      colour = "white",
+      linewidth = 0.15
+    ) +
+    ggplot2::coord_cartesian(xlim = x_limits, expand = FALSE) +
+    ggplot2::labs(
+      title = plot_title,
+      x = NULL,
+      y = NULL
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(
+        size = 16,
+        face = "bold"
+      ),
+      axis.text = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      panel.grid = ggplot2::element_blank(),
+      plot.margin = ggplot2::margin(5.5, 5.5, 0, 5.5)
+    )
+  
+  ### Create calibration plot
+  calibration_plot <- ggplot2::ggplot(
+    plot_data,
+    ggplot2::aes(
+      x = pred,
+      y = pred.obs,
+      colour = imputation_approach,
+      linetype = imputation_approach,
+      group = imputation_approach
+    )
+  ) +
+    ggplot2::geom_abline(
+      slope = 1,
+      intercept = 0,
+      lty = "dashed",
+      colour = "grey50"
+    ) +
+    ggplot2::geom_line(linewidth = 0.9) +
+    ggplot2::scale_colour_discrete(name = "Imputation:", breaks = imputation_labels, labels = c("Multiple", "Age-stratified mean")) +
+    ggplot2::scale_linetype_discrete(name = "Imputation:", breaks = imputation_labels, labels = c("Multiple", "Age-stratified mean")) + 
+    ggplot2::guides(color = ggplot2::guide_legend(nrow = 1),
+                    linetype = ggplot2::guide_legend(nrow = 1)) +
+    ggplot2::coord_cartesian(
+      xlim = x_limits,
+      ylim = x_limits,
+      expand = FALSE
+    ) +
+    ggplot2::labs(
+      x = "Predicted risk",
+      y = "Observed risk",
+      colour = "Imputation approach",
+      linetype = "Imputation approach"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "bottom",
+      plot.margin = ggplot2::margin(0, 5.5, 5.5, 5.5)
+    )
+  
+  ### Stack aligned plots at the same width and a 1:5 height ratio
+  patchwork::wrap_plots(
+    histogram_plot,
+    calibration_plot,
+    ncol = 1,
+    heights = c(1, 5),
+    guides = "auto"
+  ) &
+    ggplot2::theme(legend.position = "bottom")
+}
+```
+
+```{r non-stratified-calibration-grid, fig.width=12, fig.height=10}
+### Female plots first, then male plots; three variables per row
+non_stratified_plots <- lapply(c(2, 1), function(gender_number){
+  lapply(c("sbp", "nonhdl", "bmi"), function(variable_name){
+    create_non_stratified_calibration_plot(
+      gender_number = gender_number,
+      variable_name = variable_name
+    )
+  })
+}) |>
+  unlist(recursive = FALSE)
+
+patchwork::wrap_plots(
+  non_stratified_plots,
+  ncol = 3,
+  guides = "collect"
+) &
+  ggplot2::theme(legend.position = "bottom")
+```
+
+# Stratified analysis {#strat}
+
+```{r read-stratified-results, include=FALSE}
+### Read combined performance results
+performance <- readRDS(
+  "data/p5/sens_mean_imputation_stratified_table.rds"
+) |>
+  dplyr::mutate(
+    gender = factor(
+      gender,
+      levels = c("female", "male"),
+      labels = c("Female", "Male")
+    ),
+    variable_label = factor(
+      variable,
+      levels = c("sbp", "nonhdl", "bmi"),
+      labels = unname(variable_labels[c("sbp", "nonhdl", "bmi")])
+    ),
+    imputation_approach = factor(
+      prediction_type,
+      levels = c("Imputed values", "Age-stratified mean values"),
+      labels = imputation_labels
+    )
+  ) |>
+  dplyr::group_by(gender, variable) |>
+  dplyr::mutate(
+    group_number = match(as.character(group), unique(as.character(group)))
+  ) |>
+  dplyr::ungroup()
+
+### Read range definitions and number ranges within each saved file
+range_definitions <- lapply(c(2, 1), function(gender_number){
+  lapply(c("sbp", "nonhdl", "bmi"), function(variable_name){
+    readRDS(
+      paste0(
+        "data/p5/sens_mean_imputation_stratified_groups_",
+        gender_number,
+        "_",
+        variable_name,
+        ".rds"
+      )
+    ) |>
+      dplyr::arrange(lower) |>
+      dplyr::mutate(
+        gender_number = gender_number,
+        variable = variable_name,
+        group_number = dplyr::row_number()
+      )
+  })
+}) |>
+  unlist(recursive = FALSE) |>
+  dplyr::bind_rows() |>
+  dplyr::mutate(
+    gender = factor(
+      gender_number,
+      levels = c(2, 1),
+      labels = c("Female", "Male")
+    ),
+    range = dplyr::if_else(
+      is.infinite(upper),
+      paste0(">", format(round(lower, 2), nsmall = 2, trim = TRUE)),
+      paste0(
+        format(round(lower, 2), nsmall = 2, trim = TRUE),
+        " to ",
+        format(round(upper, 2), nsmall = 2, trim = TRUE)
+      )
+    )
+  ) |>
+  dplyr::select(
+    gender,
+    variable,
+    group_number,
+    lower,
+    upper,
+    range
+  )
+
+### Join by numeric range position rather than text labels
+performance <- performance |>
+  dplyr::left_join(
+    range_definitions,
+    by = c("gender", "variable", "group_number")
+  ) |>
+  dplyr::arrange(
+    gender,
+    variable_label,
+    lower,
+    imputation_approach
+  )
+
+### Stop if any range failed to match
+stopifnot(!anyNA(performance$range))
+```
+
+## Metrics
+
+Model performance metrics using multiple imputation are compared with performance after age-stratified mean imputation, in subgroups defined by ranges of SBP, non-HDL and BMI.
+
+```{r stratified-performance-table}
+performance |>
+  dplyr::transmute(
+    Gender = gender,
+    Variable = variable_label,
+    Range = range,
+    `Imputation approach` = imputation_approach,
+    N = N,
+    ICI = format_3dp(ICI),
+    E50 = format_3dp(E50),
+    E90 = format_3dp(E90),
+    Discrimination = format_3dp(discrimination)
+  ) |>
+  knitr::kable(
+    caption = "Calibration and discrimination within imputed-value ranges"
+  )
+```
+
+Lower ICI, E50 and E90 indicate better calibration. Higher discrimination indicates better separation of individuals with different event times. Differences are calculated as age-stratified mean imputation minus multiple imputation.
+
+- For **ICI, E50 and E90**, a positive difference indicates worsened calibration.
+- For **discrimination**, a negative difference indicates worsened discrimination.
+
+```{r difference-table}
+### Put both imputation approaches on the same row
+comparison <- performance |>
+  dplyr::select(
+    gender,
+    variable,
+    variable_label,
+    group_number,
+    lower,
+    range,
+    imputation_approach,
+    ICI,
+    E50,
+    E90,
+    discrimination
+  ) |>
+  tidyr::pivot_wider(
+    names_from = imputation_approach,
+    values_from = c(ICI, E50, E90, discrimination),
+    names_sep = "__"
+  ) |>
+  dplyr::mutate(
+    difference_ICI = .data[["ICI__Age-stratified mean imputation"]] - .data[["ICI__Multiple imputation"]],
+    difference_E50 = .data[["E50__Age-stratified mean imputation"]] - .data[["E50__Multiple imputation"]],
+    difference_E90 = .data[["E90__Age-stratified mean imputation"]] - .data[["E90__Multiple imputation"]],
+    difference_discrimination = .data[["discrimination__Age-stratified mean imputation"]] - .data[["discrimination__Multiple imputation"]]
+  ) |>
+  dplyr::arrange(gender, variable_label, lower)
+
+### Present differences
+comparison |>
+  dplyr::transmute(
+    Gender = gender,
+    Variable = variable_label,
+    Range = range,
+    `Difference in ICI` = format_3dp(difference_ICI),
+    `Difference in E50` = format_3dp(difference_E50),
+    `Difference in E90` = format_3dp(difference_E90),
+    `Difference in discrimination` = format_3dp(difference_discrimination)
+  ) |>
+  knitr::kable(
+    caption = "Change in performance after age-stratified mean imputation"
+  )
+```
+
+## Calibration plots
+
+Model performance metrics using multiple imputation are compared with performance after age-stratified mean imputation, in subgroups defined by ranges of SBP, non-HDL and BMI.
+
+```{r calibration-function, include=FALSE}
+### Create a six-panel calibration grid with aligned marginal histograms
+create_calibration_plot <- function(gender_number, variable_name){
+  
+  ### Read calibration results for both imputation approaches
+  calib_multiple <- readRDS(
+    paste0(
+      "data/p5/sens_mean_imputation_stratified_calib_ph_imputed_",
+      gender_number,
+      "_",
+      variable_name,
+      ".rds"
+    )
+  )
+  
+  calib_mean <- readRDS(
+    paste0(
+      "data/p5/sens_mean_imputation_stratified_calib_ph_mean_",
+      gender_number,
+      "_",
+      variable_name,
+      ".rds"
+    )
+  )
+  
+  ### Get ordered range labels
+  plot_ranges <- range_definitions |>
+    dplyr::filter(
+      gender == c("Male", "Female")[gender_number],
+      variable == variable_name
+    ) |>
+    dplyr::arrange(group_number) |>
+    dplyr::select(group_number, range)
+  
+  ### Create one histogram-calibration pair for each range
+  panel_plots <- lapply(seq_along(calib_multiple), function(x){
+    
+    ### Combine ordered calibration-grid data
+    panel_calibration_data <- dplyr::bind_rows(
+      calib_multiple[[x]]$calib_data_plot |>
+        dplyr::mutate(
+          imputation_approach = "Multiple imputation"
+        ),
+      calib_mean[[x]]$calib_data_plot |>
+        dplyr::mutate(
+          imputation_approach = "Age-stratified mean imputation"
+        )
+    ) |>
+      dplyr::mutate(
+        imputation_approach = factor(
+          imputation_approach,
+          levels = imputation_labels
+        )
+      ) |>
+      dplyr::arrange(imputation_approach, pred)
+    
+    ### Use the full subgroup multiple-imputation distribution for limits
+    x_max <- as.numeric(stats::quantile(
+      calib_multiple[[x]]$calib_data$pred,
+      probs = 0.99,
+      na.rm = TRUE,
+      names = FALSE
+    ))
+    stopifnot(is.finite(x_max), x_max > 0)
+    x_limits <- c(0, x_max)
+    
+    ### Sample multiply imputed predicted risks for this histogram
+    histogram_data <- calib_multiple[[x]]$calib_data |>
+      dplyr::select(pred)
+    histogram_data <- histogram_data |>
+      dplyr::slice_sample(n = min(100000L, nrow(histogram_data))) |>
+      dplyr::filter(is.finite(pred), pred >= 0, pred <= x_max)
+    
+    ### Extract range title
+    range_title <- plot_ranges$range[
+      plot_ranges$group_number == x
+    ]
+    
+    ### Create marginal histogram
+    histogram_plot <- ggplot2::ggplot(
+      histogram_data,
+      ggplot2::aes(x = pred)
+    ) +
+      ggplot2::geom_histogram(
+        bins = 40,
+        fill = "grey65",
+        colour = "white",
+        linewidth = 0.15
+      ) +
+      ggplot2::coord_cartesian(xlim = x_limits, expand = FALSE) +
+      ggplot2::labs(
+        title = paste0("Range: ", range_title),
+        x = NULL,
+        y = NULL
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        plot.title = ggplot2::element_text(
+          size = 13,
+          face = "bold",
+          hjust = 0.5
+        ),
+        axis.text = ggplot2::element_blank(),
+        axis.ticks = ggplot2::element_blank(),
+        panel.grid = ggplot2::element_blank(),
+        plot.margin = ggplot2::margin(5.5, 5.5, 0, 5.5)
+      )
+    
+    ### Create calibration plot
+    calibration_plot <- ggplot2::ggplot(
+      panel_calibration_data,
+      ggplot2::aes(
+        x = pred,
+        y = pred.obs,
+        colour = imputation_approach,
+        linetype = imputation_approach,
+        group = imputation_approach
+      )
+    ) +
+      ggplot2::geom_abline(
+        slope = 1,
+        intercept = 0,
+        lty = "dashed",
+        colour = "grey50"
+      ) +
+      ggplot2::geom_line(linewidth = 0.9) +
+      ggplot2::scale_colour_discrete(name = "Imputation:", breaks = imputation_labels, labels = c("Multiple", "Age-stratified mean")) +
+      ggplot2::scale_linetype_discrete(name = "Imputation:", breaks = imputation_labels, labels = c("Multiple", "Age-stratified mean")) + 
+      ggplot2::guides(color = ggplot2::guide_legend(nrow = 1),
+                      linetype = ggplot2::guide_legend(nrow = 1)) +
+      ggplot2::coord_cartesian(
+        xlim = x_limits,
+        ylim = x_limits,
+        expand = FALSE
+      ) +
+      ggplot2::labs(
+        x = "Predicted risk",
+        y = "Observed risk",
+        colour = "Imputation approach",
+        linetype = "Imputation approach"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        legend.position = "bottom",
+        plot.margin = ggplot2::margin(0, 5.5, 5.5, 5.5)
+      )
+    
+    ### Stack at equal width with histogram one-fifth of calibration height
+    patchwork::wrap_plots(
+      histogram_plot,
+      calibration_plot,
+      ncol = 1,
+      heights = c(1, 5),
+      guides = "auto"
+    ) &
+      ggplot2::theme(legend.position = "bottom")
+  })
+  
+  ### Arrange six aligned pairs in a three-column grid
+  patchwork::wrap_plots(
+    panel_plots,
+    ncol = 3,
+    guides = "collect"
+  ) &
+    ggplot2::theme(legend.position = "bottom")
+}
+```
+
+### Female
+
+**Systolic blood pressure:**
+
+```{r female-sbp-calibration, fig.width=12, fig.height=10}
+create_calibration_plot(gender_number = 2, variable_name = "sbp")
+```
+
+**Non-HDL cholesterol:**
+
+```{r female-nonhdl-calibration, fig.width=12, fig.height=10}
+create_calibration_plot(gender_number = 2, variable_name = "nonhdl")
+```
+
+**Body mass index:**
+
+```{r female-bmi-calibration, fig.width=12, fig.height=10}
+create_calibration_plot(gender_number = 2, variable_name = "bmi")
+```
+
+### Male
+
+**Systolic blood pressure:**
+
+```{r male-sbp-calibration, fig.width=12, fig.height=10}
+create_calibration_plot(gender_number = 1, variable_name = "sbp")
+```
+
+**Non-HDL cholesterol:**
+
+```{r male-nonhdl-calibration, fig.width=12, fig.height=10}
+
+create_calibration_plot(gender_number = 1, variable_name = "nonhdl")
+```
+
+**Body mass index:**
+
+```{r male-bmi-calibration, fig.width=12, fig.height=10}
+create_calibration_plot(gender_number = 1, variable_name = "bmi")
+```
+
+# Age-stratified mean-imputation values {#mean_imp_val}
+
+The following tables report the sex-specific values used to replace SBP, non-HDL cholesterol and BMI within rolling five-year age bands, used when doing the age-stratified mean imputation.
+
+```{r read-age-stratified-means, include=FALSE}
+### Read age-stratified means for each sex and variable
+age_stratified_means <- lapply(c(2, 1), function(gender_number){
+  lapply(c("sbp", "nonhdl", "bmi"), function(variable_name){
+    readRDS(
+      paste0(
+        "data/p5/sens_mean_imputation_values_",
+        gender_number,
+        "_",
+        variable_name,
+        ".rds"
+      )
+    ) |>
+      dplyr::mutate(
+        Gender = c("Male", "Female")[gender_number],
+        Variable = variable_labels[[variable_name]]
+      )
+  })
+}) |>
+  unlist(recursive = FALSE) |>
+  dplyr::bind_rows() |>
+  dplyr::mutate(
+    Gender = factor(
+      Gender,
+      levels = c("Female", "Male")
+    ),
+    Variable = factor(
+      Variable,
+      levels = unname(variable_labels[c("sbp", "nonhdl", "bmi")])
+    )
+  ) |>
+  dplyr::arrange(Gender, Variable, age_band_lower)
+```
+
+## Female
+
+```{r female-age-stratified-means}
+age_stratified_means |>
+  dplyr::filter(Gender == "Female") |>
+  dplyr::transmute(
+    Gender,
+    Variable,
+    `Age band` = age_band,
+    `Mean-imputation value` = format_3dp(mean_value),
+    N
+  ) |>
+  knitr::kable(
+    caption = "Age-stratified mean-imputation values for females"
+  )
+```
+
+## Male
+
+```{r male-age-stratified-means}
+age_stratified_means |>
+  dplyr::filter(Gender == "Male") |>
+  dplyr::transmute(
+    Gender,
+    Variable,
+    `Age band` = age_band,
+    `Mean-imputation value` = format_3dp(mean_value),
+    N
+  ) |>
+  knitr::kable(
+    caption = "Age-stratified mean-imputation values for males"
+  )
+```
+

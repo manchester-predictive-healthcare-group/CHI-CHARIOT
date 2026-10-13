@@ -1,0 +1,78 @@
+---
+title: "Baseline Table 1 at start of follow up"
+author: "Alex Pate"
+date: "04/01/2024"
+output: html_document
+---
+
+```{r, echo = FALSE}
+### Clear workspace
+rm(list=ls())
+# Sys.time()
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+# sapply(R.func.sources, source)
+
+### Read in cohort
+cohort <- readRDS("../../../data/p5/cohort_prototype3.rds")
+
+### Turn dichotomous factor variables into 0/1 numeric
+for (var in colnames(cohort)){
+  if (is.factor(cohort[,var])){
+    if (length(levels(cohort[,var])) == 2){
+      cohort[,var] <- as.numeric(cohort[,var]) - 1
+    }
+  }
+}
+
+###
+### Create table 1
+###
+cohort.table1 <- dplyr::select(cohort, -c(patid, pracid
+                                          ,cvd_time, cvd_indicator
+                                          ,cvd_time_prim, cvd_indicator_prim
+                                          ,cvd_time_hes, cvd_indicator_hes
+                                          ,cvd_time_death, cvd_indicator_death
+                                          ,bmi_alltime, sbp_alltime, sbp_var_alltime, cholhdl_ratio_alltime
+                                          , fup_start, fup_end
+                                          ,sbp_var, cholesterol, hdl, ldl
+                                          
+)) |>
+  dplyr::mutate(
+    postnatal_depression = dplyr::if_else(gender == 1, NA_real_, postnatal_depression),
+    pre_eclampsia = dplyr::if_else(gender == 1, NA_real_, pre_eclampsia),
+    impotence = dplyr::if_else(gender == 2, NA_real_, impotence)
+  ) |>
+  dplyr::filter(gender %in% c(1,2)) |>
+  dplyr::mutate(gender = factor(gender, levels = c(2,1), labels = c("Female", "Male")),
+                smoking = forcats::fct_na_value_to_level(smoking, level = "Missing"),
+                ethnicity = forcats::fct_na_value_to_level(ethnicity, level = "Missing")) |>
+  gtsummary::tbl_summary(by = gender,
+                         type = gtsummary::all_continuous() ~  "continuous2",
+                         missing = "no",
+                         statistic = gtsummary::all_continuous() ~ c("{median} ({p5}, {p25}, {p75}, {p95})",
+                                                                     "{N_miss} ({p_miss}%)")) |>
+  gtsummary::modify_table_body(
+    dplyr::mutate,
+    label = ifelse(label == "N missing (% missing)",
+                   "Missing",
+                   label)) |>
+  gtsummary::modify_caption("Baseline characteristics of individuals at the start of their follow up")
+
+
+### Print table to html file
+cohort.table1
+```
+
+Histogram of ages
+
+```{r hist_age}
+hist(cohort$age)
+```
+
+Number of GP practices.
+
+```{r num_gp}
+length(unique(cohort$pracid))
+```
