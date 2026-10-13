@@ -109,15 +109,6 @@ get_change_status_times <- function(data, id, burnout = 180){
 ### Writing a function that can be utilised with dplyr::group_modify and dplyr::group_map
 get_cut_surv_times <- function(data, id, mst){
   
-  
-  #   data <- subset(cohort[,c("patid", "cvd_time", "cvd_indicator")], patid == id)
-  #   mst <- med_status_times
-  
-
-#   data = subset(cohort, patid == id)
-#   .f = get_cut_surv_times, 
-#   mst = med_status_times
-  
   ### Reduce mst to just patient of interest
   mstpat <- mst[!is.na(fastmatch::fmatch(mst$patid, id)), c("times_adj", "med_status")]
   

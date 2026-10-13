@@ -52,10 +52,7 @@ cvd_split_times_ah <- dplyr::mutate(cvd_split_times_ah, treatment = "ah") |>
 ### Function written to be applied in conjunction with dplyr::group_modify
 ###
 get_cut_surv_times <- function(data, id){
-    
-    
-  
-  #   data <- subset(temp, patid == id)
+
   ### Break the input data dependent on whether its statins or ah
   pat_statins <- subset(data, treatment == "statins")
   pat_ah <- subset(data, treatment == "ah")

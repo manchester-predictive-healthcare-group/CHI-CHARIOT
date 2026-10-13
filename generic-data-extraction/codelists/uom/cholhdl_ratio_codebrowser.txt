@@ -1,0 +1,6 @@
+MedCodeId	Observations	OriginalReadCode	CleansedReadCode	Term	SnomedCTConceptId	SnomedCTDescriptionId	EmisCodeCategoryId
+458249011	40000000	44lF	44lF.00	Serum cholesterol/high density lipoprotein ratio	1015681000000109	2574851000000110	34
+259250015	20000000	44PF	44PF.00	Total cholesterol:HDL (high density lipoprotein) ratio	1028551000000102	2602701000000112	34
+458252015	1000000	44lG	44lG.00	Plasma cholesterol/HDL (high density lipoprotein) ratio	1015691000000106	2557701000000111	34
+457911015	400000	44l2	44l2.00	Cholesterol/HDL ratio	313811003	457911015	34
+6036221000006115	1000	^ESCTCH603622		Cholesterol/HDL ratio measurement	313811003	457910019	34
