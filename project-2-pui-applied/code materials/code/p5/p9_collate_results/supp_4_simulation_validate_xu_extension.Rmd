@@ -1,0 +1,736 @@
+---
+title: "Simulation validation of counterfactual survival-time estimation"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+bibliography: refs.bib
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    code_folding: hide
+    self_contained: true
+---
+
+# Introduction
+
+This document describes a small simulation to assesses whether the process of estimating counterfactual survival times in the presence of multiple treatments and treatment switching (see supplementary data file 1), recovers unbiased calibration and discrimination metrics when evaluating the performance of a model predicting risk under the strategy of 'do nothing' for 10-year (aligned with the initial risk estimation component). The process for doing so is an extension of the work of Xu et al.,[@RN1345] and therefore requires some empirical testing.
+
+This document is produced by a .Rmd file, which can be viewed to see the exact inputs for reproducibility of the simulation where necessary.
+
+# Methods
+
+**Overview**
+
+  - Observed survival times are simulated with time-varying statin, antihypertensive and smoking histories, to align with the applied analysis. 
+  - Counterfactual survival times and model performance are estimated in the same manner as in the applied analysis. 
+  - Latent oracle survival times are also simulated, where individuals do not deviate from treatment status at baseline (i.e. the treatment strategy we want to predict under, but do not observe in the real data), and performance is estimated with respect to these outcomes. We estimate bias as the difference of model performance between this, and performance estimated from the counterfactual survival times.
+  - We simulate data for two discrimination scenarios (target 0.6 and 0.8), and three calibration scenarios (model over predicts, under predicts, perfectly calibrated).
+  - For the estimation of counterfactual survival times, and estimation of model performance, we using the exact same R functions that were used the applied analysis. 
+  - A prediction horizon of 10 years is used.
+
+**Baseline data generation**
+
+  - Two cohorts are generated, one for the low-discrimination scenario (targeting C-index of 0.6) and one for the high-discrimination scenario (targeting C-index of 0.8). The cohort size is 1,000,000. With this large sample size, we can evaluate bias with one single simulation iteration, rather than taking a Monte Carlo approach.
+  - Three independent continuous predictors, `X1`, `X2` and `X3`, are generated from standard normal distributions.
+  - Baseline statin and antihypertensive statuses are generated as binary variables using logistic models that depend on the predictors.
+  - Baseline smoking is generated as a categorical variable with probabilities 0.55, 0.25 and 0.20 for non-smoker, ex-smoker and current smoker, respectively. Smoking is converted to the same two-dummy representation used in the applied analysis.
+
+**Control of model discrimination and marginal risk**
+
+  - The relative coefficients for `X1`, `X2` and `X3` are fixed initially.
+  - A separate coefficient multiplier is found numerically for each discrimination scenario so that the C-index after administrative censoring at 10 years is approximately 0.60 or 0.80.
+  - A Weibull baseline cumulative hazard with shape 1.25 is used.
+  - A separate baseline-hazard scale is found numerically for each discrimination scenario so that the mean true 10-year risk under sustained baseline intervention status is approximately 0.10 in both scenarios.
+
+**Longitudinal intervention histories**
+
+  - Follow-up is divided into intervals of 0.25 years.
+  - In each interval, individuals may start, stop or restart statins and antihypertensives at each interval. Transition probabilities depend on current treatment status and baseline predictors.
+  - Smoking may change from non-smoking to current smoking, from ex-smoking to current smoking, or from current smoking to ex-smoking.
+  - The resulting start-stop dataset is stored as `cohort_split_times`, using the same variable names and coding as the applied analysis.
+
+**Outcome generation**
+
+  - One latent exponential event threshold is generated for each individual.
+  - The observed cumulative hazard is accumulated across intervals under the individual’s simulated time-varying intervention history. The log hazard ratios for statin use, antihypertensive use and changes to smoking status, are the same as those used in the applied analysis.
+  - The observed event time is the time at which cumulative hazard under the time-varying history crosses the latent threshold.
+  - The latent oracle event time under sustained baseline intervention status is generated using the same latent threshold but with all intervention deviations from baseline set to zero.
+  - Completely random censoring times are generated from an exponential distribution with a constant rate. Observed follow-up is the minimum of observed event time, censoring time and 10 years.
+
+**Models and counterfactual outcome reconstruction**
+
+  - A start-stop Cox model is fitted to the observed outcomes in the longitudinal data.
+  - `X1`, `X2` and `X3` are fitted as prognostic predictors.
+  - The known statin, antihypertensive and smoking effects are included as time-varying offsets.
+  - The fitted centred baseline cumulative hazard is obtained using `survival::basehaz()`.
+  - Counterfactual survival times under the treatment strategy of sustaining baseline status are then estimated.
+  - This all matches the development of the initial risk estimation component in the applied analysis.
+
+**Prediction scenarios**
+
+  - The perfectly calibrated model uses the true 10-year risk, estimated from the data simulator.
+  - The under-predicting model multiplies the true cumulative hazard by 0.70 before converting to a risk.
+  - The over-predicting model multiplies the true cumulative hazard by 1.30 before converting to a risk.
+  - Each calibration scenario is evaluated in both the low- and high-discrimination cohorts, giving six scenarios.
+
+**Methods for comparison**
+
+  - Calibration and discrimination are estimated based on three different outcomes.
+  - 1) Latent counterfactual truth survival times: Latent oracle event times under sustained baseline status.
+  - 2) Estimated counterfactual survival times: Counterfactual times reconstructed from the observed outcomes, as is done in the main manuscript.
+  - 3) Observed outcomes under time-varying histories: Observed event and censoring times without counterfactual adjustment. These outcomes arise under intervention histories that depart from sustained baseline status, and therefore this should be biased.
+  - The first represents a ground truth, to which the latter two are compared. The primary comparison is the difference between model performance when validated using Latent counterfactual truth survival times, and Estimated counterfactual survival times.
+  
+**Performance metrics**
+
+  - Calibration curve using the approach of Austin et al.[@RN1143]
+  - ICI is the mean absolute difference between estimated observed risk and predicted risk across individuals.
+  - E50 is the median absolute difference between estimated observed risk and predicted risk.
+  - E90 is the 90th percentile of the absolute differences.
+  - C-statistic is Harrell’s concordance statistic.
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.align = "center")
+knitr::opts_knit$set(root.dir = "../../../")
+options(digits = 3)
+```
+
+```{r simulation, include=FALSE}
+### Standalone simulation validating the CHARIOT extension of Xu et al.
+### This version generates data in the same structure as the applied analysis and
+### uses externally sourced production functions for reconstruction and calibration.
+
+### Clear workspace
+rm(list = ls())
+invisible(Sys.time())
+
+### Source the production functions, including:
+### - create_smoking_dummies()
+### - get_bhaz()
+### - get_time_from_hazard()
+### - estimate_cf_surv_times()
+### - est_calib_ph()
+### - est_surv()
+R.func.sources <- list.files("R", full.names = TRUE)
+invisible(lapply(R.func.sources, source))
+
+### Read optional command-line arguments
+args <- commandArgs(trailingOnly = TRUE)
+### Set the cohort size
+n <- if (length(args) >= 1L) as.integer(args[1L]) else 1000000L
+### Set the random seed
+seed <- if (length(args) >= 2L) as.integer(args[2L]) else 20260917L
+
+### Set simulation parameters
+horizon <- 10
+### Administratively censor all individuals at the 10-year prediction horizon
+max_follow <- horizon
+interval_width <- 0.25
+shape <- 1.25
+target_mean_risk <- 0.10
+calibration_factors <- c(perfect = 1.00, underpredicts = 0.70, overpredicts = 1.30)
+target_c <- c(low = 0.60, high = 0.80)
+
+### Read the same causal log hazard ratios used by estimate_cf_surv_times()
+lnHR_statins <- readRDS("data/p5/offsets_total_lnHR_statins.rds")
+lnHR_ah <- readRDS("data/p5/offsets_total_lnHR_ah.rds")
+lnHR_smoking_dummy1_total <- readRDS("data/p5/offsets_total_lnHR_smok_init.rds")
+lnHR_smoking_dummy2_total <- readRDS("data/p5/offsets_total_lnHR_smok_cess.rds")
+
+### Check required packages
+if (!requireNamespace("survival", quietly = TRUE)) stop("Package 'survival' is required.")
+if (!requireNamespace("dplyr", quietly = TRUE)) stop("Package 'dplyr' is required.")
+if (!requireNamespace("rms", quietly = TRUE)) stop("Package 'rms' is required.")
+if (!requireNamespace("ggplot2", quietly = TRUE)) stop("Package 'ggplot2' is required.")
+if (!requireNamespace("patchwork", quietly = TRUE)) stop("Package 'patchwork' is required.")
+
+### Confirm that the required production functions have been sourced
+required_functions <- c("create_smoking_dummies", "get_bhaz", "get_time_from_hazard", "estimate_cf_surv_times", "est_calib_ph", "est_surv")
+missing_functions <- required_functions[!vapply(required_functions, exists, logical(1L), mode = "function")]
+if (length(missing_functions) > 0L) stop("Missing required sourced functions: ", paste(missing_functions, collapse = ", "))
+
+### Calibrate the prognostic coefficient multiplier to a target C-statistic
+### calculated after administrative censoring at the prediction horizon
+calibrate_beta_scale <- function(target, base_beta, shape, horizon, target_mean_risk, seed) {
+  ### Use a large Monte Carlo population for stable calibration
+  set.seed(seed)
+  n_target_calibration <- 1000000L
+  X <- matrix(stats::rnorm(n_target_calibration * 3L), ncol = 3L)
+  E <- stats::rexp(n_target_calibration)
+  ### Return the difference between achieved and target discrimination
+  objective <- function(scale) {
+    ### Calculate the linear predictor for this candidate coefficient scale
+    lp <- as.numeric(X %*% (base_beta * scale))
+    ### Calibrate the baseline-hazard scale to the target mean 10-year risk
+    lambda_objective <- function(lambda) {
+      mean(1 - exp(-lambda * horizon^shape * exp(lp))) - target_mean_risk
+    }
+    lambda <- stats::uniroot(lambda_objective, interval = c(1e-10, 1))$root
+    ### Generate the underlying event times using the calibrated baseline hazard
+    event_time <- (E / (lambda * exp(lp)))^(1 / shape)
+    ### Apply administrative censoring at the prediction horizon
+    time <- pmin(event_time, horizon)
+    event <- as.integer(event_time <= horizon)
+    ### Calculate Harrell's C using the same administratively censored outcome definition
+    c_est <- survival::concordance(
+      survival::Surv(time, event) ~ lp,
+      reverse = TRUE,
+      timewt = "n",
+      influence = 0
+    )$concordance
+    c_est - target
+  }
+  ### Find the required coefficient multiplier
+  stats::uniroot(objective, interval = c(0.01, 8))$root
+}
+
+### Simulate baseline smoking using the labels expected by create_smoking_dummies()
+simulate_baseline_smoking <- function(n) {
+  factor(sample(c("Non-smoker", "Ex-smoker", "Current smoker"), n, replace = TRUE, prob = c(0.55, 0.25, 0.20)),
+         levels = c("Non-smoker", "Ex-smoker", "Current smoker"))
+}
+
+### Convert the applied-analysis smoking coding to the two baseline dummies
+get_baseline_smoking_dummies <- function(smoking) {
+  smoking_baseline <- dplyr::case_when(smoking == "Non-smoker" ~ 0L, smoking == "Ex-smoker" ~ 1L, TRUE ~ 2L)
+  data.frame(smoking_baseline,
+             smoking_baseline_dummy1 = as.integer(smoking_baseline != 0L),
+             smoking_baseline_dummy2 = as.integer(smoking_baseline == 1L))
+}
+
+### Simulate one cohort and return baseline data plus cohort_split_times
+simulate_cohort <- function(n, beta, lambda, seed) {
+  ### Simulate baseline predictors and baseline intervention states
+  set.seed(seed)
+  patid <- seq_len(n)
+  X1 <- stats::rnorm(n); X2 <- stats::rnorm(n); X3 <- stats::rnorm(n)
+  lp <- beta[1L] * X1 + beta[2L] * X2 + beta[3L] * X3
+  statin0 <- stats::rbinom(n, 1L, stats::plogis(-2.20 + 0.35 * X1 + 0.15 * X2))
+  ah0 <- stats::rbinom(n, 1L, stats::plogis(-1.80 + 0.20 * X1 + 0.35 * X3))
+  smoking <- simulate_baseline_smoking(n)
+  smoking_dummies0 <- get_baseline_smoking_dummies(smoking)
+
+  ### Initialise current intervention states at baseline
+  statin_current <- statin0
+  ah_current <- ah0
+  smoking_current <- smoking_dummies0$smoking_baseline
+
+  ### Create regular follow-up intervals and storage matrices
+  cut_points <- seq(0, max_follow, by = interval_width)
+  n_intervals <- length(cut_points) - 1L
+  statin_hist <- matrix(0L, nrow = n, ncol = n_intervals)
+  ah_hist <- matrix(0L, nrow = n, ncol = n_intervals)
+  smoking_hist <- matrix(0L, nrow = n, ncol = n_intervals)
+  smoke1_adj_hist <- matrix(0L, nrow = n, ncol = n_intervals)
+  smoke2_adj_hist <- matrix(0L, nrow = n, ncol = n_intervals)
+  cumhaz_obs <- matrix(0, nrow = n, ncol = n_intervals + 1L)
+  H0_grid <- lambda * cut_points^shape
+
+  ### Simulate intervention histories and observed cumulative hazard
+  for (j in seq_len(n_intervals)) {
+    ### Store current states in this interval
+    statin_hist[, j] <- statin_current
+    ah_hist[, j] <- ah_current
+    smoking_hist[, j] <- smoking_current
+    ### Construct the exact relative-to-baseline smoking dummies used in the applied work
+    smoke1_current <- as.integer(smoking_current != 0L)
+    smoke2_current <- as.integer(smoking_current == 1L)
+    smoke1_adj_hist[, j] <- ifelse(smoking_dummies0$smoking_baseline_dummy1 == 1L, 0L, smoke1_current)
+    smoke2_adj_hist[, j] <- ifelse(smoking_dummies0$smoking_baseline_dummy2 == 1L, smoke2_current - 1L, smoke2_current)
+    ### Calculate the time-varying causal offset for this interval
+    offset_current <- lnHR_statins * (statin_current - statin0) + lnHR_ah * (ah_current - ah0) +
+      lnHR_smoking_dummy1_total * smoke1_adj_hist[, j] + lnHR_smoking_dummy2_total * smoke2_adj_hist[, j]
+    ### Accumulate observed hazard over this interval
+    cumhaz_obs[, j + 1L] <- cumhaz_obs[, j] + exp(lp + offset_current) * (H0_grid[j + 1L] - H0_grid[j])
+
+    ### Simulate statin and antihypertensive starts, stops and restarts
+    p_statin_change <- ifelse(statin_current == 0L, stats::plogis(-3.70 + 0.35 * X1 + 0.15 * X2), stats::plogis(-4.20 - 0.10 * X1))
+    p_ah_change <- ifelse(ah_current == 0L, stats::plogis(-3.80 + 0.20 * X1 + 0.30 * X3), stats::plogis(-4.00 - 0.10 * X3))
+    statin_current <- abs(statin_current - stats::rbinom(n, 1L, p_statin_change))
+    ah_current <- abs(ah_current - stats::rbinom(n, 1L, p_ah_change))
+
+    ### Simulate smoking initiation, cessation and relapse
+    smoking_previous <- smoking_current
+    u_smoking <- stats::runif(n)
+    smoking_current[smoking_previous == 0L & u_smoking < 0.002] <- 2L
+    smoking_current[smoking_previous == 1L & u_smoking < 0.012] <- 2L
+    smoking_current[smoking_previous == 2L & u_smoking < 0.045] <- 1L
+  }
+
+  ### Generate observed and true do-nothing event times using one latent event threshold
+  E <- stats::rexp(n)
+  crossing <- max.col(cumhaz_obs >= E, ties.method = "first")
+  no_event <- cumhaz_obs[, n_intervals + 1L] < E
+  event_time_observed <- rep(Inf, n)
+  i_cross <- which(!no_event)
+  j_cross <- crossing[!no_event] - 1L
+  H_before <- cumhaz_obs[cbind(i_cross, j_cross)]
+  offset_cross <- lnHR_statins * (statin_hist[cbind(i_cross, j_cross)] - statin0[i_cross]) +
+    lnHR_ah * (ah_hist[cbind(i_cross, j_cross)] - ah0[i_cross]) +
+    lnHR_smoking_dummy1_total * smoke1_adj_hist[cbind(i_cross, j_cross)] +
+    lnHR_smoking_dummy2_total * smoke2_adj_hist[cbind(i_cross, j_cross)]
+  H0_at_event <- H0_grid[j_cross] + (E[i_cross] - H_before) / exp(lp[i_cross] + offset_cross)
+  event_time_observed[i_cross] <- (H0_at_event / lambda)^(1 / shape)
+  event_time_do_nothing <- (E / (lambda * exp(lp)))^(1 / shape)
+
+  ### Generate completely random censoring independent of predictors and event risk
+  censor_rate <- 0.025
+  censor_time <- stats::rexp(n, rate = censor_rate)
+  observed_time <- pmin(event_time_observed, censor_time, max_follow)
+  observed_event <- as.integer(event_time_observed <= censor_time & event_time_observed <= max_follow)
+
+  ### Create the baseline validation data expected by estimate_cf_surv_times(type = "orig")
+  cohort <- data.frame(patid, X1, X2, X3, lp, statin0, ah0, smoking,
+                       event_time_do_nothing, censor_time, observed_time, observed_event)
+
+  ### Create one row per observed start-stop interval
+  rows_per_id <- findInterval(observed_time, cut_points, rightmost.closed = TRUE)
+  rows_per_id <- pmax(1L, pmin(n_intervals, rows_per_id))
+  if (anyNA(rows_per_id) || any(rows_per_id < 1L)) stop("Invalid values were generated for rows_per_id.")
+  long_patid <- rep(patid, rows_per_id)
+  interval_j <- sequence(rows_per_id)
+  tstart <- cut_points[interval_j]
+  cvd_time <- pmin(cut_points[interval_j + 1L], observed_time[long_patid])
+  cvd_indicator <- as.integer(observed_event[long_patid] == 1L & interval_j == rows_per_id[long_patid])
+
+  ### Create cohort_split_times using the exact variable names used in the applied analysis
+  cohort_split_times <- data.frame(
+    patid = long_patid,
+    tstart = tstart,
+    cvd_time = cvd_time,
+    cvd_indicator = cvd_indicator,
+    med_status_adj_statins = statin_hist[cbind(long_patid, interval_j)] - statin0[long_patid],
+    med_status_adj_ah = ah_hist[cbind(long_patid, interval_j)] - ah0[long_patid],
+    med_status_adj_smoking = smoking_hist[cbind(long_patid, interval_j)]
+  )
+
+  ### Return generated objects and latent truth
+  list(cohort = cohort, cohort_split_times = cohort_split_times,
+       event_time_do_nothing = event_time_do_nothing, lambda = lambda)
+}
+
+### Construct oracle counterfactual outcomes under sustained baseline status
+make_oracle_data <- function(cohort, apply_censoring, max_follow) {
+  if (apply_censoring) {
+    cvd_time <- pmin(cohort$event_time_do_nothing, cohort$censor_time, max_follow)
+    cvd_indicator <- as.integer(cohort$event_time_do_nothing <= cohort$censor_time & cohort$event_time_do_nothing <= max_follow)
+  } else {
+    cvd_time <- pmin(cohort$event_time_do_nothing, max_follow)
+    cvd_indicator <- as.integer(cohort$event_time_do_nothing <= max_follow)
+  }
+  data.frame(patid = cohort$patid, cvd_time, cvd_indicator)
+}
+
+### Calculate Harrell's C using predicted survival
+est_discrim <- function(data, surv) {
+  fit_c <- survival::concordance(survival::Surv(cvd_time, cvd_indicator) ~ surv, data = data, timewt = "n", influence = 0)
+  unname(fit_c$concordance)
+}
+
+### Run one low- or high-discrimination scenario
+run_one <- function(discrim, beta, lambda, n, seed) {
+  ### Simulate data in the applied-analysis structure
+  dat <- simulate_cohort(n, beta, lambda, seed)
+  cohort <- dat$cohort
+  ### Define the global object used by the production reconstruction function
+  cohort_split_times <- dat$cohort_split_times
+
+  ### Add baseline variables to the split-time data and derive production smoking dummies
+  data_devel <- dplyr::left_join(cohort, cohort_split_times, by = "patid")
+  data_devel <- create_smoking_dummies(data_devel)
+  ### Create the same four time-varying offsets used by estimate_cf_surv_times()
+  data_devel$offset_statins_timevar_lnHR <- lnHR_statins * data_devel$med_status_adj_statins
+  data_devel$offset_ah_timevar_lnHR <- lnHR_ah * data_devel$med_status_adj_ah
+  data_devel$offset_smoking_timevar_dummy1_lnHR <- lnHR_smoking_dummy1_total * data_devel$med_status_adj_smoking_dummy1
+  data_devel$offset_smoking_timevar_dummy2_lnHR <- lnHR_smoking_dummy2_total * data_devel$med_status_adj_smoking_dummy2
+
+  ### Fit the Cox model using the applied start-stop outcome structure
+  fit <- survival::coxph(
+    survival::Surv(tstart, cvd_time, cvd_indicator) ~ X1 + X2 + X3 +
+      offset(offset_statins_timevar_lnHR) + offset(offset_ah_timevar_lnHR) +
+      offset(offset_smoking_timevar_dummy1_lnHR) + offset(offset_smoking_timevar_dummy2_lnHR),
+    data = data_devel, model = TRUE, ties = "breslow"
+  )
+  ### Define the global centred baseline hazard used by estimate_cf_surv_times()
+  bhaz <<- survival::basehaz(fit, centered = TRUE)
+
+  ### Apply the exact production reconstruction function to the baseline validation data
+  reconstructed_raw <- estimate_cf_surv_times(data_valid = cohort, cohort_split_times = dat$cohort_split_times,
+                                              bhaz = bhaz,
+                                              type = "orig")
+  reconstructed <- dplyr::transmute(reconstructed_raw, patid, cvd_time = cvd_time_cf, cvd_indicator = cvd_indicator_cf)
+
+  ### Construct oracle counterfactual datasets
+  oracle_censored <- make_oracle_data(cohort, TRUE, max_follow)
+  oracle_complete <- make_oracle_data(cohort, FALSE, max_follow)
+  ### Create the individual-level observed outcomes under the simulated time-varying treatment histories
+  observed_outcomes <- dplyr::transmute(cohort, patid, cvd_time = observed_time, cvd_indicator = observed_event)
+  risk_true <- 1 - exp(-lambda * horizon^shape * exp(cohort$lp))
+
+  ### Allocate result storage
+  output <- vector("list", length(calibration_factors) * 4L)
+  curve_output <- vector("list", length(calibration_factors) * 4L)
+  prediction_output <- vector("list", length(calibration_factors))
+  k <- 1L; prediction_k <- 1L
+
+  ### Evaluate all calibration scenarios against each outcome source
+  for (calibration in names(calibration_factors)) {
+    calibration_factor <- calibration_factors[[calibration]]
+    surv_pred <- exp(-calibration_factor * (-log(1 - risk_true)))
+    prediction_output[[prediction_k]] <- data.frame(discrimination = discrim, calibration, pred = 1 - surv_pred)
+    prediction_k <- prediction_k + 1L
+    datasets <- list(latent_truth = oracle_complete, observable_oracle = oracle_censored,
+                     counterfactual_survival_times = reconstructed, observed_outcomes = observed_outcomes)
+
+    for (source in names(datasets)) {
+      eval_data <- datasets[[source]]
+      ### Calculate the 1st and 99th percentiles of predicted risk for this scenario
+      pred_plot_limits <- as.numeric(stats::quantile(1 - surv_pred, probs = c(0.01, 0.99), names = FALSE, na.rm = TRUE))
+      ### Create the plotting range between the 1st and 99th percentiles
+      pred_plot_range <- seq(pred_plot_limits[1L], pred_plot_limits[2L], length.out = 250L)
+      ### Apply the production calibration function over this central prediction range
+      calibration_output <- est_calib_ph(
+        data = eval_data, fit = fit, bhaz = bhaz, time = horizon, surv = surv_pred,
+        pred_plot_range = pred_plot_range, plot = FALSE
+      )
+      metrics <- c(ICI = calibration_output[["ICI"]], E50 = calibration_output[["E50"]], E90 = calibration_output[["E90"]])
+      curve_data <- calibration_output[["calib_data_plot"]]
+      output[[k]] <- data.frame(discrimination = discrim, calibration, source,
+                                ICI = metrics[["ICI"]], E50 = metrics[["E50"]], E90 = metrics[["E90"]],
+                                Cstat = est_discrim(eval_data, surv_pred),
+                                mean_predicted_risk = mean(1 - surv_pred),
+                                observed_risk_KM = 1 - summary(survival::survfit(survival::Surv(cvd_time, cvd_indicator) ~ 1, data = eval_data), times = horizon, extend = TRUE)$surv,
+                                max_predicted_risk = max(1 - surv_pred))
+      curve_output[[k]] <- data.frame(discrimination = discrim, calibration, source,
+                                      pred = curve_data$pred, estimated = curve_data$pred.obs,
+                                      true = 1 - (1 - curve_data$pred)^(1 / calibration_factor))
+      k <- k + 1L
+    }
+  }
+
+  ### Return results and generated data for explicit inspection
+  list(results = do.call(rbind, output), curves = do.call(rbind, curve_output),
+       predictions = do.call(rbind, prediction_output), cohort = cohort,
+       cohort_split_times = cohort_split_times, reconstructed = reconstructed,
+       fitted_beta = stats::coef(fit)[c("X1", "X2", "X3")],
+       true_10y_risk = mean(cohort$event_time_do_nothing <= horizon),
+       event_rate = mean(cohort$observed_event),
+       reconstructed_censoring = mean(reconstructed$cvd_indicator == 0L))
+}
+
+### Define base prognostic coefficients and calibrate discrimination
+base_beta <- c(X1 = 0.55, X2 = -0.45, X3 = 0.35)
+beta_scales <- vapply(
+  seq_along(target_c),
+  function(i) {
+    calibrate_beta_scale(
+      target = target_c[i],
+      base_beta = base_beta,
+      shape = shape,
+      horizon = horizon,
+      target_mean_risk = target_mean_risk,
+      seed = seed + i
+    )
+  },
+  numeric(1L)
+)
+names(beta_scales) <- names(target_c)
+beta_list <- lapply(beta_scales, function(scale) base_beta * scale)
+
+### Calibrate separate baseline hazards to the same marginal 10-year risk
+set.seed(seed + 999L)
+X_lambda <- matrix(stats::rnorm(1000000L * 3L), ncol = 3L)
+colnames(X_lambda) <- c("X1", "X2", "X3")
+lambda_list <- vapply(beta_list, function(beta) {
+  lp_lambda <- as.numeric(X_lambda %*% beta)
+  objective <- function(lambda) mean(1 - exp(-lambda * horizon^shape * exp(lp_lambda))) - target_mean_risk
+  stats::uniroot(objective, interval = c(1e-10, 1))$root
+}, numeric(1L))
+
+### Run one large cohort for each discrimination scenario
+simulation_objects <- lapply(names(beta_list), function(discrim) {
+  message("Running discrimination scenario: ", discrim)
+  run_one(discrim, beta_list[[discrim]], lambda_list[[discrim]], n, seed + match(discrim, names(beta_list)))
+})
+names(simulation_objects) <- names(beta_list)
+
+### Combine scenario outputs
+results <- do.call(rbind, lapply(simulation_objects, `[[`, "results"))
+calibration_curves <- do.call(rbind, lapply(simulation_objects, `[[`, "curves"))
+prediction_data <- do.call(rbind, lapply(simulation_objects, `[[`, "predictions"))
+diagnostics <- do.call(rbind, lapply(names(simulation_objects), function(discrim) {
+  x <- simulation_objects[[discrim]]
+
+  ### Obtain discrimination using the true underlying counterfactual
+  ### event times and perfectly calibrated predictions
+  obtained_discrimination <- x$results$Cstat[
+    x$results$source == "latent_truth" &
+      x$results$calibration == "perfect"
+  ][1L]
+
+  ### Store the requested simulation diagnostics
+  data.frame(
+    targeted_discrimination = unname(target_c[[discrim]]),
+    obtained_discrimination = obtained_discrimination,
+    mean_true_risk = x$true_10y_risk,
+    beta_X1 = x$fitted_beta[["X1"]],
+    beta_X2 = x$fitted_beta[["X2"]],
+    beta_X3 = x$fitted_beta[["X3"]]
+  )
+}))
+
+### Calculate bias relative to latent counterfactual truth
+truth <- results[results$source == "latent_truth", c("discrimination", "calibration", "ICI", "E50", "E90", "Cstat")]
+names(truth)[3:6] <- paste0(names(truth)[3:6], "_truth")
+comparison <- merge(results, truth, by = c("discrimination", "calibration"), all.x = TRUE, sort = FALSE)
+comparison$ICI_bias <- comparison$ICI - comparison$ICI_truth
+comparison$E50_bias <- comparison$E50 - comparison$E50_truth
+comparison$E90_bias <- comparison$E90 - comparison$E90_truth
+comparison$Cstat_bias <- comparison$Cstat - comparison$Cstat_truth
+summary_output <- comparison[, c("discrimination", "calibration", "source", "mean_predicted_risk", "observed_risk_KM", "max_predicted_risk",
+                                 "ICI", "ICI_truth", "ICI_bias", "E50", "E50_truth", "E50_bias", "E90", "E90_truth", "E90_bias",
+                                 "Cstat", "Cstat_truth", "Cstat_bias")]
+summary_output <- summary_output[order(summary_output$discrimination, summary_output$calibration, summary_output$source), ]
+
+### Create direct data-structure checks for the high-discrimination cohort
+cohort_check <- simulation_objects[["high"]]$cohort
+cohort_split_times_check <- simulation_objects[["high"]]$cohort_split_times
+transition_summary <- cohort_split_times_check |>
+  dplyr::arrange(patid, tstart) |>
+  dplyr::group_by(patid) |>
+  dplyr::summarise(n_intervals = dplyr::n(),
+                   statin_changes = sum(med_status_adj_statins != dplyr::lag(med_status_adj_statins, default = dplyr::first(med_status_adj_statins))),
+                   ah_changes = sum(med_status_adj_ah != dplyr::lag(med_status_adj_ah, default = dplyr::first(med_status_adj_ah))),
+                   smoking_changes = sum(med_status_adj_smoking != dplyr::lag(med_status_adj_smoking, default = dplyr::first(med_status_adj_smoking))),
+                   events = sum(cvd_indicator), .groups = "drop")
+### Verify valid start-stop outcome data
+stopifnot(all(cohort_split_times_check$cvd_time >= cohort_split_times_check$tstart))
+stopifnot(all(transition_summary$events <= 1L))
+### Identify people with repeated changes for manual inspection
+ids_repeated_changes <- transition_summary |>
+  dplyr::filter(statin_changes >= 2L | ah_changes >= 2L | smoking_changes >= 2L) |>
+  dplyr::pull(patid)
+example_histories <- cohort_split_times_check |>
+  dplyr::filter(patid %in% utils::head(ids_repeated_changes, 10L)) |>
+  dplyr::arrange(patid, tstart)
+
+### Print checks and results
+cat("\nBaseline cohort structure:\n"); str(cohort_check)
+cat("\nSplit-time outcome structure:\n"); str(cohort_split_times_check)
+cat("\nTransition-count summary:\n"); print(summary(transition_summary[, c("n_intervals", "statin_changes", "ah_changes", "smoking_changes")]))
+cat("\nExample histories with repeated changes:\n"); print(example_histories)
+cat("\nDiagnostics:\n"); print(diagnostics, row.names = FALSE)
+cat("\nPerformance and bias summary:\n"); print(summary_output, row.names = FALSE)
+
+### Create one combined figure containing all six scenarios
+### Retain calibration curves estimated using counterfactual survival times and observed outcomes
+plot_cf <- calibration_curves[calibration_curves$source == "counterfactual_survival_times", ]
+plot_observed <- calibration_curves[calibration_curves$source == "observed_outcomes", ]
+### Construct plotting data with explicit labels
+plot_data <- rbind(
+  data.frame(plot_cf[c("discrimination", "calibration", "pred")], curve = "True calibration function", observed = plot_cf$true),
+  data.frame(plot_cf[c("discrimination", "calibration", "pred")], curve = "Estimated using counterfactual survival times", observed = plot_cf$estimated),
+  data.frame(plot_observed[c("discrimination", "calibration", "pred")], curve = "Estimated using observed outcomes", observed = plot_observed$estimated)
+)
+### Define the six scenario combinations
+plot_calibration_levels <- c("overpredicts", "perfect", "underpredicts")
+plot_discrimination_levels <- c("high", "low")
+### Allocate storage for the six panels
+calibration_plots <- list()
+### Define consistent curve aesthetics
+curve_colours <- c("True calibration function" = "#00BFC4", "Estimated using counterfactual survival times" = "#F8766D", "Estimated using observed outcomes" = "#7CAE00")
+curve_linetypes <- c("True calibration function" = "dashed", "Estimated using counterfactual survival times" = "solid", "Estimated using observed outcomes" = "dotdash")
+### Construct each histogram and calibration-plot pair
+for (calibration_level in plot_calibration_levels) {
+  for (discrimination_level in plot_discrimination_levels) {
+    ### Select curve and prediction data for this scenario
+    panel_curve_data <- plot_data[plot_data$calibration == calibration_level & plot_data$discrimination == discrimination_level, ]
+    panel_prediction_data <- prediction_data[prediction_data$calibration == calibration_level & prediction_data$discrimination == discrimination_level, ]
+    ### Calculate the 1st and 99th percentiles of predicted risk
+    panel_x_limits <- as.numeric(stats::quantile(panel_prediction_data$pred, probs = c(0.01, 0.99), names = FALSE, na.rm = TRUE))
+    ### Retain predictions within the displayed range for the histogram
+    panel_prediction_plot_data <- panel_prediction_data[panel_prediction_data$pred >= panel_x_limits[1L] & panel_prediction_data$pred <= panel_x_limits[2L], ]
+    ### Calculate histogram proportions over exactly the displayed risk range
+    panel_breaks <- seq(panel_x_limits[1L], panel_x_limits[2L], length.out = 51L)
+    panel_histogram_counts <- hist(panel_prediction_plot_data$pred, breaks = panel_breaks, plot = FALSE, include.lowest = TRUE)
+    panel_histogram_data <- data.frame(pred = panel_histogram_counts$mids, proportion = panel_histogram_counts$counts / sum(panel_histogram_counts$counts))
+    panel_histogram_y_max <- max(panel_histogram_data$proportion) * 1.05
+    panel_histogram_ratio <- 0.25 * diff(panel_x_limits) / panel_histogram_y_max
+    ### Create the calibration plot with its own compact three-row legend
+    panel_calibration <- ggplot2::ggplot(panel_curve_data, ggplot2::aes(x = pred, y = observed, colour = curve, linetype = curve)) +
+      ggplot2::geom_line(linewidth = 0.9) +
+      ggplot2::geom_abline(intercept = 0, slope = 1, colour = "grey60", linetype = "dotted") +
+      ggplot2::scale_colour_manual(values = curve_colours, breaks = names(curve_colours), guide = ggplot2::guide_legend(nrow = 3, byrow = TRUE)) +
+      ggplot2::scale_linetype_manual(values = curve_linetypes, breaks = names(curve_linetypes), guide = "none") +
+      ggplot2::scale_x_continuous(limits = panel_x_limits, expand = ggplot2::expansion(mult = c(0, 0))) +
+      ggplot2::scale_y_continuous(limits = panel_x_limits, expand = ggplot2::expansion(mult = c(0, 0))) +
+      ggplot2::coord_equal() +
+      ggplot2::labs(x = "Predicted 10-year risk", y = "Observed probability", colour = NULL) +
+      ggplot2::theme_bw(base_size = 12) +
+      ggplot2::theme(legend.position = "bottom", legend.key.width = grid::unit(18, "pt"), legend.text = ggplot2::element_text(size = 7), plot.margin = ggplot2::margin(0, 4, 4, 4))
+    ### Create the aligned marginal histogram without y-axis ticks or labels
+    panel_histogram <- ggplot2::ggplot(panel_histogram_data, ggplot2::aes(x = pred, y = proportion)) +
+      ggplot2::geom_col(width = diff(panel_breaks)[1L], fill = "grey70", colour = "white", linewidth = 0.15) +
+      ggplot2::scale_x_continuous(limits = panel_x_limits, expand = ggplot2::expansion(mult = c(0, 0))) +
+      ggplot2::scale_y_continuous(limits = c(0, panel_histogram_y_max), expand = ggplot2::expansion(mult = c(0, 0))) +
+      ggplot2::coord_fixed(ratio = panel_histogram_ratio, clip = "off") +
+      ggplot2::labs(x = NULL, y = NULL, title = paste0("Calibration: ", calibration_level, "; discrimination: ", discrimination_level)) +
+      ggplot2::theme_bw(base_size = 12) +
+      ggplot2::theme(axis.text.x = ggplot2::element_blank(), axis.ticks.x = ggplot2::element_blank(), axis.text.y = ggplot2::element_blank(), axis.ticks.y = ggplot2::element_blank(), plot.title = ggplot2::element_text(size = 12), plot.margin = ggplot2::margin(4, 4, 0, 4))
+    ### Store the complete paired panel
+    scenario_name <- paste(calibration_level, discrimination_level, sep = "_")
+    calibration_plots[[scenario_name]] <- panel_histogram / panel_calibration + patchwork::plot_layout(heights = c(1, 4))
+  }
+}
+### Combine all six panels into one figure object without writing it to disk
+calibration_figure <- patchwork::wrap_plots(calibration_plots, ncol = 2) +
+  patchwork::plot_annotation(title = "Calibration curves across calibration and discrimination scenarios",
+                             theme = ggplot2::theme(plot.title = ggplot2::element_text(size = 14)))
+
+```
+
+# Results and discussion
+
+## Simulation diagnostics
+
+```{r diagnostics-table}
+diagnostics_display <- diagnostics
+
+### Add readable column names
+names(diagnostics_display) <- c(
+  "Targeted discrimination",
+  "Obtained discrimination",
+  "Mean true risk",
+  "Beta X1",
+  "Beta X2",
+  "Beta X3"
+)
+
+### Present all numerical values to three decimal places
+diagnostics_display[
+  vapply(diagnostics_display, is.numeric, logical(1L))
+] <- lapply(
+  diagnostics_display[
+    vapply(diagnostics_display, is.numeric, logical(1L))
+  ],
+  round,
+  digits = 3
+)
+
+### Display the diagnostics table
+knitr::kable(
+  diagnostics_display,
+  digits = 3,
+  caption = "Simulation diagnostics by discrimination scenario"
+)
+```
+
+## Calibration and discrimination
+
+For every performance measure, the corresponding `_truth` column is performance calculated using the latent oracle event times for that scenario. Bias is calculated as the difference in model performance from the selected outcome dataset minus the corresponding latent oracle value. We see that there is minimal bias when the model is validated using the counterfactual outcomes calculated via the extension to the work of Xu et al.,[@RN1345] detailed in supplementary data file 1. This is evident both from the numerical performance metrics, and the calibration curve. 
+
+Interestingly, when estimating performance using the observed outcomes, calibration is clearly biased (as expected), but the amount of bias in the assessment of discrimination remains small.
+  
+```{r performance-table}
+### Define labels for the two outcome sources included in the table
+source_labels <- c(
+  counterfactual_survival_times =
+    "Estimated counterfactual outcomes",
+  observed_outcomes =
+    "Observed outcomes"
+)
+
+### Retain only estimated counterfactual and observed outcomes
+summary_display <- summary_output[
+  summary_output$source %in% names(source_labels),
+]
+
+### Apply readable outcome-source labels
+summary_display$source <- unname(
+  source_labels[summary_display$source]
+)
+
+### Select the displayed columns and omit Kaplan-Meier risk
+summary_display <- summary_display[, c(
+  "discrimination",
+  "calibration",
+  "source",
+  "mean_predicted_risk",
+  "ICI",
+  "ICI_truth",
+  "ICI_bias",
+  "E50",
+  "E50_truth",
+  "E50_bias",
+  "E90",
+  "E90_truth",
+  "E90_bias",
+  "Cstat",
+  "Cstat_truth",
+  "Cstat_bias"
+)]
+
+### Present all numerical values to three decimal places
+summary_display[
+  vapply(summary_display, is.numeric, logical(1L))
+] <- lapply(
+  summary_display[
+    vapply(summary_display, is.numeric, logical(1L))
+  ],
+  round,
+  digits = 3
+)
+
+### Add readable column names
+names(summary_display) <- c(
+  "Discrimination",
+  "Calibration",
+  "Outcome source",
+  "Mean predicted risk",
+  "ICI",
+  "ICI truth",
+  "ICI bias",
+  "E50",
+  "E50 truth",
+  "E50 bias",
+  "E90",
+  "E90 truth",
+  "E90 bias",
+  "C-statistic",
+  "C-statistic truth",
+  "C-statistic bias"
+)
+
+### Identify the bias columns
+bias_columns <- c(
+  "ICI bias",
+  "E50 bias",
+  "E90 bias",
+  "C-statistic bias"
+)
+
+### Display values in the bias columns to three decimal places
+### and wrap them in HTML bold tags
+summary_display[bias_columns] <- lapply(
+  summary_display[bias_columns],
+  function(x) {
+    paste0(
+      "<strong>",
+      sprintf("%.3f", x),
+      "</strong>"
+    )
+  }
+)
+
+### Display the performance table
+knitr::kable(
+  summary_display,
+  digits = 3,
+  escape = FALSE,
+  caption =
+    "Performance estimates and bias relative to latent counterfactual truth"
+)
+```
+
+```{r calibration-figure, fig.width=12, fig.height=18, out.width="100%"}
+calibration_figure
+```

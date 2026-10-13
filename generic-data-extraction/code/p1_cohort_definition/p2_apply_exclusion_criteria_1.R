@@ -154,7 +154,6 @@ print("emis_ddate - cprd_ddate")
 min(as.numeric(diff))
 max(as.numeric(diff))
 quantile(as.numeric(diff))
-# hist(as.numeric(diff))
 
 ## Create a reduced cohort, which is just patids and the variable set
 cohort.reduced <- cohort[,c("patid", "set")]

@@ -3,6 +3,9 @@ library(survival)
 library(DT)
 library(rms)
 
+### Read in pat file for options 
+pat_template <- readRDS("data/fake_pat.rds")
+
 # Define UI for the application
 ui <- fluidPage(
 
@@ -22,8 +25,7 @@ ui <- fluidPage(
           column(6, selectInput("decision_intervention", NULL,
                                 choices = c("Undefined intervention" = "adj_manual",
                                             "Smoking cessation" = "smoking_cessation",
-                                            "Antihypertensives" = "antihypertensives",
-                                            "Statins" = "statins")))
+                                            "Antihypertensives" = "antihypertensives")))
         ),
         uiOutput("conditional_input_decision_intervention")
       ),
@@ -37,8 +39,7 @@ ui <- fluidPage(
       ),
       fluidRow(
         column(6, p("Ethnicity:")),
-        column(6, selectInput("ethnicity", NULL, choices = c("white","bangladeshi","black african","black caribbean",
-                                                             "chinese","indian","other asian","other ethnic","pakistani")))
+        column(6, selectInput("ethnicity", NULL, choices = setNames(levels(pat_template$ethnicity), levels(pat_template$ethnicity))))
       ),
       fluidRow(
         column(6, p("Diabetes status:")),
@@ -71,6 +72,14 @@ ui <- fluidPage(
       fluidRow(
         column(6, p("H/O Migraine:")),
         column(6, selectInput("migraine", NULL, choices = c("Absent", "Present")))
+      ),
+      fluidRow(
+        column(6, p("H/O Rheumatoid arthritis:")),
+        column(6, selectInput("ra", NULL, choices = c("Absent", "Present")))
+      ),
+      fluidRow(
+        column(6, p("H/O systemic lupus erythematosus:")),
+        column(6, selectInput("sle", NULL, choices = c("Absent", "Present")))
       ),
       fluidRow(
         column(6, p("H/O Oral Cancer:")),
@@ -146,7 +155,7 @@ server <- function(input, output, session) {
               column(6, numericInput("sbp", NULL, min = 30, max = 260, value = 140))
             ),fluidRow(
               column(6, p("Target SBP under intervention:")),
-              column(6, numericInput("intervention.sbp", NULL, min = 30, max = 260, value = 120))
+              column(6, numericInput("intervention_sbp", NULL, min = 30, max = 260, value = 120))
             )),
         div(wellPanel(
           style = "border: 2px solid green; padding: 15px; margin-bottom: 3px;",
@@ -156,7 +165,7 @@ server <- function(input, output, session) {
           ),
           fluidRow(
             column(6, p("Target BMI under intervention:")),
-            column(6, numericInput("intervention.bmi", NULL, min = 15, max = 50, value = 24))
+            column(6, numericInput("intervention_bmi", NULL, min = 15, max = 50, value = 24))
           ))),
         div(
           wellPanel(
@@ -167,7 +176,7 @@ server <- function(input, output, session) {
             ),
             fluidRow(
               column(6, p("Target Non-HDL cholesterol under intervention:")),
-              column(6, numericInput("intervention.nonhdl", NULL,  min = 0, max = 20, value = 3))
+              column(6, numericInput("intervention_nonhdl", NULL,  min = 0, max = 20, value = 3))
             ))
         ),
         div(
@@ -179,7 +188,7 @@ server <- function(input, output, session) {
             ),
             fluidRow(
               column(6, p("Target smoking status under intervention:")),
-              column(6, selectInput("intervention.smoking", NULL, choices = c("Non-smoker", "Ex-smoker", "Current")))
+              column(6, selectInput("intervention_smoking", NULL, choices = c("Non-smoker", "Ex-smoker", "Current")))
             ))
         )
       )
@@ -213,37 +222,6 @@ server <- function(input, output, session) {
         )
       )
     } else if (input$decision_intervention == "antihypertensives"){
-      wellPanel(
-        div(style = "border: 2px solid green; padding: 15px; margin-bottom: 3px;",
-            fluidRow(
-              column(6, p("SBP at visit 1:")),
-              column(6, numericInput("sbp", NULL, min = 30, max = 260, value = 140))
-            ),fluidRow(
-              column(6, p("Target SBP under intervention:")),
-              column(6, numericInput("intervention.sbp", NULL, min = 30, max = 260, value = 120))
-            )),
-        div(
-          style = "border: 2px solid green; padding: 15px; margin-bottom: 3px;",
-          fluidRow(
-            column(6, p("BMI at visit 1:")),
-            column(6, numericInput("bmi", NULL, min = 15, max = 50, value = 24))
-          )),
-        div(
-          style = "border: 2px solid green; padding: 15px; margin-bottom: 3px;",
-          fluidRow(
-            column(6, p("Non-HDL cholesterol at visit 1:")),
-            column(6, numericInput("nonhdl", NULL, min = 0, max = 20, value = 3))
-          )
-        ),
-        div(
-          style = "border: 2px solid green; padding: 15px; margin-bottom: 3px;",
-          fluidRow(
-            column(6, p("Smoking status at visit 1:")),
-            column(6, selectInput("smoking", NULL, choices = c("Non-smoker", "Ex-smoker", "Current")))
-          )
-        )
-      )
-    } else if (input$decision_intervention == "statins"){
       wellPanel(
         div(
           style = "border: 2px solid green; padding: 15px; margin-bottom: 3px;",
@@ -279,22 +257,22 @@ server <- function(input, output, session) {
   source("data/functions_shiny.R")
 
   ### Read in pat file
-  pat <- readRDS("data/fake.pat.rds")
+  pat <- readRDS("data/fake_pat.rds")
 
   observeEvent(input$predictrisks, {
 
     if (input$gender == "Female"){
-      fit.prototype3 <- readRDS("data/fit.prototype3.female.rds")
-      means.prototype3 <- readRDS("data/means.prototype3.female.rds")
-      fit.standard <- readRDS("data/fit.standard.female.rds")
-      bhaz.prototype3 <- readRDS("data/bhaz.prototype3.female.rds")
-      bhaz.standard <- readRDS("data/bhaz.standard.female.rds")
+      fit_pui_list <- readRDS("data/fit_pui_female.rds")
+      means_pui_list <- readRDS("data/means_pui_female.rds")
+      bhaz_pui_list <- readRDS("data/bhaz_pui_female.rds")
+      # fit_standard <- readRDS("data/fit_standard_female.rds")
+      # bhaz_standard <- readRDS("data/bhaz_standard_female.rds")
     } else if (input$gender == "Male"){
-      fit.prototype3 <- readRDS("data/fit.prototype3.male.rds")
-      means.prototype3 <- readRDS("data/means.prototype3.male.rds")
-      fit.standard <- readRDS("data/fit.standard.male.rds")
-      bhaz.prototype3 <- readRDS("data/bhaz.prototype3.male.rds")
-      bhaz.standard <- readRDS("data/bhaz.standard.male.rds")
+      fit_pui_list <- readRDS("data/fit_pui_male.rds")
+      means_pui_list <- readRDS("data/means_pui_male.rds")
+      bhaz_pui_list <- readRDS("data/bhaz_pui_male.rds")
+      # fit_standard <- readRDS("data/fit_standard_male.rds")
+      # bhaz_standard <- readRDS("data/bhaz_standard_male.rds")
     }
 
     ### Create pat file
@@ -314,6 +292,8 @@ server <- function(input, output, session) {
     pat$fhcvd[1] <- input$fhcvd
     pat$smi[1] <- input$smi
     pat$migraine[1] <- input$migraine
+    pat$ra[1] <- input$ra
+    pat$sle[1] <- input$sle
     pat$oral_cancer[1] <- input$oral_cancer
     pat$brain_cancer[1] <- input$brain_cancer
     pat$lung_cancer[1] <- input$lung_cancer
@@ -325,87 +305,80 @@ server <- function(input, output, session) {
     pat$impotence[1] <- input$impotence
     pat$IMD[1] <- input$IMD
 
-    ### Read in the direct effects
-    direct_OR_smoking_initiation <- readRDS("data/direct_OR_smoking_initiation.rds")
-    direct_OR_smoking_cessation <- readRDS("data/direct_OR_smoking_cessation.rds")
-    direct_OR_sbp <- readRDS("data/direct_OR_sbp.rds")
-    direct_OR_bmi <- readRDS("data/direct_OR_bmi.rds")
-    direct_OR_nonhdl <- readRDS("data/direct_OR_nonhdl.rds")
+    ### Read in the direct effect hazard ratios
+    direct_HR_smoking_initiation <- readRDS("data/offsets_direct_HR_smok_init.rds")
+    direct_HR_smoking_cessation <- readRDS("data/offsets_direct_HR_smok_cess.rds")
+    direct_HR_sbp <- readRDS("data/offsets_direct_HR_sbp.rds")
+    direct_HR_bmi <- readRDS("data/offsets_direct_HR_bmi.rds")
+    direct_HR_nonhdl <- readRDS("data/offsets_direct_HR_nonhdl.rds")
 
     ###
     ### Estimate the relative risk change
     ###
 
     ### First get values at baseline
-    baseline.smoking <- pat$smoking
-    baseline.sbp <- pat$sbp
-    baseline.bmi <- pat$bmi
-    baseline.nonhdl <- pat$nonhdl
+    baseline_smoking <- pat$smoking
+    baseline_sbp <- pat$sbp
+    baseline_bmi <- pat$bmi
+    baseline_nonhdl <- pat$nonhdl
 
     ###  If intervention choice is to change modifiable risk factors manually
     if (input$decision_intervention == "adj_manual"){
 
       ### Assign values from intervention layer
-      intervention.smoking <- input$intervention.smoking
-      intervention.sbp <- input$intervention.sbp
-      intervention.bmi <- input$intervention.bmi
-      intervention.nonhdl <- input$intervention.nonhdl
-      # intervention.smoking <- "Non-smoker"
-      # intervention.sbp <- 130
-      # intervention.bmi <- 25
-      # intervention.nonhdl <- 4
+      intervention_smoking <- input$intervention_smoking
+      intervention_sbp <- input$intervention_sbp
+      intervention_bmi <- input$intervention_bmi
+      intervention_nonhdl <- input$intervention_nonhdl
 
       ### Apply limits
-      if (baseline.sbp < 120){
-        baseline.sbp <- 120
+      if (baseline_sbp < 120){
+        baseline_sbp <- 120
       }
-      if (intervention.sbp < 120){
-        intervention.sbp <- 120
+      if (intervention_sbp < 120){
+        intervention_sbp <- 120
       }
-      if (baseline.bmi < 25){
-        baseline.bmi <- 25
+      if (baseline_bmi < 25){
+        baseline_bmi <- 25
       }
-      if (intervention.bmi < 25){
-        intervention.bmi <- 25
+      if (intervention_bmi < 25){
+        intervention_bmi <- 25
       }
-      if (baseline.nonhdl < 4){
-        baseline.nonhdl <- 4
+      if (baseline_nonhdl < 2.6){
+        baseline_nonhdl <- 2.6
       }
-      if (intervention.nonhdl < 4){
-        intervention.nonhdl <- 4
+      if (intervention_nonhdl < 2.6){
+        intervention_nonhdl <- 2.6
       }
 
       ### Get the difference
-      change.sbp <- intervention.sbp - baseline.sbp
-      change.bmi <- intervention.bmi - baseline.bmi
-      change.nonhdl <- intervention.nonhdl - baseline.nonhdl
+      change_sbp <- intervention_sbp - baseline_sbp
+      change_bmi <- intervention_bmi - baseline_bmi
+      change_nonhdl <- intervention_nonhdl - baseline_nonhdl
 
       ### Apply the relative risk change
-      or.change.sbp <- direct_OR_sbp^change.sbp
-      or.change.bmi <- direct_OR_bmi^change.bmi
-      or.change.nonhdl <- direct_OR_nonhdl^change.nonhdl
+      HR_change_sbp <- direct_HR_sbp^change_sbp
+      HR_change_bmi <- direct_HR_bmi^change_bmi
+      HR_change_nonhdl <- direct_HR_nonhdl^change_nonhdl
 
       ### Create output for text message
       output$text_message <- renderText({
-        "When specifying an undefined intervention, we assume the effect of this intervention on each of the modifiable risk
-        factors is known, and the 'knock-on' effects of changes to the modifiable risk factors are not propagated through the model.
-        For example, if specifying a reduction in BMI under intervention, the resulting change in non-HDL cholesterol and
-        SBP will not be automatically applied in the risk under intervention. This will be reviewed in future iterations."
+        ""
       })
 
       ### Also need to do the same for smoking, which is different because it's non-continuous
-      if (baseline.smoking == intervention.smoking){
-        or.change.smoking <- 1
-      } else if (baseline.smoking == "Ex-smoker" & intervention.smoking == "Current"){
-        or.change.smoking <- 1/direct_OR_smoking_cessation
-      } else if (baseline.smoking == "Current" & intervention.smoking == "Ex-smoker"){
-        or.change.smoking <- direct_OR_smoking_cessation
-      } else if (baseline.smoking == "Non-smoker" & intervention.smoking == "Current"){
-        or.change.smoking <- direct_OR_smoking_initiation
-      }  else if (baseline.smoking == "Non-smoker" & intervention.smoking == "Ex-smoker"){
-        or.change.smoking <- direct_OR_smoking_initiation*direct_OR_smoking_cessation
-      } else if (baseline.smoking %in% c("Ex-smoker", "Current") & intervention.smoking == "Non-smoker"){
-        or.change.smoking <- NA
+      if (baseline_smoking == intervention_smoking){
+        HR_change_smoking <- 1
+      } else if (baseline_smoking == "Ex-smoker" & intervention_smoking == "Current"){
+        HR_change_smoking <- 1/direct_HR_smoking_cessation
+      } else if (baseline_smoking == "Current" & intervention_smoking == "Ex-smoker"){
+        HR_change_smoking <- direct_HR_smoking_cessation
+      } else if (baseline_smoking == "Non-smoker" & intervention_smoking == "Current"){
+        HR_change_smoking <- direct_HR_smoking_initiation
+      }  else if (baseline_smoking == "Non-smoker" & intervention_smoking == "Ex-smoker"){
+        HR_change_smoking <- direct_HR_smoking_initiation*direct_HR_smoking_cessation
+      } else if (baseline_smoking %in% c("Ex-smoker", "Current") & intervention_smoking == "Non-smoker"){
+        HR_change_smoking <- NA
         ### Create output for text message
         output$text_message <- renderText({
           "You cannot move from a current or ex-smoker to non-smoker"
@@ -419,53 +392,52 @@ server <- function(input, output, session) {
 
       ### Assign values for intervention layer
       ### Set smoking status to ex-smoker
-      intervention.smoking <- "Ex-smoker"
+      intervention_smoking <- "Ex-smoker"
       ## Set sbp to SBP - 3.5
-      intervention.sbp <- baseline.sbp - 3.5
+      intervention_sbp <- baseline_sbp - 3.5
       ## Set bmi to bmi + 0.66
-      intervention.bmi <- baseline.bmi + 0.66
-      ## Set non-HDL cholesterol to nonhdl + 0.068
-      intervention.nonhdl <- baseline.nonhdl + 0.068
+      intervention_bmi <- baseline_bmi + 0.66
+      intervention_nonhdl <- baseline_nonhdl + 0.066
 
       ### Apply limits
-      if (baseline.sbp < 120){
-        baseline.sbp <- 120
+      if (baseline_sbp < 120){
+        baseline_sbp <- 120
       }
-      if (intervention.sbp < 120){
-        intervention.sbp <- 120
+      if (intervention_sbp < 120){
+        intervention_sbp <- 120
       }
-      if (baseline.bmi < 25){
-        baseline.bmi <- 25
+      if (baseline_bmi < 25){
+        baseline_bmi <- 25
       }
-      if (intervention.bmi < 25){
-        intervention.bmi <- 25
+      if (intervention_bmi < 25){
+        intervention_bmi <- 25
       }
-      if (baseline.nonhdl < 4){
-        baseline.nonhdl <- 4
+      if (baseline_nonhdl < 2.6){
+        baseline_nonhdl <- 2.6
       }
-      if (intervention.nonhdl < 4){
-        intervention.nonhdl <- 4
+      if (intervention_nonhdl < 2.6){
+        intervention_nonhdl <- 2.6
       }
 
       ### Get the difference
-      change.sbp <- intervention.sbp - baseline.sbp
-      change.bmi <- intervention.bmi - baseline.bmi
-      change.nonhdl <- intervention.nonhdl - baseline.nonhdl
+      change_sbp <- intervention_sbp - baseline_sbp
+      change_bmi <- intervention_bmi - baseline_bmi
+      change_nonhdl <- intervention_nonhdl - baseline_nonhdl
 
       ### Apply the relative risk change
-      or.change.sbp <- direct_OR_sbp^change.sbp
-      or.change.bmi <- direct_OR_bmi^change.bmi
-      or.change.nonhdl <- direct_OR_nonhdl^change.nonhdl
+      HR_change_sbp <- direct_HR_sbp^change_sbp
+      HR_change_bmi <- direct_HR_bmi^change_bmi
+      HR_change_nonhdl <- direct_HR_nonhdl^change_nonhdl
 
       ### Also need to do the same for smoking, which is different because it's non-continuous
-      if (baseline.smoking != "Current"){
-        or.change.smoking <- NA
+      if (baseline_smoking != "Current"){
+        HR_change_smoking <- NA
         ### Create output for text message
         output$text_message <- renderText({
           "You cannot recieve benefit from smoking cessation if you are not a current smoker"
         })
       } else {
-        or.change.smoking <- direct_OR_smoking_cessation
+        HR_change_smoking <- direct_HR_smoking_cessation
         ### Create output for text message
         output$text_message <- renderText({
           "Smoking cessation on average will also result in an increase in BMI of 0.66,
@@ -477,114 +449,75 @@ server <- function(input, output, session) {
     }
 
     ### If intervention choice is smoking cessation
-    if (input$decision_intervention == "statins"){
-
-      ### Assign values for intervention layer
-      intervention.sbp <- baseline.sbp - 2.62
-      intervention.bmi <- baseline.bmi + 0.33
-      intervention.nonhdl <- baseline.nonhdl + -1.3268
-
-      ### Apply limits
-      if (baseline.sbp < 120){
-        baseline.sbp <- 120
-      }
-      if (intervention.sbp < 120){
-        intervention.sbp <- 120
-      }
-      if (baseline.bmi < 25){
-        baseline.bmi <- 25
-      }
-      if (intervention.bmi < 25){
-        intervention.bmi <- 25
-      }
-      if (baseline.nonhdl < 4){
-        baseline.nonhdl <- 4
-      }
-      if (intervention.nonhdl < 4){
-        intervention.nonhdl <- 4
-      }
-
-      ### Get the difference
-      change.sbp <- intervention.sbp - baseline.sbp
-      change.bmi <- intervention.bmi - baseline.bmi
-      change.nonhdl <- intervention.nonhdl - baseline.nonhdl
-
-      ### Apply the relative risk change
-      or.change.sbp <- direct_OR_sbp^change.sbp
-      or.change.bmi <- direct_OR_bmi^change.bmi
-      or.change.nonhdl <- direct_OR_nonhdl^change.nonhdl
-
-      ### Also need to do the same for smoking, which is different because it's non-continuous
-      or.change.smoking <- 1
-
-      ### Create output for text message
-      output$text_message <- renderText({
-        "Taking statins will on average result in a reduction of systolic blood pressure
-          of 2.62, a small increase in BMI of 0.33, and a reduction in non-HDL cholesterol of 1.3368.
-          To see the relative risk reduction if able to further reduce these modifiable risk factors, please
-        use the `undefined intervention` option"
-      })
-
-      # end statin block
-    }
-
-    ### If intervention choice is antihypertensives
     if (input$decision_intervention == "antihypertensives"){
 
-      ### Assign values from intervention layer
-      intervention.sbp <- input$intervention.sbp
+      ### Assign values for intervention layer
+      ### Set smoking status to ex-smoker
+      intervention_smoking <- baseline_smoking
+      ## Set sbp to SBP - 5.1
+      intervention_sbp <- baseline_sbp - 5.1
+      ## Set bmi and non-hdl to have no change
+      intervention_bmi <- baseline_bmi
+      intervention_nonhdl <- baseline_nonhdl
 
       ### Apply limits
-      if (baseline.sbp < 120){
-        baseline.sbp <- 120
+      if (baseline_sbp < 120){
+        baseline_sbp <- 120
       }
-      if (intervention.sbp < 120){
-        intervention.sbp <- 120
+      if (intervention_sbp < 120){
+        intervention_sbp <- 120
+      }
+      if (baseline_bmi < 25){
+        baseline_bmi <- 25
+      }
+      if (intervention_bmi < 25){
+        intervention_bmi <- 25
+      }
+      if (baseline_nonhdl < 2.6){
+        baseline_nonhdl <- 2.6
+      }
+      if (intervention_nonhdl < 2.6){
+        intervention_nonhdl <- 2.6
       }
 
       ### Get the difference
-      change.sbp <- intervention.sbp - baseline.sbp
+      change_sbp <- intervention_sbp - baseline_sbp
+      change_bmi <- intervention_bmi - baseline_bmi
+      change_nonhdl <- intervention_nonhdl - baseline_nonhdl
 
       ### Apply the relative risk change
-      or.change.sbp <- direct_OR_sbp^change.sbp
-      or.change.bmi <- 1
-      or.change.nonhdl <- 1
-      or.change.smoking <- 1
+      HR_change_sbp <- direct_HR_sbp^change_sbp
+      HR_change_bmi <- direct_HR_bmi^change_bmi
+      HR_change_nonhdl <- direct_HR_nonhdl^change_nonhdl
+
+      ### Also need to do the same for smoking, which is different because it's non-continuous
+      HR_change_smoking <- 1
 
       ### Create output for text message
       output$text_message <- renderText({
-        "The effect of antihypertensives is hard to predict, depending on whether
-        you are initiating antihypertensives for the first time, or increasing antihypertensive intensity.
-        We suggest estimating the potential risk under intervention depending on a targeted level of SBP
-        under the antihypertensive therapy"
+        "Taking antihypertensives will on average result in a reduction of systolic blood pressure
+          of 5.1, and no reduction in body mass index or Non-HDL cholesterol. To see the relative risk
+          reduction if able to reduce systolic blood pressure by more than 5.1, use the `undefined intervention` option"
       })
+
       # end antihypertensives block
     }
 
-    ### Apply these RRs
-    or.change.total <-
-      or.change.smoking*
-      or.change.sbp*
-      or.change.bmi*
-      or.change.nonhdl
+    ### Apply these HRs
+    HR_change_total <-
+      HR_change_smoking*
+      HR_change_sbp*
+      HR_change_bmi*
+      HR_change_nonhdl
 
     ### Create output
-    risk.table <- create_table(pat,
-                               fit.prototype3 = fit.prototype3,
-                               bhaz.prototype3 = bhaz.prototype3,
-                               means.statins = means.prototype3[["statins"]],
-                               means.ah = means.prototype3[["ah"]],
-                               means.smoking1 = means.prototype3[["smoking1"]],
-                               means.smoking2 = means.prototype3[["smoking2"]],
-                               fit.standard = fit.standard,
-                               bhaz.standard = bhaz.standard,
-                               or.change.total = or.change.total,
-                               or.change.smoking,
-                               or.change.sbp,
-                               or.change.bmi,
-                               or.change.nonhdl)
+    risk_table <- create_table(pat = pat,
+                               fit_pui_list = fit_pui_list,
+                               bhaz_pui_list = bhaz_pui_list,
+                               means_pui_list = means_pui_list,
+                               HR_change_total = HR_change_total)
 
-    output$riskTable <- renderDT({risk.table})
+    output$riskTable <- renderDT({risk_table})
   })
 
 }

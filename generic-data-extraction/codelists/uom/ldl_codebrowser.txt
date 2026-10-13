@@ -1,0 +1,10 @@
+MedCodeId	Observations	OriginalReadCode	CleansedReadCode	Term	SnomedCTConceptId	SnomedCTDescriptionId	EmisCodeCategoryId
+259233017	40000000	44P6	44P6.00	Serum low density lipoprotein cholesterol level	1022191000000100	2566581000000116	34
+1488764011	10000000	44PI	44PI.00	Calculated LDL (low density lipoprotein) cholesterol level	1014501000000104	2552501000000118	34
+458314019	2000000	44dB	44dB.00	Plasma LDL (low density lipoprotein) cholesterol level	1010591000000104	2586471000000117	34
+259246010	300000	44PD	44PD.00	Serum fasting LDL (low density lipoprotein) cholesterol level	1026471000000106	2599941000000111	34
+259267010	300000	44R4	44R4.00	Lipoprotein electroph. - LDL	166855002	259267010	34
+857141000006116	200000	EGTONLD1		LDL cholesterol level	857141000006100	857141000006116	34
+259247018	100000	44PE	44PE.00	Serum random LDL (low density lipoprotein) cholesterol level	1026481000000108	2599981000000115	34
+259570010	50000	44d5	44d5.00	Plasma fasting LDL (low density lipoprotein) cholesterol level	1028861000000101	2600061000000110	34
+259569014	20000	44d4	44d4.00	Plasma random LDL (low density lipoprotein) cholesterol level	1028851000000104	2600051000000112	34
