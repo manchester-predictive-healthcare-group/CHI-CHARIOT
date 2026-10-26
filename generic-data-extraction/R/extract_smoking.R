@@ -16,22 +16,6 @@ extract_smoking <- function(cohort,
                             out.filepath = NULL, 
                             return.output = FALSE){
   
-#   varname = NULL
-#   codelist.non = "edh_smoking_non_medcodeid"
-#   codelist.ex = "edh_smoking_ex_medcodeid"
-#   codelist.light = "edh_smoking_light_medcodeid"
-#   codelist.mod = "edh_smoking_mod_medcodeid"
-#   codelist.heavy = "edh_smoking_heavy_medcodeid"
-#   cohort = cohortZ
-#   indexdt = "fup_start"
-#   t = NULL
-#   db = "aurum_small"
-#   db.filepath = NULL
-#   out.save.disk = TRUE
-#   out.filepath = NULL
-#   out.subdir = NULL
-#   return.output = TRUE
-  
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
   cohort <- prep_cohort(cohort, indexdt, t)
@@ -120,11 +104,6 @@ extract_smoking <- function(cohort,
   ### Ex smoker contains lots of values, but cannot be used as looks like they are either used to state
   ### how many a day used to be smoked, or the year at which smoking was given up.
   ### Non-smoker currently has no values bigger than zero
-  #   sum(!is.na(smoking.heavy$value))
-  #   sum(!is.na(smoking.mod$value))
-  #   sum(!is.na(smoking.light$value))
-  #   sum(!is.na(smoking.non$value) & smoking.non$value > 0)
-  #   sum(!is.na(smoking.ex$value) & smoking.ex$value > 0)
   
   ### Add the smoking variable to each dataset
   ### Assign a smoking value (0 = non, 1 = ex, 2 = light, 3 = moderate, 4 = heavy) to every observation in each query, 
@@ -143,7 +122,7 @@ extract_smoking <- function(cohort,
                                                             value > 0 & value < 10 ~ 2,
                                                             value >= 10 & value < 20 ~ 3,
                                                             value >= 20 & value <= 100 ~ 4,
-                                                            value > 100 ~ NA)
+                                                            value > 100 ~ NA_real_)
   )
   
   smoking.mod <- dplyr::mutate(smoking.mod,
@@ -152,7 +131,7 @@ extract_smoking <- function(cohort,
                                                           value > 0 & value < 10 ~ 2,
                                                           value >= 10 & value < 20 ~ 3,
                                                           value >= 20 & value <= 100 ~ 4,
-                                                          value > 100 ~ NA)
+                                                          value > 100 ~ NA_real_)
   )
   
   smoking.heavy <- dplyr::mutate(smoking.heavy,
@@ -161,7 +140,7 @@ extract_smoking <- function(cohort,
                                                             value > 0 & value < 10 ~ 2,
                                                             value >= 10 & value < 20 ~ 3,
                                                             value >= 20 & value <= 100 ~ 4,
-                                                            value > 100 ~ NA)
+                                                            value > 100 ~ NA_real_)
   )
   
   ### Remove the NA values
@@ -169,52 +148,55 @@ extract_smoking <- function(cohort,
   smoking.mod <- smoking.mod[!is.na(smoking)]
   smoking.heavy <- smoking.heavy[!is.na(smoking)]
   
-  ### Only retain the most recent observation for each
-  smoking.non <- smoking.non |> 
-    dplyr::group_by(patid) |>
-    dplyr::filter(dplyr::row_number(dplyr::desc(obsdate)) == 1) 
+  ###
+  ### Combine smoking records and assign final smoking status
+  ###
   
-  smoking.ex <- smoking.ex |> 
-    dplyr::group_by(patid) |>
-    dplyr::filter(dplyr::row_number(dplyr::desc(obsdate)) == 1) 
+  ### Combine without unnecessary copying
+  variable.dat <- data.table::rbindlist(
+    list(
+      smoking.non,
+      smoking.ex,
+      smoking.light,
+      smoking.mod,
+      smoking.heavy
+    ),
+    use.names = TRUE,
+    fill = FALSE
+  )
   
-  smoking.light <- smoking.light |> 
-    dplyr::group_by(patid) |>
-    dplyr::filter(dplyr::row_number(dplyr::desc(obsdate)) == 1) 
+  ### Ensure data.table format
+  data.table::setDT(variable.dat)
   
-  smoking.mod <- smoking.mod |> 
-    dplyr::group_by(patid) |>
-    dplyr::filter(dplyr::row_number(dplyr::desc(obsdate)) == 1) 
+  ### Record whether each patient has ever been an ex-smoker or current smoker
+  variable.dat[, smoking.history := any(smoking %in% c(1, 2, 3, 4)), by = patid]
   
-  smoking.heavy <- smoking.heavy |> 
-    dplyr::group_by(patid) |>
-    dplyr::filter(dplyr::row_number(dplyr::desc(obsdate)) == 1) 
+  ### Order by patient, most recent date, then most severe status
+  data.table::setorder(
+    variable.dat,
+    patid,
+    -obsdate,
+    -smoking
+  )
   
-  ### Concatenate
-  variable.dat <- rbind(smoking.non, smoking.ex, smoking.light, smoking.mod, smoking.heavy)
+  ### Retain the most recent record per patient
+  ### The ordering ensures that the most severe status is used for tied dates
+  variable.dat <- variable.dat[!duplicated(patid)]
   
-  ### Arrange so that the first observation is the most recent
-  ### If there are multiple on the same day, we take the most severe smoking status
-  variable.dat <-variable.dat |> 
-    dplyr::arrange(patid, dplyr::desc(obsdate), dplyr::desc(smoking)) |>
-    dplyr::group_by(patid)
+  ### A known previous smoker cannot subsequently be classified as never-smoker
+  variable.dat[
+    smoking == 0 & smoking.history,
+    smoking := 1
+  ]
   
-  ### Identify those with a smoking history. Given we have only retained one observations from each category,
-  ### this means this individual with > 1 observation must have some sort of smoking history.
-  smoking.history <- variable.dat |>
-    dplyr::summarise(count = dplyr::n()) |> 
-    dplyr::filter(count > 1) |>
-    dplyr::select(patid) |>
-    dplyr::mutate(smoking.history = 1)
-
-  ### Reduce variable.dat to most recent observation only
-  variable.dat <- dplyr::slice(variable.dat, 1)
+  ### Check that the recoding worked
+  stopifnot(
+    variable.dat[
+      smoking == 0 & smoking.history,
+      .N
+    ] == 0L
+  )
   
-  ### If their most recent value is non-smoker and they have a smoking history, we must change non-smoker to ex-smoker.
-  variable.dat <- merge(variable.dat, smoking.history, all.x = TRUE)
-  variable.dat <- dplyr::mutate(variable.dat,
-                                smoking = dplyr::case_when(smoking == 0 & !is.na(smoking.history) ~ 1,
-                                                           TRUE ~ smoking))
   ### Turn into factor variable
   variable.dat$smoking <- factor(variable.dat$smoking, 
                                  levels = c(0,1,2,3,4), 

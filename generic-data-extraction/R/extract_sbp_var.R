@@ -1,4 +1,4 @@
-### Write a function which will extract the SBP variable
+### Write a function which will extract the SBP variability variable
 extract_sbp_var <- function(cohort, 
                         varname = NULL,
                         codelist,
@@ -15,24 +15,7 @@ extract_sbp_var <- function(cohort,
                         out.subdir = NULL,
                         out.filepath = NULL, 
                         return.output = FALSE){
-  
-#         varname = NULL
-#         codelist = "edh_sbp_medcodeid"
-#         cohort = cohortZ
-#         indexdt = "fup_start"
-#         t = 0
-#         t.varname = TRUE
-#         time.prev = 365.25*5
-#         time.post = 0
-#         lower.bound = -Inf
-#         upper.bound = Inf
-#         db = "aurum_small"
-#         db.filepath = NULL
-#         out.save.disk = FALSE
-#         out.filepath = NULL
-#         out.subdir = NULL
-#         return.output = TRUE
-  
+
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
   cohort <- prep_cohort(cohort, indexdt, t)

@@ -1,4 +1,4 @@
-### Write a function which will extract the most recent test value
+### Write a function which will extract the most recent triglycerides value
 extract_triglycerides <- function(cohort, 
                         varname = NULL,
                         codelist,
@@ -15,23 +15,6 @@ extract_triglycerides <- function(cohort,
                         out.subdir = NULL,
                         out.filepath = NULL, 
                         return.output = FALSE){
-  
-  #           varname = NULL
-  #           codelist = "edh_sbp_medcodeid"
-  #           cohort = cohortZ
-  #           indexdt = "fup_start"
-  #           t = 0
-  #           t.varname = TRUE
-  #           time.prev = 365.25*5
-  #           time.post = 0
-  #           lower.bound = -Inf
-  #           upper.bound = Inf
-  #           db = "aurum_small"
-  #           db.filepath = NULL
-  #           out.save.disk = FALSE
-  #           out.filepath = NULL
-  #           out.subdir = NULL
-  #           return.output = TRUE
   
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
@@ -51,7 +34,7 @@ extract_triglycerides <- function(cohort,
                      db.filepath = db.filepath,
                      tab = "obs")
   
-  ### For the height query, we need to rescale those with numunitid = 173, 432 or 3202 from metres to cm
+  ### 
   db.qry <- subset(db.qry, is.na(numunitid) | numunitid != 139)
   
   ### Get test data for individuals in cohort, within time range and remove outliers

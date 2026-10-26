@@ -27,6 +27,4 @@ create_directory_system <- function(rootdir = NULL){
   ### Create neccesary sub-directories in codelists
   dir.create(paste(getwd(), "/rCPRD_project/codelists/analysis", sep = ""))
   
-  ### Then want to move the appropriate data provided with rCPRD (fake unzipped raw data, and codelists) 
-  ### into the appropriate folders
 }

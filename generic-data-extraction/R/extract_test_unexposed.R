@@ -27,44 +27,6 @@ extract_test_unexposed <- function(cohort,
                                    out.filepath = NULL, 
                                    return.output = FALSE){
   
-  # ### Set wd
-  # setwd()
-  # getwd()
-  # 
-  # ### Source functions
-  # ### Source functions
-  # R.func.sources = list.files("R", full.names = TRUE)
-  # sapply(R.func.sources, source)
-  # cohortZ <- readRDS(paste("data/extraction/cohortZ.rds", sep = ""))
-  # out.subdir <- "cohortZ"
-  # db <- "aurum_small"
-  # varname <- "sbp_unexposed"
-  # indexdt <- "fup_start"
-  # t <- 0
-  # cohort <- cohortZ
-  # codelist = "edh_sbp_medcodeid"
-  # t.varname = TRUE
-  # time.prev = 365.25*5
-  # time.post = 0
-  # lower.bound = -Inf
-  # upper.bound = Inf
-  # db.filepath = NULL
-  # out.save.disk = FALSE
-  # out.filepath = NULL
-  # out.subdir = NULL
-  # return.output = TRUE
-  # codelist.med <- "edh_sbp_medcodeid"
-  # codelist.drug <- "uom_antihypertensives_prodcodeid"
-  # 
-  # keep.exposed = TRUE
-  # keep.metadata = TRUE
-  # query.med = NULL
-  # query.drug = NULL
-  # task.id = NULL
-  # task.id.n = NULL
-  # range.min <- 14
-  # range.max <- 180
-  
   ### Preparation
   ## Match arg for exposed.type
   exposed.type <- match.arg(exposed.type)

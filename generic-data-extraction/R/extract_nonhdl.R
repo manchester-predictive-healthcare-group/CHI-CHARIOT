@@ -1,4 +1,4 @@
-### Write a function which will extract the chol/HDL ratio variable
+### Write a function which will extract the non-HDL cholesterol variable
 extract_nonhdl <- function(cohort, 
                            varname = NULL, 
                            codelist.chol,
@@ -17,27 +17,6 @@ extract_nonhdl <- function(cohort,
                            out.subdir = NULL,
                            out.filepath = NULL, 
                            return.output = FALSE){
-  
-  #           varname = NULL
-  #           cohort = cohortZ
-  #           codelist.ratio = "edh_cholhdl_ratio_medcodeid"
-  #           codelist.chol = "edh_chol_medcodeid"
-  #           codelist.hdl = "edh_hdl_medcodeid"
-  #           indexdt = "fup_start"
-  #           t = 0
-  #           t.varname = TRUE
-  #           time.prev = round(365.25*5)
-  #           time.post = 0
-  #           lower.bound = 1
-  #           upper.bound = 12
-  #           db = "aurum_nosubset_randset"
-  #           db.filepath = NULL
-  #           out.save.disk = FALSE
-  #           out.filepath = NULL
-  #           out.subdir = NULL
-  #           return.output = TRUE
-  
-  ### ADD TEST TO ENSURE THEY SPECIFY TIME FRAME
   
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
@@ -72,19 +51,22 @@ extract_nonhdl <- function(cohort,
                                      db.qry.chol, 
                                      query.type = "test",
                                      time.prev = time.prev, 
-                                     time.post = time.post)
+                                     time.post = time.post,
+                                     remove.zeros = TRUE)
   
   variable.dat.hdl <- combine_query(cohort, 
                                     db.qry.hdl, 
                                     query.type = "test",
                                     time.prev = time.prev, 
-                                    time.post = time.post)
+                                    time.post = time.post,
+                                    remove.zeros = TRUE)
   
   variable.dat.ldl <- combine_query(cohort, 
                                     db.qry.ldl, 
                                     query.type = "test",
                                     time.prev = time.prev, 
-                                    time.post = time.post)
+                                    time.post = time.post,
+                                    remove.zeros = TRUE)
   
   ### Covert ldl to non-hdl
   variable.dat.ldl <- dplyr::mutate(variable.dat.ldl, nonhdl = 1.24*value, type = 2) |>
@@ -97,7 +79,7 @@ extract_nonhdl <- function(cohort,
                                  dplyr::select(variable.dat.hdl, patid, obsdate, value), 
                                   by.x = "patid", by.y = "patid", allow.cartesian = TRUE)
   
-  ### Estimate nonhdl rom cholesterol-hdl
+  ### Estimate nonhdl from cholesterol-hdl
   variable.dat.chol.hdl <- dplyr::mutate(variable.dat.chol.hdl, nonhdl = value.x - value.y, type = 1) |>
     dplyr::filter(nonhdl > lower.bound & nonhdl < upper.bound) |>
     dplyr::arrange(patid, dplyr::desc(obsdate.x), dplyr::desc(obsdate.y)) |>
@@ -109,8 +91,8 @@ extract_nonhdl <- function(cohort,
   
   ### Now combine and take most recent, preferring type == 1
   variable.dat <- rbind(variable.dat.chol.hdl, variable.dat.ldl) |> 
-    dplyr::mutate(type = factor(type, labels = c("chol_hdl", "ldl"))) |>
-    dplyr::arrange(patid, obsdate, type, desc(nonhdl)) |>
+    dplyr::mutate(type = factor(type, levels = c(1,2), labels = c("chol_hdl", "ldl"))) |>
+    dplyr::arrange(patid, desc(obsdate), type, desc(nonhdl)) |>
     dplyr::group_by(patid) |>
     dplyr::filter(dplyr::row_number() == 1) |>
     as.data.frame() 

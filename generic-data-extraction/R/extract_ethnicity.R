@@ -1,7 +1,5 @@
 ### This program will extract Ethnicity from primary care records (note this will also be recorded in secondary care and have to be extracted from there)
-### Lets write a program to extract all the "history of" variables
 
-### How to deal with different ethnicities recorded? set to miss?
 ### No need for codelist.in because the code lists for this variable are fixed/specifc
 ### No need for indexdt, t and t.varname as we are looking over entire patient follow up
 extract_ethnicity <- function(cohort, 
@@ -13,15 +11,6 @@ extract_ethnicity <- function(cohort,
                               out.subdir = NULL,
                               out.filepath = NULL, 
                               return.output = FALSE){
-  
-  #     varname = NULL
-  #     cohort = cohortZ
-  #     db = "aurum_small"
-  #     db.filepath = NULL
-  #     save.disk = FALSE
-  #     out.filepath = NULL
-  #     out.subdir = NULL
-  #     return.output = TRUE
   
   ### Preparation
   ## Reduce cohort to important variable
@@ -127,13 +116,11 @@ extract_ethnicity <- function(cohort,
   edh.white.british <- edh.white.british$medcodeid
   
   ### Combine into codelist categories
-  ### WANT TO ADD A CHECK THAT THESE ARE NON-OVERLAPPING GROUPS
   codes.bangladeshi <- edh.bangladeshi
   codes.black.african <- edh.black.african
   codes.black.caribbean <- edh.black.caribbean
   codes.chinese <- edh.chinese
   codes.indian <- edh.indian
-  #codes.not.stated <- edh.not.recorded
   codes.oth.asian <- c(edh.oth.asian, edh.white.asian)
   codes.oth.ethnic <- c(edh.oth.ethnic, edh.oth.black, edh.oth.mixed, edh.white.black.african, edh.white.black.caribbean)
   codes.pakistani <- edh.pakistani
@@ -167,19 +154,6 @@ extract_ethnicity <- function(cohort,
                                                            medcodeid %in% codes.oth.ethnic ~ "other.ethnic",
                                                            medcodeid %in% codes.pakistani ~ "pakistani",
                                                            medcodeid %in% codes.white ~ "white"))
-  
-  #   ### If an individual has "not.stated" codes, but also has other codes, remove the "not.stated" codes
-  #   ### This is because we are basing ethnicity on most recent observation. If this is not stated most recently, 
-  #   ### but there is a historic code identifying this individual, we want to use that record.
-  #   ## Identify who has not.stated
-  #   patids.not.stated <- unique(cohort.qry$patid[cohort.qry$ethnicity == "not.stated"])
-  #   ## Identify individuals who have actual codes
-  #   patids.other <- unique(cohort.qry$patid[cohort.qry$ethnicity != "not.stated"])
-  #   ## Identify thos who are in both
-  #   patids.both <- patids.not.stated[patids.not.stated %in% patids.other]
-  #   ## Remove observations that are equal to non.stated for these individuals
-  #   cohort.qry <- subset(cohort.qry, !(patid %in% patids.both & ethnicity == "not.stated"))
-  #   rm(patids.both, patids.other, patids.not.stated)
   
   ### For now, only keep most recent observation for each individual
   cohort.qry <- dplyr::group_by(cohort.qry, patid) |>

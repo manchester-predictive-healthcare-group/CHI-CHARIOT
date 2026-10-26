@@ -1,5 +1,4 @@
 ### Program to extract impotence
-### Lets write a program to extract all the "history of" variables
 extract_impotence <- function(cohort, 
                              varname = NULL, 
                              codelist.med,
@@ -15,19 +14,6 @@ extract_impotence <- function(cohort,
                              out.subdir = NULL,
                              out.filepath = NULL, 
                              return.output = FALSE){
-  
-#         varname = NULL
-#         codelist.type1 = "edh_t1dia_medcodeid"
-#         codelist.type2 = "edh_t2dia_medcodeid"
-#         cohort = cohortZ
-#         indexdt = "fup_start"
-#         t = NULL
-#         db = "aurum_small"
-#         db.filepath = NULL
-#         out.save.disk = TRUE
-#         out.filepath = NULL
-#         out.subdir = NULL
-#         return.output = TRUE
   
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t

@@ -1,4 +1,4 @@
-### Write a function which will extract the most recent test value
+### Write a function which will extract the most recent weight
 extract_weight <- function(cohort, 
                                 varname = NULL,
                                 codelist,
@@ -15,24 +15,7 @@ extract_weight <- function(cohort,
                                 out.subdir = NULL,
                                 out.filepath = NULL, 
                                 return.output = FALSE){
-  
-  #           varname = NULL
-  #           codelist = "edh_sbp_medcodeid"
-  #           cohort = cohortZ
-  #           indexdt = "fup_start"
-  #           t = 0
-  #           t.varname = TRUE
-  #           time.prev = 365.25*5
-  #           time.post = 0
-  #           lower.bound = -Inf
-  #           upper.bound = Inf
-  #           db = "aurum_small"
-  #           db.filepath = NULL
-  #           out.save.disk = FALSE
-  #           out.filepath = NULL
-  #           out.subdir = NULL
-  #           return.output = TRUE
-  
+
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
   cohort <- prep_cohort(cohort, indexdt, t)
@@ -58,7 +41,7 @@ extract_weight <- function(cohort,
                                 time.prev = time.prev, 
                                 time.post = time.post)
   
-  ### FFor the weight query, we need to rescale those with numunitid = 1691, 2318, 2997 or 6265 from stones to kg
+  ### For the weight query, we need to rescale those with numunitid = 1691, 2318, 2997 or 6265 from stones to kg
   variable.dat <- dplyr::mutate(variable.dat, value = dplyr::case_when(numunitid %in% c(1691, 2318, 2997, 6265) ~ 6.35029*value,
                                                                        !(numunitid %in% c(1691, 2318, 2997, 6265)) ~ value))
   

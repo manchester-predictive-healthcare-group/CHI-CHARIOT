@@ -50,7 +50,6 @@ cprd_extract <- function(dbname, filetype, nrows = -1, select = NULL, subset.pat
   
   print(paste("nrows", nrows))
   print(paste("select", select))
-  #   print(paste("subset.patids", subset.patids))
   print(paste("use.set", use.set))
   
   ### Spit error out if subset.patids not in correct form
@@ -334,7 +333,6 @@ combine_query_boolean <- function(cohort,
   print(str(cohort.qry))
   
   ### Create a 0/1 vector for whether patients are in this list and add to cohort
-  ### NOTE: WANT TO CHECK FASTMATCH RETURNS VECTOR IN THE CORRECT ORDER
   print(paste("create variable", Sys.time()))
   cohort.qry <- as.integer(!is.na(fastmatch::fmatch(cohort$patid, cohort.qry)))
   print("COHORT QUERY 3")
@@ -398,9 +396,6 @@ combine_query <- function(cohort,
       cohort.qry <- cohort.qry[value != 0]
     }
   }
-  
-  ### Note that if value.na.rm = FALSE, we will skip this step and keep all test results including NA's.
-  ### This will be of use for deriving smoking status
   
   ### Reduce to variables of interest
   if (reduce.output == TRUE){
