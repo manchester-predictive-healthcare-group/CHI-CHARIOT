@@ -16,23 +16,6 @@ extract_sbp <- function(cohort,
                         out.filepath = NULL, 
                         return.output = FALSE){
   
-  #           varname = NULL
-  #           codelist = "edh_sbp_medcodeid"
-  #           cohort = cohortZ
-  #           indexdt = "fup_start"
-  #           t = 0
-  #           t.varname = TRUE
-  #           time.prev = 365.25*5
-  #           time.post = 0
-  #           lower.bound = -Inf
-  #           upper.bound = Inf
-  #           db = "aurum_small"
-  #           db.filepath = NULL
-  #           out.save.disk = FALSE
-  #           out.filepath = NULL
-  #           out.subdir = NULL
-  #           return.output = TRUE
-  
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
   cohort <- prep_cohort(cohort, indexdt, t)
@@ -46,7 +29,6 @@ extract_sbp <- function(cohort,
   prep_subdir(out.subdir)
   
   ### Run a database query
-  ### THINKING I MAY HAVE TO SPLIT THE PATIDS UP INTO GROUPS BEFORE QUERYING THE DATABASE FOR SBP CODES AS THERE ARE SO MANY
   db.qry <- db_query(codelist,
                      db = db, 
                      db.filepath = db.filepath,
@@ -59,7 +41,8 @@ extract_sbp <- function(cohort,
                                 time.prev = time.prev, 
                                 time.post = time.post, 
                                 lower.bound = lower.bound, 
-                                upper.bound = upper.bound)
+                                upper.bound = upper.bound,
+                                remove.zeros = TRUE)
   
   print("merge")
   ### Create dataframe of cohort and the variable of interest

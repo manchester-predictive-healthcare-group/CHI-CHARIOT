@@ -1,5 +1,4 @@
 ### Program to extract diabetes
-### Lets write a program to extract all the "history of" variables
 extract_diabetes <- function(cohort, 
                              varname = NULL, 
                              codelist.type1,

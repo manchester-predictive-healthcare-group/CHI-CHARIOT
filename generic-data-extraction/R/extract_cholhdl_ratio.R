@@ -18,27 +18,6 @@ extract_cholhdl_ratio <- function(cohort,
                                   out.filepath = NULL, 
                                   return.output = FALSE){
   
-#           varname = NULL
-#           cohort = cohortZ
-#           codelist.ratio = "edh_cholhdl_ratio_medcodeid"
-#           codelist.chol = "edh_chol_medcodeid"
-#           codelist.hdl = "edh_hdl_medcodeid"
-#           indexdt = "fup_start"
-#           t = 0
-#           t.varname = TRUE
-#           time.prev = round(365.25*5)
-#           time.post = 0
-#           lower.bound = 1
-#           upper.bound = 12
-#           db = "aurum_nosubset_randset"
-#           db.filepath = NULL
-#           out.save.disk = FALSE
-#           out.filepath = NULL
-#           out.subdir = NULL
-#           return.output = TRUE
-  
-  ### ADD TEST TO ENSURE THEY SPECIFY TIME FRAME
-  
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
   cohort <- prep_cohort(cohort, indexdt, t)

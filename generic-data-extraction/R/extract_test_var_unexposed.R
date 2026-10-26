@@ -25,27 +25,6 @@ extract_test_var_unexposed <- function(cohort,
                                    out.filepath = NULL, 
                                    return.output = FALSE){
   
-  # cohortZ <- readRDS(paste("data/extraction/cohortZ.rds", sep = ""))
-  # out.subdir <- "cohortZ"
-  # db <- "aurum_small"
-  # varname <- "sbp_unexposed"
-  # indexdt <- "fup_start"
-  # t <- 0
-  # cohort <- cohortZ
-  # codelist = "edh_sbp_medcodeid"
-  # t.varname = TRUE
-  # time.prev = 365.25*5
-  # time.post = 0
-  # lower.bound = -Inf
-  # upper.bound = Inf
-  # db.filepath = NULL
-  # out.save.disk = FALSE
-  # out.filepath = NULL
-  # out.subdir = NULL
-  # return.output = TRUE
-  # codelist.med <- "edh_sbp_medcodeid"
-  # codelist.drug <- "uom_antihypertensives_prodcodeid"
-  
   ### Preparation
   ## Add index date variable to cohort and change indexdt based on t
   cohort <- prep_cohort(cohort, indexdt, t)
