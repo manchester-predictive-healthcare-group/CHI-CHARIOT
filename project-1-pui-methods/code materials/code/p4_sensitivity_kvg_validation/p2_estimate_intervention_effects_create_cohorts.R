@@ -1,11 +1,11 @@
 ############################################################
 ############################################################
-### The goal of programs p5.X is to estimate relative risk ratios
-### for sustaining statin/antihypertensives use for a period of time.
+### The goal of this program is to create artificially censored cohorts, which can then be used
+### to estimate the effect of sustaining statin/antihypertensives use for a period of time.
 ###
 ### This will be done using artificial censoring. We create cohorts
 ### that are on or off treatment at baseline, and artificially censor
-### as soon as someone deviates from this strategy.
+### as soon as someone deviates from this strategy. 
 ### 
 ### We will estimate inverse probability of artificial censoring weights,
 ### inverse probability of censoring weights, and inverse probability of treatment
@@ -28,6 +28,9 @@
 ### Everything will be done seperately for men/women, statins/antihypertensives,
 ### interactions or no interactions in the models for estimating weights, and 1/3/5/10 year follow-up.
 ###
+### These analyses are done in the entire cohort, not just the 1,000,000 subset used in the methods
+### work. We therefore read in some datasets from the applied study workspace.
+###
 ### We do the following:
 ### - Step 1: Create validation dataset with appropriate variable for all analyses
 ### - Step 2: Estimate the various weights
@@ -46,7 +49,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd()
 getwd()
 
 ### Source functions
@@ -86,7 +89,10 @@ inter_age_rcs <- readRDS(paste("data/var_model_inter_age_rcs", gender_in, ".rds"
 ##################################################################################
 
 ### Read in validation dataset
-df_valid <- readRDS(paste("../project2/data/p4/mice_mids_prototype3_", 2, "_", 1, ".rds", sep = ""))
+###
+### Note, we are using one imputation chain from the applied study. This is because we want to do this sensitivity
+### analysis on the entire cohort, due to potential sample size issues.
+df_valid <- readRDS(paste("../project2/data/p5/mice_mids_prototype3_", gender_in, "_", 1, ".rds", sep = ""))
 df_valid <- mice::complete(df_valid, action = 1)
 
 ### Create indicators for estimating probability of being censored (ipcw's)
@@ -103,7 +109,10 @@ df_valid <- dplyr::mutate(df_valid,
 ### individuals medication always takes value 0 at zero, and changes when individual deviates from medication
 ### status at baseline. Instead, we use the original medication status times, as we want to stratify dependent
 ### on treatment status at baseline when estimating the ipacw weights.
-medication_times <- readRDS(paste("../project2/data/cohort_split_times_", med, "_burnout", burnout, ".rds", sep = ""))
+###
+### Note, we are using medication times generated in the applied study. This is because we want to do this sensitivity
+### analysis on the entire cohort, due to potential sample size issues.
+medication_times <- readRDS(paste("../project2/data/p5/cohort_split_times_", med, "_burnout", burnout, ".rds", sep = ""))
 colnames(medication_times)
 
 ### Create variables for original cvd_time and cvd_indcator in validation dataset
@@ -139,9 +148,6 @@ df_valid_ipacw <- df_valid_ipacw[
   ),
   by = patid][tstart == 0] |>
   as.data.frame()
-
-### View these
-# View(df_valid_ipacw[1:20,])
 
 ### Note that in this dataset, 'cvd_time' and 'cvd_indicator' variables are already correctly defined for
 ### assessing calibration in the artificially censored cohort. cvd_indicator = 1 if the individual had

@@ -8,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd()
 getwd()
 
 ### Source functions
@@ -46,10 +46,6 @@ calibrate_truncate <- function(gender_in, truncate){
     (df_valid_ipacw$status == 1 & df_valid_ipacw$time <= t_fup) * 
       (df_valid_ipacw$comb_weight)
   )
-  ht_estimate
-  mean(df_valid_ipacw$pred)
-  mean(df_valid_ipacw$pred)/ht_estimate
-  # This is better, but still doesn't work!!
   
   ### Calculate calibration plot using IPCW approach in uncensored cohort
   calib_ipcw_uncensored <- est_calib_ipcw_new(data = df_valid_ipacw_uncensored, 
@@ -72,19 +68,6 @@ calibrate_truncate <- function(gender_in, truncate){
                                      t = t_fup,
                                      nk = 7,
                                      weights_in = df_valid_ipacw$comb_weight)
-  
-  calib_ipcw_uncensored[["ICI"]]
-  calib_smoothed_ht[["ICI"]]
-  calib_pv_ipcw[["ICI"]]
-  calib_ipcw_uncensored[["E50"]]
-  calib_smoothed_ht[["E50"]]
-  calib_pv_ipcw[["E50"]]
-  calib_ipcw_uncensored[["E90"]]
-  calib_smoothed_ht[["E90"]]
-  calib_pv_ipcw[["E90"]]
-  calib_ipcw_uncensored[["plot"]]
-  calib_smoothed_ht[["plot"]]
-  calib_pv_ipcw[["plot"]]
   
   ### Write a function to save these plots
   save_calibration_plot <- function(calib_obj,
@@ -174,11 +157,6 @@ calibrate_truncate <- function(gender_in, truncate){
     ### Return summary table
     return(summary_df)
   }
-  
-  
-  ###
-  ### Example usage
-  ###
   
   ###
   ### Create summary table

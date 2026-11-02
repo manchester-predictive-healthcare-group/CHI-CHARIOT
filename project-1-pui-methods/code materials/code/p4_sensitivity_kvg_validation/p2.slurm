@@ -42,10 +42,10 @@ t_fup=${t_fups[$t_idx]}
 flex=${flexes[$flex_idx]}
 
 ### Define output file
-outfile="p5.1_estimate_intervention_effects_create_cohorts_${med}${gender}_t${t_fup}_${flex}.out"
+outfile="p2_estimate_intervention_effects_create_cohorts_${med}_${gender}_t${t_fup}_${flex}.out"
 
 echo "Running: gender=${gender} med=${med} t_fup=${t_fup} flex=${flex}"
 echo "Output:  ${outfile}"
 
-Rscript p5.1_estimate_intervention_effects_create_cohorts.R \
+Rscript p2_estimate_intervention_effects_create_cohorts.R \
   ${gender} ${med} ${t_fup} ${flex} > ${outfile}
