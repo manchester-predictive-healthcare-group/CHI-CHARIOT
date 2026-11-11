@@ -118,14 +118,6 @@ create_table <- function(pat,
                          HR_change_total,
                          input_type){
   
-  # pat
-  # fit_tn = fit_tn
-  # bhaz_tn = bhaz_tn
-  # means_statins = means_tn[["statins"]]
-  # means_ah = means_tn[["ah"]]
-  # fit_standard = fit_standard
-  # bhaz_standard = bhaz_standard
-  
   ### Define decimal places
   dp <- 2
   
@@ -149,9 +141,9 @@ create_table <- function(pat,
   
   ### Estimate risk from baseline layer
   baseline_risk  <- 1 - est_surv_offset_prototype3_redacted_mi(newdata = pat_pui_baseline,
-                                                      fit_list = fit_pui_list,
-                                                      bhaz_list = bhaz_pui_list_y,
-                                                      offset_means_list = means_pui_list)
+                                                               fit_list = fit_pui_list,
+                                                               bhaz_list = bhaz_pui_list_y,
+                                                               offset_means_list = means_pui_list)
   pat_risks[1] <- paste(round(100*baseline_risk,dp), "%", sep = "")
   
   ### Adjust from interventional layer

@@ -1,8 +1,8 @@
-### Code written by Bowen Jiang
+### Code written by Bowen Jiang, edited by Alex Pate
 # Goal: Estsimate the effects from the DAG presented in supplementary material, and used to drive the intervention layer of the CHARIOT model
 # R script organization:
 # 1. Define functions for effect size conversions (OR ↔ RR ↔ HR)
-# 2. Estimate the direct effects of Modifiable Risk Factors (MRFs) on CVD, as odds ratios
+# 2. Estimate the direct effects of Modifiable Risk Factors (MRFs) on CVD, as hazard ratios
 # 3. Convert all MRF direct effect estimates to hazard ratios (HRs) for the modifiable risk factor model
 # 4. Derivation of the total effects of statins and antihypertensives as hazards ratios,
 #    used for adjusting for changes in treatment during follow-up #####
@@ -13,7 +13,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/")
 getwd()
 
 #################################################
@@ -225,7 +225,7 @@ RR_sbp   # Risk ratio per 1 mmHg reduction in sbp
 
 # Convert the RR to HR using the RR < 1 conversion function
 HR_sbp <- convert_RR_to_HR_lt1_numerical_search(RR_sbp, w, u)[1]
-HR_sbp #  Total effect of Non-HDL on CVD (odds ratio)
+HR_sbp #  Total effect of Non-HDL on CVD (hazard ratio)
 
 # total effect equals direct effect, and record per 1mmHg increase
 HR_sbp_direct <- 1/HR_sbp
@@ -325,26 +325,26 @@ HR_smok_cess_direct # = 0.8604713 (direct effect of smoking cessation on CVD)
 
 # effects of initiating smoking on bmi, nonhdl and sbp
 # these all acts through bmi
-smok_init_on_bmi <- -0.61 # decrease in bmi (units) reported in literature (section 2.11)
+smok_init_to_bmi <- -0.61 # decrease in bmi (units) reported in literature (section 2.11)
 
 # the effect of bmi on nonhdl
-bmi_on_nonhdl <- 0.2 * (1 / 4.5) * 2.348 # (section 2.5)
+bmi_to_nonhdl <- 0.2 * (1 / 4.5) * 2.348 # (section 2.5)
 # the effect of smok init on nonhdl
-smok_init_on_nonhdl <- smok_init_on_bmi * bmi_on_nonhdl # (section 2.12)
-smok_init_on_nonhdl # estimated effect on nonhdl = 0.06365689 mmol/L decrease
+smok_init_to_nonhdl <- smok_init_to_bmi * bmi_to_nonhdl # (section 2.12)
+smok_init_to_nonhdl # estimated effect on nonhdl = 0.06365689 mmol/L decrease
 
 # the effect of bmi on sbp
-bmi_on_sbp <- 0.7 # (section 2.4)
+bmi_to_sbp <- 0.7 # (section 2.4)
 # the effect of smok init on sbp
-smok_init_on_sbp <- smok_init_on_bmi * bmi_on_sbp # (Section 2.13)
-smok_init_on_sbp # estimated effect on sbp = 0.427 mmHg decrease
+smok_init_to_sbp <- smok_init_to_bmi * bmi_to_sbp # (Section 2.13)
+smok_init_to_sbp # estimated effect on sbp = 0.427 mmHg decrease
 
-# Convert each pathway effect to odds ratios (ORs):
-HR_smok_init_indirect_bmi <- (HR_bmi_direct)^(smok_init_on_bmi)           # indirect effect through bmi → HR = 0.9871059
+# Convert each pathway effect to hazard ratios (HRs):
+HR_smok_init_indirect_bmi <- (HR_bmi_direct)^(smok_init_to_bmi)           # indirect effect through bmi → HR = 0.9871059
 HR_smok_init_indirect_bmi
-HR_smok_init_indirect_nonhdl <- (HR_nonhdl_direct)^(smok_init_on_nonhdl)     # indirect effect through Non-HDL → HR = 0.9877465
+HR_smok_init_indirect_nonhdl <- (HR_nonhdl_direct)^(smok_init_to_nonhdl)     # indirect effect through Non-HDL → HR = 0.9877465
 HR_smok_init_indirect_nonhdl
-HR_smok_init_indirect_sbp <- (HR_sbp_direct)^(smok_init_on_sbp)          # indirect effect through sbp → HR = 0.9896642
+HR_smok_init_indirect_sbp <- (HR_sbp_direct)^(smok_init_to_sbp)          # indirect effect through sbp → HR = 0.9896642
 HR_smok_init_indirect_sbp
 
 # Combine all indirect effects:
@@ -483,7 +483,7 @@ saveRDS(log(HR_smok_init_total), "data/p5/offsets_total_lnHR_smok_init.rds")
 saveRDS(log(HR_smok_cess_total), "data/p5/offsets_total_lnHR_smok_cess.rds")
 
 ###
-### Effects of modifiable risk factors, on the other modifiable risk factors (used in intervention layer and rshiny)
+### Total effects of modifiable risk factors, on the other modifiable risk factors (used in intervention layer and rshiny)
 ###
 
 ### Most have already been derived in order to estimate the direct effects as the difference between
@@ -493,15 +493,33 @@ saveRDS(log(HR_smok_cess_total), "data/p5/offsets_total_lnHR_smok_cess.rds")
 bmi_to_nonhdl <- 0.2*(1/4.5)*2.348 # 0.1043556 (section 2.5)
 bmi_to_sbp <- 0.7 # (section 2.4)
 
-saveRDS(bmi_to_nonhdl, "data/p5/slope_bmi_to_nondl.rds")
+### Total effect of statin initiation on each of the MFRs are taken directly from published studies
+### See supp_2_DAG_derviation.docx.
+statins_to_bmi <- 0.33
+statins_to_nonhdl <- -1.3268
+statins_to_sbp <- -2.62
+
+### Total effect of antihypertensives initiation taken directly from literature
+### See supp_2_DAG_derviation.docx.
+### Noting difficulties in validation of this effect (also see supp_2_DAG_derivation.docx).
+### We concluded that preference is to target a specified reduction in SBP with antihypertensives,
+### as effect was highly variable.
+antihypertensives_to_sbp <- -5.1
+
+### Save
+saveRDS(bmi_to_nonhdl, "data/p5/slope_bmi_to_nonhdl.rds")
 saveRDS(bmi_to_sbp, "data/p5/slope_bmi_to_sbp.rds")
 saveRDS(nonhdl_to_sbp, "data/p5/slope_nonhdl_to_sbp.rds")
 saveRDS(smok_cess_to_bmi, "data/p5/slope_smok_cess_to_bmi.rds")
 saveRDS(smok_cess_to_nonhdl, "data/p5/slope_smok_cess_to_nonhdl.rds")
 saveRDS(smok_cess_to_sbp, "data/p5/slope_smok_cess_to_sbp.rds")
-saveRDS(smok_init_on_bmi, "data/p5/slope_smok_init_to_bmi.rds")
-saveRDS(smok_init_on_nonhdl, "data/p5/slope_smok_init_to_nonhdl.rds")
-saveRDS(smok_init_on_sbp, "data/p5/slope_smok_init_to_sbp.rds")
+saveRDS(smok_init_to_bmi, "data/p5/slope_smok_init_to_bmi.rds")
+saveRDS(smok_init_to_nonhdl, "data/p5/slope_smok_init_to_nonhdl.rds")
+saveRDS(smok_init_to_sbp, "data/p5/slope_smok_init_to_sbp.rds")
+saveRDS(statins_to_bmi, "data/p5/slope_statins_to_bmi.rds")
+saveRDS(statins_to_nonhdl, "data/p5/slope_statins_to_nonhdl.rds")
+saveRDS(statins_to_sbp, "data/p5/slope_statins_to_sbp.rds")
+saveRDS(antihypertensives_to_sbp, "data/p5/slope_antihypertensives_to_sbp.rds")
 
 
 ###
