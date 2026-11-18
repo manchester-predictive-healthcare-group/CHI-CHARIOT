@@ -19,10 +19,10 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
-### Extract chain seed and gender from command line
+### Extract medication from command line
 args <- commandArgs(trailingOnly = T)
 med <- args[1]
 burnout <- 180
@@ -57,7 +57,6 @@ cohort_split_times <- dplyr::group_modify(.data = cohort_split_times,
                            .f = my_mutate) |>
   as.data.frame() |>
   dplyr::arrange(patid, tstart)
-print(str(cohort_split_times))
 
 ###
 ### Save

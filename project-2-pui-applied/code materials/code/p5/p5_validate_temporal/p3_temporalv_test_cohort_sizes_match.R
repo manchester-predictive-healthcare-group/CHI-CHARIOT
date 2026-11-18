@@ -23,8 +23,11 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
+
+### Define burnout
+burnout <- 180
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
 common.data.dir <- file.path("..", "..")

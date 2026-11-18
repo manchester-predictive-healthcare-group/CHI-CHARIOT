@@ -22,6 +22,6 @@ Rscript p2_calculate_cf_surv_times.R 2 5 > p2_calculate_cf_surv_times_2_5.out
 Rscript p2_calculate_cf_surv_times.R 2 6 > p2_calculate_cf_surv_times_2_6.out
 Rscript p2_calculate_cf_surv_times.R 2 7 > p2_calculate_cf_surv_times_2_7.out
 Rscript p3_calibration_ph.R > p3_calibration_ph.out
-Rscript p3_calibration_ph_remove_low_risk.R > p3_calibration_ph_remove_low_risk.out
 Rscript p4_discrimination.R > p4_discrimination.out
 Rscript p5_render.R > p5_render.out
+Rscript p6_create_manuscript_figures.R > p6_create_manuscript_figures.out

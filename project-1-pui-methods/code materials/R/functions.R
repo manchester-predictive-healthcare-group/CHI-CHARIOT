@@ -12,7 +12,7 @@
 ### Going to write a seperate function for models 1,2, vs 3,4,5,6,7, rather than having an if statement, for 
 ### computational reaons (this function will be applied 1 millon times)
 ###
-### For models 1 and 2, we only adjust for antihypertensive use, but at baseline and changes during follow-up
+### For models 1 and 2, we only adjust for antihypertensive use, both at baseline and changes during follow-up
 ###
 ### For models 3,4,5,6,7, we adjust for change in either statins or antihypertensives during foloow-up.
 ###
@@ -125,7 +125,7 @@ est_surv <- function(newdata, fit, bhaz, time){
 }
 
 ###
-### Function to estimate survival time, at minimum of a variable (eventtime) or fixed numeric time (t)
+### Function to estimate survival probability, at minimum of a variable (eventtime) or fixed numeric time (t)
 ### Used when estimating IP weights
 est_surv_eventtime_or_t <- function(newdata, bhaz, fit, eventtime, t, type = "coxph"){
   
@@ -271,7 +271,7 @@ est_calib_plot <- function(data,
     
   }
   
-  ### Take a random subset of 5000 values for the plot
+  ### Take a random subset of up to 5000 values for the plot
   if (plot.subset == TRUE){
     plot.data <- plot.data[sample(1:nrow(plot.data), min(5000, nrow(data)), replace = FALSE), ] |>
       dplyr::arrange(pred)
@@ -385,15 +385,6 @@ est_calib_ph <- function(data,
                          pred.cap.quantile = .99,
                          plot = TRUE,
                          remove.low.risk = FALSE){
-  
-  #   data = imps.valid[[1]]
-  #   length(data)
-  #   fit = fit.list[[1]]
-  #   bhaz = bhaz.list[[1]]
-  #   time = round(10*365.25)
-  #   str(fit)
-  #   coefficients(fit)
-  #   str(data)
   
   ### Calculate survival probability
   if (is.null(surv)){
@@ -540,7 +531,7 @@ boot_func_for_calib_metrics_CI <- function(data, indices, fit, bhaz, time, nk, p
                                pred.plot.range = pred.plot.range,
                                plot = FALSE)
   
-  ### Extract the plot data which is of interest (predicted observed values)
+  ### Extract ICI/E50/E90
   ICI <- calib_object[["ICI"]]
   E50 <- calib_object[["E50"]]
   E90 <- calib_object[["E90"]]

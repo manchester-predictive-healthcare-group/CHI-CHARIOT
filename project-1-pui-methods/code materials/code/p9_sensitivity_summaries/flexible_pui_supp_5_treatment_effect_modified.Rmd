@@ -550,9 +550,9 @@ make_metric_table_stratified <- function(gender, med, type) {
   original_values <- tibble::tibble(
     metric = c("ICI", "E50", "E90"),
     original = c(
-      read_strat_metric(gender, med, type, statins = 1, ah = 1, "ICI"),
-      read_strat_metric(gender, med, type, statins = 1, ah = 1, "E50"),
-      read_strat_metric(gender, med, type, statins = 1, ah = 1, "E90")
+      read_strat_metric(gender, med, type, statins_adj = 1, ah_adj = 1, "ICI"),
+      read_strat_metric(gender, med, type, statins_adj = 1, ah_adj = 1, "E50"),
+      read_strat_metric(gender, med, type, statins_adj = 1, ah_adj = 1, "E90")
     )
   )
   
@@ -953,3 +953,4 @@ for (gender in params$genders) {
   }
 }
 ```
+

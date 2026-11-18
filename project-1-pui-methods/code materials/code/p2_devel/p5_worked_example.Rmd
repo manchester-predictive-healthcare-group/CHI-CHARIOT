@@ -9,7 +9,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+knitr::opts_knit$set(root.dir = "../../")
 library(knitr)
 ```
 
@@ -163,7 +163,7 @@ pred_model1_off_ah_visit1 <- 1 - df_valid |>
 ### Visit 2, on antihyertensives
 pred_model1_on_ah_visit1 <- 1 - df_valid |>
   dplyr::mutate(
-    ### Define treatment off antihypertensives
+    ### Define treatment on antihypertensives
     offset_ah_timevar_lnHR = lnHR_ah, 
     ### Define sbp
     sbp = 120) |>
@@ -320,7 +320,7 @@ wl_sbp_reduction <- wl_bmi_reduction*0.7
 wl_sbp_reduction
 
 ###
-### Get predicted risk for SBP = 140
+### Get predicted risk
 pred_model3_bmi25 <- 1 - df_valid |>
   dplyr::mutate(
     ### Define treatment to be 'continue as current'
@@ -364,7 +364,7 @@ statins_change_bmi <- 0.33
 statins_change_nonhdl <- 1.24*(-1.07)
 
 ### Calculate predicted risk under intervention at visit 0
-### Get predicted risk for SBP = 140
+### Get predicted risk
 pred_model3_statins <- 1 - df_valid |>
   dplyr::mutate(
     ### Define treatment to be 'continue as current'
@@ -397,7 +397,7 @@ round(100*pred_model3_statins, 2)
 ### Reduction of all risk factors to healthy levels
 ###
 
-### Get predicted risk for SBP = 140
+### Get predicted risk
 pred_model3_healthy <- 1 - df_valid |>
   dplyr::mutate(
     ### Define treatment to be 'continue as current'
@@ -547,7 +547,7 @@ pred_model4_visit0_sbp120 <- convert_risk_HR(p = pred_model4_visit0_sbp140, chan
 round(100*c(pred_model4_visit0_sbp140, pred_model4_visit0_sbp130, pred_model4_visit0_sbp120), 2)
 
 ###
-### Reduction of BMI by 5
+### Reduction of BMI by 5kg
 ###
 pred_model4_visit0_bmi25 <- convert_risk_HR(p = pred_model4_visit0_sbp140, change_sbp = -wl_sbp_reduction, change_bmi = -wl_bmi_reduction, change_nonhdl = -wl_nonhdl_reduction)
 

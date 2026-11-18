@@ -1,5 +1,5 @@
 ###
-### Program to fit causal model
+### Program to fit PUI model
 ###
 
 ### Clear workspace
@@ -7,7 +7,7 @@ rm(list = ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Load packages
@@ -75,12 +75,12 @@ fit_model <- function(imp_num, imp, model_formula_full, knot_loc_sbp, knot_loc_n
   fit <- survival::coxph(model_formula_full, data = data_devel, model = TRUE)
   print(paste("bhaz fit model", imp_num, Sys.time()))
   bhaz <- survival::basehaz(fit, centered = TRUE)
-  # bhaz.uncent <- survival::basehaz(fit, centered = FALSE)
+  bhaz.uncent <- survival::basehaz(fit, centered = FALSE)
   
   ### Save fit
   saveRDS(fit, paste("data/p5/model_cox_", gender, "_imp", imp_num, ".rds", sep = ""))
   saveRDS(bhaz, paste("data/p5/model_cox_bhaz_", gender, "_imp", imp_num, ".rds", sep = ""))
-  # saveRDS(bhaz.uncent, paste("data/p5/model_cox_bhaz_uncent_", gender, "_imp", imp_num, ".rds", sep = ""))
+  saveRDS(bhaz.uncent, paste("data/p5/model_cox_bhaz_uncent_", gender, "_imp", imp_num, ".rds", sep = ""))
   
   NULL
 }

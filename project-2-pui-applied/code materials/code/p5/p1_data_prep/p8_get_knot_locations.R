@@ -1,23 +1,23 @@
 ###
 ### Get knot locations by combining all imputed datasets, and calculating relevant quantiles
-### This is done for SBP, BMI and non-HDL cholesterol. Age knot locations based off age.
+### This is done for SBP, BMI and non-HDL cholesterol. Age knot locations are specified manually at model development.
 
 ### Clear workspace
 rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
 common.data.dir <- file.path("..", "..")
 
 ### Source functions
-R.func.sources = list.files("Aurum_Jun2021_extract/R", full.names = TRUE)
+R.func.sources = list.files(file.path(common.data.dir, "Aurum_Jun2021_extract", "R"), full.names = TRUE)
 sapply(R.func.sources, source)
 
-### Extract chain seed and gender from command line
+### Loop over genders
 for (gender in 1:2){
   
   ### Assign character gender

@@ -9,7 +9,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 
 ### Source functions
 R.func.sources = list.files("R", full.names = TRUE)

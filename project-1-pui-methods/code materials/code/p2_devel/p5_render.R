@@ -1,13 +1,13 @@
 ### Create Table 1 of data
 
-Merge extracted variables into baseline cohort
+### This is going to test the functions for deriving all the variables!
 
 ### Clear workspace
 rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 print("render to markdown")

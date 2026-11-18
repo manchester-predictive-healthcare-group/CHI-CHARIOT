@@ -18,7 +18,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -151,7 +151,6 @@ create_df_temporalv <- function(gender, t_fup_int){
   ### Reduce and save
   df_valid <- dplyr::select(df_valid, dplyr::all_of(c("patid", "gender", "cvd_time", "cvd_indicator", "caltime", var_all_model)))
   saveRDS(df_valid, paste0("data/p5/df_valid_temporalv_", gender, "_", t_fup_int, ".rds"))
-  print(str(df_valid))
   
 }
 
@@ -162,8 +161,3 @@ for (gender_in in 1:2){
   }
 }
 print("FINISHED")
-
-###
-### NB: XXXX
-### ADD A CHECK FOR SMOKING STATUS HERE.
-###

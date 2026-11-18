@@ -8,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -34,7 +34,6 @@ cohort.pres.split.times <- lapply(1:num.groups, function(group.id) {
   )
 
 cohort.pres.split.times <- do.call("rbind", cohort.pres.split.times)
-str(cohort.pres.split.times)
 
 ###
 ### For individuals with no prescriptions, just need to change variables names and set med_status = 0
@@ -55,14 +54,12 @@ cohort.nopres.split.times <-
   dplyr::select(cohort.nopres.split.times, patid, cvd_time, cvd_indicator) |> 
   dplyr::mutate(tstart = 0, 
                 med_status = 0)
-str(cohort.nopres.split.times)
 
 ###
 ### Combine the two datasets
 ###
 cohort.split.times <- rbind(cohort.pres.split.times, cohort.nopres.split.times)
 cohort.split.times <- data.frame(cohort.split.times)
-str(cohort.split.times)
 
 ###
 ### Save

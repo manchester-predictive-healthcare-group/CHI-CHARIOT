@@ -2,7 +2,7 @@
 # Knits all .Rmd files in a specified directory
 
 # Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 # ---- Locate pandoc

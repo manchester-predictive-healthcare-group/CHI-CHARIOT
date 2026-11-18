@@ -526,3 +526,4 @@ metric_tbl <- dplyr::bind_rows(metric_tbl_female, metric_tbl_male)
 # Print table
 print(knitr::kable(metric_tbl, digits=3))
 ```
+

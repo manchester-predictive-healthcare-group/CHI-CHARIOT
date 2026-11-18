@@ -49,7 +49,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Source functions
@@ -148,6 +148,9 @@ df_valid_ipacw <- df_valid_ipacw[
   ),
   by = patid][tstart == 0] |>
   as.data.frame()
+
+### View these
+# View(df_valid_ipacw[1:20,])
 
 ### Note that in this dataset, 'cvd_time' and 'cvd_indicator' variables are already correctly defined for
 ### assessing calibration in the artificially censored cohort. cvd_indicator = 1 if the individual had

@@ -14,7 +14,7 @@ rm(list = ls())
 Sys.time()
 
 ### Set working directory
-setwd()
+setwd("./")
 getwd()
 
 ### Source functions

@@ -15,7 +15,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Load packages
@@ -36,7 +36,7 @@ model <- 4
 ### Define burnout
 burnout <- 180
 
-### Define pleiotropic effect as a percentage increase the total effect
+### Define pleiotropic effect as a percentage increase in the total effect
 pleio_effect_multiplier <- 1.2
 
 ### Read in HR for antihypertensives

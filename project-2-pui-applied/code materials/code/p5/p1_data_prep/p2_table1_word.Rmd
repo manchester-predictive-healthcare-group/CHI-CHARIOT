@@ -1,6 +1,5 @@
 ---
 title: "Baseline Table 1 at start of follow up"
-author: "Alex Pate"
 date: "04/01/2024"
 output: word_document
 ---

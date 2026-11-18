@@ -1,7 +1,6 @@
 ###
 ### Extract all records of smoking, bmi/weight/height, 
 ### and chol/hdl/ldl/triglycerides, and save to disk, 
-### These are variables that we may be adjusting for during follow-up.
 ###
 
 ### Clear workspace
@@ -9,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -21,7 +20,6 @@ sapply(R.func.sources, source)
 
 ### Extract cohort
 cohort <- readRDS("data/p5/cohort_prototype3.rds")
-str(cohort)
 
 ###############################################################################
 ### Function to extract and save all records of each modifiable risk factor ###
@@ -39,13 +37,11 @@ extract_med <- function(med, codelist){
                      tab = "obs",
                      codelist.vec = codelist$medcodeid)
   print(paste("query complete", Sys.time()))
-  str(db.qry)
   
   ### Reduce db.qry to observations in cohort and get rid of unneccesary variables
   db.qry <- db.qry[!is.na(fastmatch::fmatch(db.qry$patid, cohort$patid)), ]
   db.qry <- dplyr::select(db.qry, patid, medcodeid, obsdate, value, numunitid)
   print(paste("reduced to cohort", Sys.time()))
-  str(db.qry)
   
   saveRDS(db.qry, paste("data/p5/db_qry_", med, ".rds", sep = ""))
   print(paste("saved query", Sys.time()))

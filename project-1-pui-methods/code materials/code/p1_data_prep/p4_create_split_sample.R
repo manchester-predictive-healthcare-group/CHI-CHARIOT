@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.

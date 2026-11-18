@@ -8,7 +8,6 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-#knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/project2/code/p8_collate_results")
 library(knitr)
 ```
 

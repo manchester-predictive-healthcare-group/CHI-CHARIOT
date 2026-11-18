@@ -8,25 +8,28 @@
 ###
 
 ###
-### We adjust survival times for changes in treatment (statins/ah/smoking) use during follow-up
-### We do not adjust for different BMI/nonhdl/sbp/smoking at baseline, as these are just what will be made for the prediction
-### 
+### We adjust survival times for changes in treatment (statins/ah) use during follow-up
+###
 
 ### Clear workspace
 rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
-### Extract imputation number for development dataset
+### Extract from command line
 args <- commandArgs(trailingOnly = T)
 gender <- as.numeric(args[1])
 model <- as.numeric(args[2])
 gender_char <- c("male", "female")[gender]
 print(paste("gender = ", gender_char))
 print(paste("model = ", model))
+
+### Source functions
+R.func.sources = list.files("R", full.names = TRUE)
+sapply(R.func.sources, source)
 
 ### Define burnout
 burnout <- 180

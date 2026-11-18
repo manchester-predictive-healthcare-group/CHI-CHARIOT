@@ -10,7 +10,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -67,7 +67,7 @@ est_calibration <- function(gender, model){
   
   ### SBP relative to 120 (no benefit for being lower than 120)
   ### BMI relative to 25 (no benefit for being lower than 25)
-  ### nonhdl relative to 4
+  ### nonhdl relative to 2.6
   df_valid <- dplyr::mutate(df_valid,
                             sbp_adj = dplyr::case_when(sbp < 120 ~ 0,
                                                        TRUE ~ sbp - 120),
@@ -108,7 +108,7 @@ est_calibration <- function(gender, model){
   print(paste("PH boot", Sys.time()))
   calib_ph_boot <- boot::boot(data = df_valid_pred, 
                          statistic = boot_func_for_calib_metrics_CI, 
-                         R = 500, fit = fit, bhaz = bhaz, time = round(10*365.25), nk = 4)
+                         R = 500, fit = fit, bhaz = bhaz, time = round(10*365.25), nk = 5)
   
   ###########################
   ### KM grouped approach ###

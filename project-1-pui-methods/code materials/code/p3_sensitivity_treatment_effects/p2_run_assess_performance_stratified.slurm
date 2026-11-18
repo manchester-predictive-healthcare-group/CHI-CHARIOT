@@ -7,7 +7,7 @@
 module purge
 module load apps/gcc/R/4.4.2
 
-### Map task ID (1-64) to parameter combinations
+### Map task ID (1-72) to parameter combinations
 
 genders=(1 2)
 meds=(statins antihypertensives)
@@ -20,7 +20,7 @@ idx=$((SLURM_ARRAY_TASK_ID - 1))
 ### Extract each parameter from the index
 n_med=${#meds[@]}          # 2
 n_group_types=${#group_types[@]}          # 2
-n_scenario=${#scenarios[@]}       # 8
+n_scenario=${#scenarios[@]}       # 9
 
 med_idx=$((idx % n_med))
 idx=$((idx / n_med))

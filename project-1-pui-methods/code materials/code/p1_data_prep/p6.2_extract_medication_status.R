@@ -15,7 +15,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Load paralleisation packages
@@ -23,7 +23,7 @@ library(foreach)
 library(doParallel)
 library(doFuture)
 
-### Extract chain seed and gender from command line
+### Extract medication from command line
 args <- commandArgs(trailingOnly = T)
 med <- args[1]
 burnout <- as.numeric(180)
@@ -35,7 +35,6 @@ print(paste("burnout = ", burnout))
 cohort <- readRDS("data/cohort_pui.rds")
 cohort <- dplyr::select(cohort, patid, cvd_time, cvd_indicator, fup_start)
 print(paste("cohort", Sys.time()))
-str(cohort)
 
 ### Read in the db.qry of the prescriptions of interest (contains all prescription dates of interest)
 db_qry <- readRDS(paste("data/db_qry_", med, ".rds", sep = ""))
@@ -45,7 +44,6 @@ cohort_split <- split(cohort, cut(seq_len(nrow(cohort)), 10, labels = FALSE))
 
 ### Split db_qry
 db_qry_split <- lapply(1:10, function(x) {db_qry[!is.na(fastmatch::fmatch(db_qry$patid, cohort_split[[x]]$patid)), ]})
-str(db_qry_split)
 
 ##############################################################
 ### Function to identify change of medication status times ###
@@ -172,12 +170,10 @@ convert_data <- function(df, cohort){
   
   ### Clear space
   print(paste("med_status_times", Sys.time()))
-  str(med_status_times)
   
   ### Get patids of patients from the db_qry
   patids_df <- unique(med_status_times$patid)
   print(paste("patids_pres", Sys.time()))
-  str(patids_df)
   
   ### Group cohort by patid
   cohort <- dplyr::group_by(cohort, patid) |>
@@ -210,13 +206,11 @@ cohort_pres_split_times <- (foreach(x = 1:10, .combine = list, .multicombine = T
                                     })
 stopCluster(cl)
 print(paste("end conversion", Sys.time()))
-str(cohort_pres_split_times)
 
 ### Recombine
 print(paste("Recombine", Sys.time()))
 cohort_pres_split_times <- do.call("rbind", cohort_pres_split_times) |>
   dplyr::arrange(patid, tstart)
-str(cohort_pres_split_times)
 
 ###
 ### For individuals with no prescriptions, just need to change variables names and set med_status = 0
@@ -233,7 +227,6 @@ cohort_nopres_split_times <-
   dplyr::select(cohort_nopres_split_times, patid, cvd_time, cvd_indicator) |> 
   dplyr::mutate(tstart = 0, 
                 med_status = 0)
-str(cohort_nopres_split_times)
 
 ###
 ### Combine the two datasets

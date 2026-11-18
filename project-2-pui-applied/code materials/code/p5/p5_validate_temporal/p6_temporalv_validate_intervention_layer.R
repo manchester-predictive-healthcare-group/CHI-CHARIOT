@@ -8,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -112,10 +112,10 @@ est_validate_interventional_wrapper <- function(gender,
                                                                               TRUE ~ 2.6))
   } else if (mfr == "bmi"){
     df_valid_temporal <- dplyr::mutate(df_valid_temporal, 
-                                       baseline_mfr_cutoff = dplyr::case_when(baseline_mfr > 24 ~ baseline_mfr,
-                                                                              TRUE ~ 24),
-                                       followup_mfr_cutoff = dplyr::case_when(followup_mfr > 24 ~ followup_mfr,
-                                                                              TRUE ~ 24))
+                                       baseline_mfr_cutoff = dplyr::case_when(baseline_mfr > 25 ~ baseline_mfr,
+                                                                              TRUE ~ 25),
+                                       followup_mfr_cutoff = dplyr::case_when(followup_mfr > 25 ~ followup_mfr,
+                                                                              TRUE ~ 25))
   }
   
   ### Calculate the change in the modifiable risk factor between baseline and temporal validation cohorts

@@ -13,7 +13,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
@@ -26,6 +26,9 @@ sapply(R.func.sources, source)
 ### Define burnout
 burnout <- as.numeric(180)
 
+### Define t_eval
+t_eval <- round(10*365.25)
+
 library(mice)
 library(survival)
 library(rms)
@@ -34,8 +37,6 @@ library(rms)
 args <- commandArgs(trailingOnly = T)
 gender <- as.numeric(args[1])
 iter <- as.numeric(args[2])
-# gender <- as.numeric(2)
-# iter <- as.numeric(1)
 print(paste("iter = ", iter))
 gender_char <- c("male", "female")[gender]
 print(paste("gender = ", gender_char))
@@ -55,13 +56,10 @@ cohort <- data.table::as.data.table(cohort)
 
 ### Reduce to gender of interest
 cohort <- subset(cohort, gender == get("gender", pos = 1))
-# cohort <- cohort[1:50000, ]
 
 ### Resample with replacement
 cohort <- cohort[sample(nrow(cohort), replace = TRUE), ]
-# cohort <- cohort[sample(200000, replace = TRUE), ] xx
 cohort <- dplyr::mutate(cohort, patid_boot = 1:nrow(cohort))
-saveRDS(cohort, paste("data/p5/optimism_boot_df_", gender, "_", iter, ".rds", sep = ""))
 
 ### Remove continuous variables we don't want
 cohort <- dplyr::select(cohort, -c(cholhdl_ratio, sbp_var, bmi_alltime, sbp_alltime, sbp_var_alltime, cholhdl_ratio_alltime))
@@ -70,7 +68,6 @@ colnames(cohort)
 ### Get column names for those with missing data, to help visualise
 var.miss <- colnames(cohort)[apply(cohort[1:50000, ], 2, function(x) {any(is.na(x))})]
 print("VAR MISS")
-var.miss
 
 ###
 ### Add Nelson-Aalen estimator of outcome, this will be used in imuptation instead of the time until event
@@ -84,7 +81,6 @@ extract_cumhaz <- function(t){survfit.obj$cumhaz[max(which(survfit.obj$time <= t
 
 ### Obtain this for all individuals
 cohort$cvd_ev_prim_aj <- sapply(cohort$cvd_time, extract_cumhaz)
-str(cohort)
 
 ###
 ### Define the formulas argument
@@ -93,16 +89,15 @@ str(cohort)
 ### Create first attempt using .make formulas function
 ### This is to just get the object structure, and will be completely changed
 mice.formulas <- make.formulas(cohort)
-str(mice.formulas)
 
 ### Read in variables that will be interacted with the spline for age
 inter.age.rcs <- readRDS(paste("data/p5/var_imp_inter_age_rcs", gender, ".rds", sep = ""))
 
 ### Create vector with all terms for the formula
 ### Note at this point, we add in cvd_indicator and cvd_ev_prim_aj, and all the continuous variables
-full.formula.vec <- c("rms::rcs(age, c(25, 40, 57.5, 75))*rms::rcs(bmi, 4)",
-                      "rms::rcs(age, c(25, 40, 57.5, 75))*rms::rcs(sbp, 4)",
-                      "rms::rcs(age, c(25, 40, 57.5, 75))*rms::rcs(nonhdl, 4)",
+full.formula.vec <- c("rms::rcs(age, c(25, 40, 57.5, 75))*rms::rcs(bmi, 3)",
+                      "rms::rcs(age, c(25, 40, 57.5, 75))*rms::rcs(sbp, 3)",
+                      "rms::rcs(age, c(25, 40, 57.5, 75))*rms::rcs(nonhdl, 3)",
                       "rms::rcs(age, c(25, 40, 57.5, 75))*rms::rcs(IMD, c(1,10,20))", 
                       paste("rms::rcs(age, c(25, 40, 57.5, 75))*", inter.age.rcs, sep = ""), "cvd_indicator", "cvd_ev_prim_aj")
 
@@ -141,8 +136,6 @@ mice.formulas
 ###
 print(paste("DRY RUN 1", Sys.time()))
 dry <- mice(cohort, formulas = mice.formulas, maxit = 0)
-str(dry)
-names(dry)
 
 ### Choose methods for imputation
 ### Use predictive mean matching for all variables(including discrete)
@@ -150,10 +143,6 @@ names(dry)
 meth <- dry$method
 meth["smoking"] <- "pmm"
 meth["ethnicity"] <- "pmm"
-meth["hdl"] <- ""
-meth["ldl"] <- ""
-meth["cholesterol"] <- ""
-meth
 
 ### Dry-run 2
 print(paste("DRY RUN 2", Sys.time()))
@@ -168,7 +157,7 @@ time.out <- Sys.time()
 time.out - time.in
 
 ### Save imputation object
-saveRDS(imp, paste("data/p5/optimism_boot_mice_mids_", gender, "_", iter, ".rds", sep = ""))
+# saveRDS(imp, paste("data/p5/optimism_boot_mice_mids_", gender, "_", iter, ".rds", sep = ""))
 
 ### Extract the imputed data
 imp <- mice::complete(imp, action = 1)
@@ -181,7 +170,7 @@ imp$ethnicity <- factor(imp$ethnicity, c(eth.levels[9],eth.levels[1:8]))
 imp <- dplyr::mutate(imp, caltime = as.numeric(fup_start) - as.numeric(as.Date("01/01/2005", format = "%d/%m/%Y")))
 
 ### Save imputed dataset
-saveRDS(imp, paste("data/p5/optimism_boot_df_imp_", gender, "_", iter, ".rds", sep = ""))
+# saveRDS(imp, paste("data/p5/optimism_boot_df_imp_", gender, "_", iter, ".rds", sep = ""))
 print(paste("Step 1 complete", Sys.time()))
 
 #########################################
@@ -277,12 +266,12 @@ print(paste("fit model", Sys.time()))
 fit <- survival::coxph(model.formula.full, data = data_devel, model = TRUE)
 print(paste("bhaz fit model", Sys.time()))
 bhaz <- survival::basehaz(fit, centered = TRUE)
-bhaz.uncent <- survival::basehaz(fit, centered = FALSE)
+# bhaz.uncent <- survival::basehaz(fit, centered = FALSE)
 
 ### Save fit
-saveRDS(fit, paste("data/p5/optimism_boot_cox_", gender, "_iter", iter, ".rds", sep = ""))
-saveRDS(bhaz, paste("data/p5/optimism_boot_cox_bhaz_", gender, "_iter", iter, ".rds", sep = ""))
-saveRDS(bhaz.uncent, paste("data/p5/optimism_boot_cox_bhaz_uncent_", gender, "_iter", iter, ".rds", sep = ""))
+# saveRDS(fit, paste("data/p5/optimism_boot_cox_", gender, "_iter", iter, ".rds", sep = ""))
+# saveRDS(bhaz, paste("data/p5/optimism_boot_cox_bhaz_", gender, "_iter", iter, ".rds", sep = ""))
+# saveRDS(bhaz.uncent, paste("data/p5/optimism_boot_cox_bhaz_uncent_", gender, "_iter", iter, ".rds", sep = ""))
 
 ### Finished
 print(paste("Step 2. complete", Sys.time()))
@@ -299,7 +288,7 @@ print(paste("Step 2. complete", Sys.time()))
 
 ### Define datasets
 # Bootstrapped dataset (defined above)
-df_boot <- readRDS(paste("data/p5/optimism_boot_df_imp_", gender, "_", iter, ".rds", sep = ""))
+df_boot <- imp
 # Original dataset (iterate systematically through the different imputed original datasets)
 if (gender == 2){
   df_orig <- readRDS(paste0("data/p5/dfs_all_female", (((iter - 1) %% 10) + 1), ".rds"))
@@ -373,12 +362,12 @@ df_orig <-
 df_boot$surv <-as.numeric(est_surv_offset_prototype3(newdata = df_boot, 
                                                      fit = fit, 
                                                      bhaz = bhaz, 
-                                                     time = round(10*365.25)))
+                                                     time = t_eval))
 
 df_orig$surv <-as.numeric(est_surv_offset_prototype3(newdata = df_orig, 
                                                      fit = fit, 
                                                      bhaz = bhaz, 
-                                                     time = round(10*365.25)))
+                                                     time = t_eval))
 
 ### Merge counter factual survival times with data frames
 df_boot_cf <- dplyr::left_join(dplyr::select(df_boot, -cvd_time, -cvd_indicator), cf_surv_times_boot, by = dplyr::join_by(patid_boot)) |>
@@ -412,7 +401,7 @@ est_calib_ph_wrapper <- function(type){
   calib.ph <- est_calib_ph(data = data_valid_pred, 
                            fit = fit, 
                            bhaz = bhaz, 
-                           time = round(10*365.25),
+                           time = t_eval,
                            surv = data_valid_pred$surv,
                            pred_plot_range = seq(0.0001, 0.4, length.out = 250),
                            plot = FALSE)
@@ -463,7 +452,7 @@ est_calib_ph_wrapper_byvar <- function(type,
     est_calib_ph(data = data_valid_pred_list[[x]], 
                  fit = fit, 
                  bhaz = bhaz, 
-                 time = round(10*365.25),
+                 time = t_eval,
                  surv = data_valid_pred_list[[x]]$surv,
                  plot = FALSE)
   })
@@ -577,7 +566,7 @@ est_discrim_wrapper <- function(type){
   
   ### Extract C-stat
   Cstat <- unname(Cstat.object$concordance)
-
+  
   ### Return
   return(Cstat)
   
@@ -679,3 +668,29 @@ saveRDS(discrim_by_age_orig, paste0("data/p5/optimism_boot_discrim_by_age_", gen
 saveRDS(discrim_by_ethnicity_orig, paste0("data/p5/optimism_boot_discrim_by_ethnicity_", gender, "_iter", iter, "_dforig", ".rds"))
 
 print(paste("Step 5. complete", Sys.time()))
+
+
+##########################################################################
+### Reduce model object sizes and save for producing instability plots ###
+##########################################################################
+
+### Calculate offset means (required for prediction)
+offset_means <- c("statins" = mean(fit$model[,"offset(offset_statins_timevar_lnHR)"]),
+                  "ah" = mean(fit$model[,"offset(offset_ah_timevar_lnHR)"]),
+                  "smoking1" = mean(fit$model[,"offset(offset_smoking_timevar_dummy1_lnHR)"]),
+                  "smoking2" = mean(fit$model[,"offset(offset_smoking_timevar_dummy2_lnHR)"]))
+
+### Get rid of residuals and linear predictors to reduce file size
+fit[names(fit) == "model"] <- "DELETED"
+fit[names(fit) == "y"] <- "DELETED"
+fit[names(fit) == "linear.predictors"] <- "DELETED"
+fit[names(fit) == "residuals"] <- "DELETED"
+
+### Reduce the baseline hazard to one observation
+bhaz_reduced <- bhaz$hazard[max(which(bhaz$time <= t_eval))]
+
+### Save
+saveRDS(fit, paste0("data/p5/optimism_boot_reduced_cox_", gender, "_iter", iter, ".rds"))
+saveRDS(bhaz, paste0("data/p5/optimism_boot_cox_bhaz_", gender, "_iter", iter, ".rds"))
+saveRDS(bhaz_reduced, paste0("data/p5/optimism_boot_reduced_cox_bhaz_", gender, "_iter", iter, ".rds"))
+saveRDS(offset_means, paste0("data/p5/optimism_boot_reduced_cox_offset_means_", gender, "_iter", iter, ".rds"))

@@ -3,13 +3,13 @@
 ### An individual will assumed to be "off", 180 days after their last prescription.
 
 ### Steps will be to
-### 1) Read in cohort and all prescriptions (prescriptions have been extracted and saved in extract_presciptions.R)
+### 1) Read in cohort and all prescriptions (prescriptions have been extracted and saved in p2_extract_presciptions.R)
 ### 2) For individuals with a prescription, identify times where a "change" happens
 ### 3) Split survival dataset, and create a predictor for on/off statins
 
 ### The query of prescriptions will be split into a number of smaller datasets before applying the operations from 2) and 3).
 ### This is for comptational reasons.
-### These will then be combined in a seperate program, extract_medication_status2.R, along with data formatted the same
+### These will then be combined in a seperate program, p3.2B.R, along with data formatted the same
 ### way for all the individuals who didn't have a prescription.
 ### To do this we set number of groups (num.groups) to be 100, and cycle the task ID (group.id) from 1 - 100 
 ### They will need to be recombined after (done in program p3.2B).
@@ -20,7 +20,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -30,7 +30,7 @@ common.data.dir <- file.path("..", "..")
 R.func.sources = list.files(file.path(common.data.dir, "Aurum_Jun2021_extract/R"), full.names = TRUE)
 sapply(R.func.sources, source)
 
-### Extract chain seed and gender from command line
+### Read medication and processing-group arguments
 args <- commandArgs(trailingOnly = T)
 med <- args[1]
 burnout <- as.numeric(args[2])
@@ -46,7 +46,6 @@ print(paste("group.id = ", group.id))
 cohort <- readRDS(file.path(common.data.dir, "Aurum_Jun2021_extract/data/extraction/cohort_baseline/cohort_var.rds"))
 cohort <- dplyr::select(cohort, patid, cvd_time, cvd_indicator, fup_start)
 print(paste("cohort", Sys.time()))
-str(cohort)
 
 ### Read in the db.qry of the prescriptions of interest (contains all prescription dates of interest)
 db.qry <- readRDS(paste("data/p5/db_qry_", med, ".rds", sep = ""))
@@ -66,7 +65,6 @@ groups <- data.frame("patid" = patids.pres, "group" = cut(seq_along(patids.pres)
 db.qry <- merge(db.qry, groups, by.x = "patid", by.y = "patid")
 ## Reduce to group of interest
 db.qry <- db.qry[!is.na(fastmatch::fmatch(db.qry$group, group.id)), ]
-str(db.qry)
 
 ##############################################################
 ### Function to identify change of medication status times ###
@@ -193,12 +191,10 @@ convert_data <- function(df, cohort){
   
   ### Clear space
   print(paste("med.status.times", Sys.time()))
-  str(med.status.times)
   
   ### Get patids of patients from the db.qry
   patids.df <- unique(med.status.times$patid)
   print(paste("patids.pres", Sys.time()))
-  str(patids.df)
   
   ### Group cohort by patid
   cohort <- dplyr::group_by(cohort, patid) |>

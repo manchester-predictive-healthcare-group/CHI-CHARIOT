@@ -3,7 +3,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
@@ -41,10 +41,6 @@ var_miss <- colnames(cohort)[apply(cohort[1:50000, ], 2, function(x) {any(is.na(
 print("VAR MISS")
 var_miss
 
-### Check missing pattern
-# missing_pattern <- mice::md.pattern(cohort[, ..var_miss])
-# str(missing_pattern)
-
 ###
 ### Add Nelson-Aalen estimator of outcome, this will be used in imuptation instead of the time until event
 ###
@@ -57,7 +53,6 @@ extract_cumhaz <- function(t){survfit_obj$cumhaz[max(which(survfit_obj$time <= t
 
 ### Obtain this for all individuals
 cohort$cvd_ev_prim_aj <- sapply(cohort$cvd_time, extract_cumhaz)
-str(cohort)
 
 ###
 ### Define the formulas argument
@@ -66,7 +61,6 @@ str(cohort)
 ### Create first attempt using .make formulas function
 ### This is to just get the object structure, and will be completely changed
 mice_formulas <- make.formulas(cohort)
-str(mice_formulas)
 
 ### Read in variables that will be interacted with the spline for age
 inter_age_rcs <- readRDS(paste("data/var_imp_inter_age_rcs", gender, ".rds", sep = ""))
@@ -120,8 +114,6 @@ mice_formulas
 ###
 print(paste("DRY RUN 1", Sys.time()))
 dry <- mice(cohort, formulas = mice_formulas, maxit = 0)
-str(dry)
-names(dry)
 
 ### Choose methods for imputation
 ### Use predictive mean matching for all variables(including discrete)

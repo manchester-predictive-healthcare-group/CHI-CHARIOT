@@ -1,19 +1,12 @@
 ### Code written by Bowen Jiang
 # Goal: Estsimate the effects from the DAG presented in supplementary material, and used to drive the intervention layer of the CHARIOT model
-# R script organization:
-# 1. Define functions for effect size conversions (OR ↔ RR ↔ HR)
-# 2. Estimate the direct effects of Modifiable Risk Factors (MRFs) on CVD, as odds ratios
-# 3. Convert all MRF direct effect estimates to hazard ratios (HRs) for the modifiable risk factor model
-# 4. Derivation of the total effects of statins and antihypertensives as hazards ratios,
-#    used for adjusting for changes in treatment during follow-up #####
-# 5. Perform external consistency check for statins effect
 
 ### Clear workspace
 rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 #################################################
@@ -153,7 +146,7 @@ RR_SBP   # Risk ratio per 1 mmHg reduction in SBP
 
 # Convert the RR to HR using the RR < 1 conversion function
 HR_SBP <- convert_RR_to_HR_lt1_numerical_search(RR_SBP, w, u)[1]
-HR_SBP #  Total effect of Non-HDL on CVD (odds ratio)
+HR_SBP #  Total effect of SBP on CVD
 
 # total effect equals direct effect, and record per 1mmHg increase
 HR_SBP_direct <- 1/HR_SBP
@@ -261,7 +254,7 @@ HR_statins_indirect_SBP # Effect through SBP = 0.9382406
 HR_statins_total_DAG <- HR_statins_indirect_BMI * HR_statins_indirect_NonHDL * HR_statins_indirect_SBP
 HR_statins_total_DAG # Total HR = 0.7307345
 
-# --- Convert OR to RR for external comparison (JAMA meta-analysis RR = 0.75) ---
+# --- Convert HR to RR for external comparison (JAMA meta-analysis RR = 0.75) ---
 RR_statins_total_DAG <- convert_HR_to_RR_HRlt1(HR_statins_total_DAG, w, u)
 RR_statins_total_DAG # 0.7475701
 
@@ -281,8 +274,8 @@ convert_RR_to_OR_lt1(new_RR, w, u)[1]
 testthat::expect_equal(0.9, convert_RR_to_OR_lt1(new_RR, w, u)[1])
 
 ### gt1
-# convert_RR_to_OR_lt1 is the inversion
-# convert_OR_to_RR_ORlt1 is the original
+# convert_RR_to_OR_gt1 is the inversion
+# convert_OR_to_RR_ORgt1 is the original
 new_RR <- convert_OR_to_RR_ORgt1(1.1, w, u)
 convert_RR_to_OR_gt1(new_RR, w, u)[1]
 

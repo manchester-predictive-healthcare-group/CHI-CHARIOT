@@ -10,7 +10,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 ### Source functions
 R.func.sources = list.files("R", full.names = TRUE)

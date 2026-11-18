@@ -1,5 +1,5 @@
 ###
-### Estimate the relative risk ratio for the three cohorts, which have been created in file 5.1:
+### Estimate the relative risk ratio for the three cohorts, which have been created in file p2:
 ###
 ### Full cohort
 ### Overlap cohort (based on IPTW only)
@@ -13,7 +13,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Source functions

@@ -1,8 +1,8 @@
 module load apps/gcc/R/4.4.2
 Rscript p1_create_cohort.R > p1_create_cohort.out
 Rscript p2_create_variable_objects.R > p2_create_variable_objects.out
-Rscript p3_impute_cohort.R 1 1 > p3_impute_cohort_1.R
-Rscript p3_impute_cohort.R 1 2 > p3_impute_cohort_2.R
+Rscript p3_impute_cohort.R 1 1 > p3_impute_cohort_1.out
+Rscript p3_impute_cohort.R 1 2 > p3_impute_cohort_2.out
 Rscript p4_create_split_sample.R > p4_create_split_sample.out
 Rscript p5_assess_imputations.R > p5_assess_imputations.out
 Rscript p6.1_extract_prescriptions.R > p6.1_extract_prescriptions.out

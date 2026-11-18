@@ -12,7 +12,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Load paralleisation packages
@@ -20,7 +20,7 @@ library(foreach)
 library(doParallel)
 library(doFuture)
 
-### Extract chain seed and gender from command line
+### Define burnout
 args <- commandArgs(trailingOnly = T)
 burnout <- as.numeric(180)
 print(paste("burnout = ", burnout))
@@ -177,8 +177,6 @@ cohort_cut <- split(cohort, cut(seq_len(nrow(cohort)), 10, labels = FALSE))
 
 ### Split cvd_split_times based on the cohort groupings
 cvd_split_times_cut <- lapply(1:10, function(x) {cvd_split_times[!is.na(fastmatch::fmatch(cvd_split_times$patid, cohort_cut[[x]]$patid)), ]})
-str(cvd_split_times_cut)
-
 ### Run function using parallelisation
 print(paste("start conversion", Sys.time()))
 
@@ -192,12 +190,10 @@ cohort_split_times <- (foreach(x = 1:10, .combine = list, .multicombine = TRUE,
                                })
 stopCluster(cl)
 print(paste("end conversion", Sys.time()))
-str(cohort_split_times)
 
 ### Combine into single dataset and sort
 cohort_split_times <- do.call("rbind", cohort_split_times) |>
   dplyr::arrange(patid, tstart, cvd_time)
-str(cohort_split_times)
 
 ### Save adjsuted survival times, as it may take a while to run
 saveRDS(cohort_split_times, paste("data/cohort_split_times_augmented_burnout", burnout, ".rds", sep = ""))

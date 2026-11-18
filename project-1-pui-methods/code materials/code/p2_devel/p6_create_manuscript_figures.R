@@ -1,16 +1,13 @@
 ###
-### Program to estimate calibration in 1 development and validation dataset (split sample)
+### Program to create manuscript figures
 ###
-
-### Calibration curve produced seperately for each development/validation dataset combination
-### This is primarily because for each development dataset, we get a different set of counter-factual survival times in the validation dataset
 
 ### Clear workspace
 rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.

@@ -19,7 +19,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -67,7 +67,6 @@ print(paste("Start group modify", Sys.time()))
 cohort_split_times <- dplyr::group_modify(.data = cohort_split_times, 
                            .f = my_mutate) |>
   as.data.frame()
-print(str(cohort_split_times))
 
 ###
 ### Save

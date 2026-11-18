@@ -11,7 +11,7 @@ rm(list = ls())
 print(Sys.time())
 
 ### Set working directory
-setwd()
+setwd("./")
 print(getwd())
 
 ### Define filepath to file directory system containing extracted data and functions

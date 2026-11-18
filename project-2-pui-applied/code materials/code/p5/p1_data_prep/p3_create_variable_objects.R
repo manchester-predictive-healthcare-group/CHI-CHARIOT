@@ -9,7 +9,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 
 ### Source functions
 R.func.sources = list.files("R", full.names = TRUE)
@@ -29,10 +29,6 @@ for (gender in 1:2){
   ### Read in cohort
   cohort <- readRDS("data/p5/cohort_prototype3.rds")
   cohort <- data.table::as.data.table(cohort)
-  
-  # ### Reduce to gender of interest
-  # cohort <- subset(cohort, gender == get("gender", pos = 1))
-  # # cohort <- cohort[1:100000, ]
   
   ###
   ### Get variable names
@@ -100,10 +96,6 @@ for (gender in 1:2){
   ### Read in cohort
   cohort <- readRDS("data/p5/cohort_prototype3.rds")
   cohort <- data.table::as.data.table(cohort)
-  
-  # ### Reduce to gender of interest
-  # cohort <- subset(cohort, gender == get("gender", pos = 1))
-  # # cohort <- cohort[1:100000, ]
   
   ###
   ### Get variable names

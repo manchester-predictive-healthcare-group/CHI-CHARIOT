@@ -3,29 +3,21 @@
 ### i.e. create split survival data with intervals whenever an individual changes status with
 ### respect to smoking, statins or antihypertensives.
 ###
-### This program is written to be parallelised, i.e. will do the layer for a subgroup of patients
-### They will need to be recombined after (done in program p4.2).
-###
 
 ### Clear workspace
 rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
+
+### Define burnout period
+burnout <- as.numeric(180)
+print(paste("burnout =", burnout))
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
 common.data.dir <- file.path("..", "..")
-
-### Extract chain seed and gender from command line
-args <- commandArgs(trailingOnly = T)
-group.id <- as.numeric(args[1])
-burnout <- as.numeric(180)
-num.groups <- 100
-print(paste("burnout = ", burnout))
-print(paste("group.id = ", group.id))
-print(paste("num.groups = ", num.groups))
 
 ### Read in the outcome data
 cvd.split.times.smoking <- readRDS(paste("data/p5/cohort_split_times_smoking.rds", sep = ""))
@@ -37,153 +29,158 @@ cohort <- readRDS("data/p5/cohort_prototype3.rds") |>
   dplyr::select(patid, cvd_time, cvd_indicator, fup_start) |>
   dplyr::arrange(patid)
 
-### Split up patids
-chunk.size <- nrow(cohort)/num.groups
-patids.split <- split(cohort$patid, ceiling(seq_along(cohort$patid) / chunk.size))
-
-### Reduce cohort split times
-cvd.split.times.smoking <- cvd.split.times.smoking[!is.na(fastmatch::fmatch(cvd.split.times.smoking$patid, patids.split[[group.id]])), ]
-cvd.split.times.statins <- cvd.split.times.statins[!is.na(fastmatch::fmatch(cvd.split.times.statins$patid, patids.split[[group.id]])), ]
-cvd.split.times.ah <- cvd.split.times.ah[!is.na(fastmatch::fmatch(cvd.split.times.ah$patid, patids.split[[group.id]])), ]
-
-### Just check same number of individuals in each (i.e. no-one has been missed)
-testthat::expect_equal(length(unique(cvd.split.times.smoking$patid)), length(unique(cvd.split.times.statins$patid)))
-testthat::expect_equal(length(unique(cvd.split.times.smoking$patid)), length(unique(cvd.split.times.ah$patid)))
-
 ###
-### Start by combining statins and antihypertensives
+### Prepare the three source datasets
 ###
 
+### Convert inputs to data.table copies so the original objects are not modified
+cohort_dt <- data.table::as.data.table(data.table::copy(cohort))
+smoking_dt <- data.table::as.data.table(data.table::copy(cvd.split.times.smoking))
+statins_dt <- data.table::as.data.table(data.table::copy(cvd.split.times.statins))
+ah_dt <- data.table::as.data.table(data.table::copy(cvd.split.times.ah))
+
+### Retain the interval starts and status from each source
+smoking_dt <- smoking_dt[, .(patid, tstart, med_status_adj_smoking = smoking)]
+statins_dt <- statins_dt[, .(patid, tstart, med_status_adj_statins = med_status_adj)]
+ah_dt <- ah_dt[, .(patid, tstart, med_status_adj_ah = med_status_adj)]
+
+### Check that the cohort contains one valid row per patient
+stopifnot(
+  !anyNA(cohort_dt$patid),
+  !anyDuplicated(cohort_dt$patid),
+  all(is.finite(cohort_dt$cvd_time)),
+  all(cohort_dt$cvd_time > 0),
+  all(cohort_dt$cvd_indicator %in% c(0, 1))
+)
+
+### Check that each source has unique patient and interval-start combinations
+stopifnot(
+  !anyDuplicated(smoking_dt, by = c("patid", "tstart")),
+  !anyDuplicated(statins_dt, by = c("patid", "tstart")),
+  !anyDuplicated(ah_dt, by = c("patid", "tstart")),
+  all(is.finite(smoking_dt$tstart)),
+  all(is.finite(statins_dt$tstart)),
+  all(is.finite(ah_dt$tstart)),
+  all(smoking_dt$tstart >= 0),
+  all(statins_dt$tstart >= 0),
+  all(ah_dt$tstart >= 0)
+)
+
+### Check that all three sources contain the same cohort patients
+stopifnot(
+  setequal(unique(smoking_dt$patid), cohort_dt$patid),
+  setequal(unique(statins_dt$patid), cohort_dt$patid),
+  setequal(unique(ah_dt$patid), cohort_dt$patid)
+)
+
+### Check the expected status coding
+stopifnot(
+  all(is.na(smoking_dt$med_status_adj_smoking) | smoking_dt$med_status_adj_smoking %in% c(0, 1, 2)),
+  all(is.na(statins_dt$med_status_adj_statins) | statins_dt$med_status_adj_statins %in% c(-1, 0, 1)),
+  all(is.na(ah_dt$med_status_adj_ah) | ah_dt$med_status_adj_ah %in% c(-1, 0, 1))
+)
+
 ###
-### Create treatment indicator so we can combine datasets
-## Statins
-cvd.split.times.statins <- dplyr::mutate(cvd.split.times.statins, treatment = "statins") |>
-  dplyr::select(-med_status)
+### Create the combined interval-start grid
+###
 
-## Anti-hypertensives
-cvd.split.times.ah <- dplyr::mutate(cvd.split.times.ah, treatment = "ah") |>
-  dplyr::select(-med_status)
+### Take the union of all interval starts across the three time-varying variables
+cohort.split.times <- unique(
+  data.table::rbindlist(
+    list(
+      smoking_dt[, .(patid, tstart)],
+      statins_dt[, .(patid, tstart)],
+      ah_dt[, .(patid, tstart)]
+    ),
+    use.names = TRUE
+  )
+)
 
-## smoking
-cvd.split.times.smoking <- dplyr::mutate(cvd.split.times.smoking, treatment = "smoking") |>
-  dplyr::rename(med_status_adj = smoking) |>
-  dplyr::select(-fup_start)
+### Add the status recorded at each exact interval start
+cohort.split.times[smoking_dt, med_status_adj_smoking := i.med_status_adj_smoking, on = .(patid, tstart)]
+cohort.split.times[statins_dt, med_status_adj_statins := i.med_status_adj_statins, on = .(patid, tstart)]
+cohort.split.times[ah_dt, med_status_adj_ah := i.med_status_adj_ah, on = .(patid, tstart)]
+
+### Order interval starts chronologically within patients
+data.table::setorder(cohort.split.times, patid, tstart)
+
+### Carry each status forward until that status changes again
+### A leading missing smoking status remains missing until the first observed
+### follow-up smoking record; downstream code then uses baseline smoking status
+cohort.split.times[, med_status_adj_smoking := data.table::nafill(med_status_adj_smoking, type = "locf"), by = patid]
+cohort.split.times[, med_status_adj_statins := data.table::nafill(med_status_adj_statins, type = "locf"), by = patid]
+cohort.split.times[, med_status_adj_ah := data.table::nafill(med_status_adj_ah, type = "locf"), by = patid]
 
 ###
-### Write a function to get split survival times, with intervals for change in either medication status
-### Function written to be applied in conjunction with dplyr::group_modify
+### Define the combined survival intervals
 ###
-get_cut_surv_times_stat_ah_smoking <- function(data, id){
 
-  ### Break the input data dependent on whether its statins or ah
-  pat.statins <- subset(data, treatment == "statins")
-  pat.ah <- subset(data, treatment == "ah")
-  pat.smoking <- subset(data, treatment == "smoking")
-  
-  ### If neither prescription, create output data frame with just one row
-  ### With times over the follow up interval for that individual
-  
-  ### Get status change times for ah and statins
-  times.ah <- c(0, pat.ah$cvd_time)
-  times.statins <- c(0, pat.statins$cvd_time)
-  times.smoking <- c(0, pat.smoking$cvd_time)
-  
-  ### Create a combined times vector, which is now what we will split cvd_event_times on
-  tstart.comb <- c(times.ah, times.statins, times.smoking) |>
-    unique() |> 
-    sort() |> 
-    head(-1)
-  
-  cvd_time.comb <- c(times.ah, times.statins, times.smoking) |>
-    unique() |> 
-    sort()
-  cvd_time.comb <- cvd_time.comb[-1]
-  
-  ### Create vectors for on and off treatment
-  
-  ### Note, med_status_adj = 0 at start, and will take values of -1 or 1 depending on if an individual
-  ### stops (-1) or initiates (1) treatment from that point forward. med_status just = 0 if individual off treatment, 
-  ### and = 1 if individual is on treatment
-  
-  ## Get initial status, which is always zero
-  status_adj_statins <- pat.statins$med_status_adj[1]
-  status_adj_ah <- pat.ah$med_status_adj[1]
-  status_adj_smoking <- pat.smoking$med_status_adj[1]
-  
-  ### Get med_status_adj for every time med status changes.
-  
-  ### If med_status has changed from 0 to 1, or from 1 to 0 (i.e., the time in tstart.comb is a time when medication
-  ### status changed, we use the new value of med_status_adj
-  ### If med_status has not changed, we make no change
-  ### Note, we know status only changes if tstart.comb[i] is in pat.statins$tstart or pat.ah$tstart respectively
-  if (length(tstart.comb) > 1){
-    
-    ## Statins
-    j <- 2
-    for (i in 2:length(tstart.comb)){
-      if (tstart.comb[i] %in% pat.statins$tstart){
-        status_adj_statins <- 
-          append(status_adj_statins, 
-                 pat.statins$med_status_adj[j])
-        j <- j + 1
-      } else {
-        status_adj_statins <- append(status_adj_statins, status_adj_statins[i-1])
-      }
-    }
-    
-    ### AH
-    j <- 2
-    for (i in 2:length(tstart.comb)){
-      print(paste("i=",i))
-      if (tstart.comb[i] %in% pat.ah$tstart){
-        status_adj_ah <- 
-          append(status_adj_ah, 
-                 pat.ah$med_status_adj[j])
-        j <- j + 1
-      } else {
-        status_adj_ah <- append(status_adj_ah, status_adj_ah[i-1])
-      }
-    }
-    
-    ## Smoking
-    j <- 2
-    for (i in 2:length(tstart.comb)){
-      if (tstart.comb[i] %in% pat.smoking$tstart){
-        status_adj_smoking <- 
-          append(status_adj_smoking, 
-                 pat.smoking$med_status_adj[j])
-        j <- j + 1
-      } else {
-        status_adj_smoking <- append(status_adj_smoking, status_adj_smoking[i-1])
-      }
-    }
-    
-  }
+### Add each patient's original outcome or censoring time and event indicator
+cohort.split.times <- cohort_dt[
+  cohort.split.times,
+  on = "patid",
+  nomatch = 0L
+]
 
-  ### Create data frame with split times
-  out <- data.frame("tstart" = tstart.comb,
-                    "cvd_time" = cvd_time.comb,
-                    "med_status_adj_statins" = status_adj_statins,
-                    "med_status_adj_ah" = status_adj_ah,
-                    "med_status_adj_smoking" = status_adj_smoking)
-  
-  ### Return as a tibble
-  return(tibble::tibble(out))
-  
-}
+### Retain interval starts strictly before the end of follow-up
+cohort.split.times <- cohort.split.times[tstart < cvd_time]
 
-### Combine data.valid.split datasets, with an indicator for whether treatment is statins, antihypertensives, or smoking
-### This step is purely so the input dataset will conform with dplyr:group_modify
-cvd.split.times <- rbind(cvd.split.times.statins, cvd.split.times.ah, cvd.split.times.smoking) |>
-  dplyr::arrange(patid, treatment, tstart, cvd_time) |>
-  dplyr::group_by(patid)
+### Confirm that every patient has an initial interval at time zero
+stopifnot(
+  cohort.split.times[, sum(tstart == 0), by = patid][, all(V1 == 1L)]
+)
 
-### Run function
-print(paste("start conversion", Sys.time()))
-cohort.split.times <- dplyr::group_modify(.data = cvd.split.times, 
-                                          .f = get_cut_surv_times_stat_ah_smoking) |>
-  as.data.frame()
-print(paste("end conversion", Sys.time()))
+### Use the next interval start as the end of the current interval
+data.table::setorder(cohort.split.times, patid, tstart)
+cohort.split.times[, interval_end := data.table::shift(tstart, type = "lead"), by = patid]
 
-### Save adjsuted survival times, as it may take a while to run
-saveRDS(cohort.split.times, paste("data/p5/cohort_split_times_smoking_statins_antihypertensives_burnout", burnout, "_id", group.id, ".rds", sep = ""))
+### The final interval ends at the patient's original event or censoring time
+cohort.split.times[is.na(interval_end), interval_end := cvd_time]
+
+### Only the final interval can contain the CVD event
+cohort.split.times[interval_end < cvd_time, cvd_indicator := 0L]
+
+### Replace the patient-level follow-up time with the interval-specific end time
+cohort.split.times[, cvd_time := interval_end]
+cohort.split.times[, interval_end := NULL]
+
+###
+### Validate the final layered dataset
+###
+
+### Check interval validity, patient coverage and unique interval starts
+stopifnot(
+  !anyNA(cohort.split.times$patid),
+  all(is.finite(cohort.split.times$tstart)),
+  all(is.finite(cohort.split.times$cvd_time)),
+  all(cohort.split.times$cvd_time > cohort.split.times$tstart),
+  !anyDuplicated(cohort.split.times, by = c("patid", "tstart")),
+  data.table::uniqueN(cohort.split.times$patid) == nrow(cohort_dt),
+  sum(cohort.split.times$cvd_indicator) == sum(cohort_dt$cvd_indicator)
+)
+
+### Check that consecutive intervals are contiguous with no gaps or overlaps
+cohort.split.times[, previous_end := data.table::shift(cvd_time), by = patid]
+stopifnot(cohort.split.times[tstart > 0, all(tstart == previous_end)])
+cohort.split.times[, previous_end := NULL]
+
+### Return the column structure expected by model development
+cohort.split.times <- cohort.split.times[,.(
+  patid,
+  tstart,
+  cvd_time,
+  cvd_indicator,
+  med_status_adj_statins,
+  med_status_adj_ah,
+  med_status_adj_smoking)]
+
+cohort.split.times <- as.data.frame(cohort.split.times) |>
+  dplyr::arrange(patid, tstart)
+
+###
+### Save the complete layered split-survival dataset
+###
+saveRDS(cohort.split.times,paste0("data/p5/cohort_split_times_smoking_statins_antihypertensives_burnout",burnout,".rds"))
+
+print(paste("FINISHED", Sys.time()))
+print(paste("number of individuals =", length(unique(cohort.split.times$patid))))

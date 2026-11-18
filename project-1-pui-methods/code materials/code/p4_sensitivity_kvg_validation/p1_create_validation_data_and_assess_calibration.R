@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Source functions
@@ -98,7 +98,7 @@ df_ipacw <-
         by.x = "patid",
         by.y = "patid") |>
   dplyr::arrange(gender, patid, tstart)
-
+colnames(medication_times)
 ### Convert to data.table for efficiency
 data.table::setDT(df_ipacw)
 
@@ -112,6 +112,9 @@ df_ipacw <- df_ipacw[
   ),
   by = patid][tstart == 0] |>
   as.data.frame()
+
+### View these
+# View(df_ipacw[1:20,])
 
 ### Note that in this dataset, 'cvd_time' and 'cvd_indicator' variables are already correctly defined for
 ### assessing calibration in the artificially censored cohort. cvd_indicator = 1 if the individual had
@@ -364,7 +367,7 @@ df_valid_ipacw <- dplyr::mutate(df_valid_ipacw,
                                 comb_weight_cap = dplyr::case_when(comb_weight > weight_cap ~ weight_cap,
                                                                    TRUE ~ comb_weight))
 
-### Create an uncensored at t_fup cohort
+### Create an uncensored at t_fup cohort (observed event before t_fup, or uncensored at t_fup)
 df_valid_ipacw_uncensored <- subset(df_valid_ipacw, 
                                     time >= t_fup | status == 1 & time < t_fup)
 
@@ -379,6 +382,10 @@ ht_estimate <- mean(
   (df_valid_ipacw$status == 1 & df_valid_ipacw$time <= t_fup) * 
     (df_valid_ipacw$comb_weight)
 )
+ht_estimate
+mean(df_valid_ipacw$pred)
+mean(df_valid_ipacw$pred)/ht_estimate
+# This is better, but still doesn't work!!
 
 ### Calculate calibration plot using IPCW approach in uncensored cohort
 calib_ipcw_uncensored <- est_calib_ipcw_new(data = df_valid_ipacw_uncensored, 
@@ -401,6 +408,19 @@ calib_pv_ipcw <- est_calib_pv_ipcw(data = df_valid_ipacw,
                                    t = t_fup,
                                    nk = 7,
                                    weights_in = df_valid_ipacw$comb_weight)
+
+calib_ipcw_uncensored[["ICI"]]
+calib_smoothed_ht[["ICI"]]
+calib_pv_ipcw[["ICI"]]
+calib_ipcw_uncensored[["E50"]]
+calib_smoothed_ht[["E50"]]
+calib_pv_ipcw[["E50"]]
+calib_ipcw_uncensored[["E90"]]
+calib_smoothed_ht[["E90"]]
+calib_pv_ipcw[["E90"]]
+calib_ipcw_uncensored[["plot"]]
+calib_smoothed_ht[["plot"]]
+calib_pv_ipcw[["plot"]]
 
 ### Write a function to save these plots
 save_calibration_plot <- function(calib_obj,
@@ -490,6 +510,11 @@ create_calibration_summary <- function(...,
   ### Return summary table
   return(summary_df)
 }
+
+
+###
+### Example usage
+###
 
 ###
 ### Create summary table

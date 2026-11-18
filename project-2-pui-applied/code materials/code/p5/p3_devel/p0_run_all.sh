@@ -1,13 +1,8 @@
+#!/bin/bash --login
 module load apps/gcc/R/4.4.2
-Rscript p1_prototype3.R > p1_prototype3.out
-Rscript p1_prototype3_4knots.R > p1_prototype3_4knots.out
-Rscript p1_prototype3_4knots_caltime.R > p1_prototype3_4knots_caltime.out
-Rscript p2_prototype3_drop_in_all.R > p2_prototype3_drop_in_all.out
-Rscript p2_prototype3_drop_in_bmi.R > p2_prototype3_drop_in_bmi.out
-Rscript p2_prototype3_drop_in_nonhdl.R > p2_prototype3_drop_in_nonhdl.out
-Rscript p2_prototype3_drop_in_sbp.R > p2_prototype3_drop_in_sbp.out
-Rscript p2_prototype3_drop_in_smoking.R > p2_prototype3_drop_in_smoking.out
-Rscript p3_prototype3_assess_nonlinear.R > p3_prototype3_assess_nonlinear.out
-Rscript p3_prototype3_assess_nonlinear_4knots.R > p3_prototype3_assess_nonlinear_4knots.out
-Rscript p3_prototype3_assess_nonlinear_4knots_caltime.R > p3_prototype3_assess_nonlinear_4knots_caltime.out
-Rscript p3_prototype3_assess_nonlinear_render.R > p3_prototype3_assess_nonlinear_render.out
+Rscript p1_fit_model_parallel.R > p1_fit_model_parallel.out 2>&1
+Rscript p2_assess_nonlinear.R > p2_assess_nonlinear.out 2>&1
+Rscript p2_assess_nonlinear_render.R > p2_assess_nonlinear_render.out 2>&1
+Rscript p3_save_models_redacted.R > p3_save_models_redacted.out 2>&1
+Rscript p4_tests_to_compare_risk_estimation_functions.R > p4_tests_to_compare_risk_estimation_functions.out 2>&1
+Rscript p5_sampsize_calc.R > p5_sampsize_calc.out 2>&1

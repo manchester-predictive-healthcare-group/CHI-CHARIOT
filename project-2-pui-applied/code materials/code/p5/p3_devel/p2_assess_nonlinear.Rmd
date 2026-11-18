@@ -1,6 +1,5 @@
 ---
 title: "Non-linear effect of age when interacted with other variables, model with 4 knots for age (25, 40, 57.5, 75)"
-author: "Alex Pate"
 date: "17/01/2023"
 output: 
   html_document

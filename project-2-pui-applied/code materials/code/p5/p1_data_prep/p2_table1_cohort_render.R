@@ -1,13 +1,11 @@
 ### Create Table 1 of data
 
-Merge extracted variables into baseline cohort
-
 ### Clear workspace
 rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 print("render to markdown")

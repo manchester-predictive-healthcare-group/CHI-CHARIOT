@@ -116,7 +116,7 @@ This document presents outcome incidence rates, shape of the non-linear effects 
 
 ## By year
 
-Annual incidence rates were calculated in the complete development cohort, separately for the female and male models. Event free follow-up was split across calendar years, from start of ofllow-up until the first cardiovascular event or censoring. For each calendar year, the total number of cardiovascular events is divided by the total event free follow-up time. Rates are expressed in per 1,000 person-years..
+Annual incidence rates were calculated in the complete development cohort, separately for the female and male models. Event free follow-up was split across calendar years, from start of follow-up until the first cardiovascular event or censoring. For each calendar year, the total number of cardiovascular events is divided by the total event free follow-up time. Rates are expressed in per 1,000 person-years..
 
 ```{r annual-incidence}
 outcome_incidence_by_year <- readRDS("data/p5/outcome_incidence_by_year.rds")

@@ -6,7 +6,7 @@ rm(list = ls())
 Sys.time()
 
 ### Set working directory
-setwd()
+setwd("./")
 getwd()
 
 ### Load packages
@@ -268,11 +268,7 @@ for (gender in c(2, 1)) {
 
   ### Save compact sex-specific descriptive tables under the original filename
   saveRDS(missingness_tables, paste0("data/p5/sens_imputation_missingness_summary_tables_", gender, ".rds"))
-  # write.csv(
-  #   age_support,
-  #   paste0("data/p5/sens_imputation_missingness_by_age_", gender, ".csv"),
-  #   row.names = FALSE
-  # )
+
 }
 
 ### Mark completion of both gender-specific analyses

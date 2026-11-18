@@ -328,20 +328,6 @@ est_calib_pv_ipcw <- function(data, fit, bhaz, t, surv = NULL, nk = 4,
                               plot = TRUE,
                               use.logit = FALSE){
   
-  # data = dat.valid
-  # fit  = fit1
-  # bhaz = bhaz1
-  # t = t.eval
-  # nk = 5
-  # split.n.groups = 25
-  # surv <- NULL
-  # group.var = NULL
-  # group.by = "ipcw"
-  # ipcw.cens.max.follow = 0.5
-  # ipcw.formula = as.formula("Surv(cens_time, cens_indicator) ~ rms::rcs(x1,5) + rms::rcs(x2,5) + rms::rcs(x3,5)")
-  # ipcw.type = "coxph"
-  # 
-  
   ### 1. Get the survival probabilities
   if (is.null(surv)){
     data$surv <- as.numeric(est_surv(newdata = data, fit = fit, bhaz = bhaz, time = t))

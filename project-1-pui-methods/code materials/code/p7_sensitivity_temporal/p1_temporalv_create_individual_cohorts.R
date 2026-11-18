@@ -18,7 +18,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -154,7 +154,6 @@ create_df_temporalv <- function(gender, t_index){
   ### Reduce and save
   df_valid <- dplyr::select(df_valid, dplyr::all_of(c("patid", "gender", "cvd_time", "cvd_indicator", "caltime", var_all_model)))
   saveRDS(df_valid, paste("data/sens_temporalv_df_valid_", gender, "_", t_fup, ".rds", sep = ""))
-  print(str(df_valid))
   
 }
 

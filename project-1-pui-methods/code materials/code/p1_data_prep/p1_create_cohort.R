@@ -3,7 +3,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
@@ -90,7 +90,6 @@ sbp_unexposed <- sbp_unexposed |>
 cohort <- Reduce(function(x, y) merge(x, y, by.x = "patid", by.y = "patid", all.x = TRUE),
                           list(cohort, sbp_unexposed)) |>
   dplyr::select(-c(cholhdl_ratio, sbp_var, bmi_alltime, sbp_alltime, sbp_var_alltime, cholhdl_ratio_alltime))
-str(cohort)
 
 ### Split into female and male cohorts
 cohort_female <- subset(cohort, gender == 2)

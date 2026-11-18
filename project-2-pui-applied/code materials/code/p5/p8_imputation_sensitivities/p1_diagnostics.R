@@ -7,7 +7,7 @@ rm(list = ls())
 Sys.time()
 
 ### Set working directory
-setwd()
+setwd("./")
 getwd()
 
 ### Source functions
@@ -90,19 +90,6 @@ for (gender in c(2, 1)) {
   )
 
   dev.off()
-
-  # ### Randomly select individuals for density plots for code testing
-  # set.seed(123)
-  # 
-  # plot_rows <- sample.int(
-  #   nrow(imp.comb$data),
-  #   min(100000, nrow(imp.comb$data))
-  # )
-  # 
-  # imp.comb <- dplyr::filter(
-  #   imp.comb,
-  #   seq_len(nrow(imp.comb$data)) %in% plot_rows
-  # )
 
   ### Create density plots for the continuous variables in one call
   print("density plots")

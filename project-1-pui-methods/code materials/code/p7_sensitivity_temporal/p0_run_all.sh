@@ -1,4 +1,5 @@
 module load apps/gcc/R/4.4.2
+Rscript p1_temporalv_create_individual_cohorts.R > p1_temporalv_create_individual_cohorts.out
 Rscript p2_temporalv_recalculate_cohort_split_times.R 1 1 > p2_temporalv_recalculate_cohort_split_times1_1.out
 Rscript p2_temporalv_recalculate_cohort_split_times.R 1 2 > p2_temporalv_recalculate_cohort_split_times1_2.out
 Rscript p2_temporalv_recalculate_cohort_split_times.R 1 3 > p2_temporalv_recalculate_cohort_split_times1_3.out

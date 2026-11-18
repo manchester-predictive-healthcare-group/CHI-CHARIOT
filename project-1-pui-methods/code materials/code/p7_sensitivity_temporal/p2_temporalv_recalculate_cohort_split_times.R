@@ -18,7 +18,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Source functions
@@ -102,7 +102,6 @@ print(paste("Start group modify", Sys.time()))
 cohort_split_times <- dplyr::group_modify(.data = cohort_split_times, 
                                           .f = my_mutate) |>
   as.data.frame()
-print(str(cohort_split_times))
 
 ### Save output
 saveRDS(cohort_split_times, paste("data/sens_temporalv_cohort_split_times_augmented_", gender, 

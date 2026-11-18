@@ -1,5 +1,5 @@
 ###
-### Reduce and redact saved p5 Cox models for prediction with newdata.
+### Reduce and redact saved models for predictions with newdata.
 ### These models can be used in rshiny app, and called more efficient on worked example, stability plots, etc
 ###
 
@@ -8,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ### Function to shrink the output

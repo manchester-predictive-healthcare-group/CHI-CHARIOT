@@ -11,19 +11,86 @@ output:
     df_print: paged
 ---
 
+```{css, echo=FALSE}
+/* Default printed pages */
+@page {
+  size: A4 portrait;
+  margin: 12mm;
+}
+
+/* Printed appendix pages */
+@page appendix {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+@media print {
+  /* Use the full printable width */
+  .main-container {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  /* Start the appendix on a new landscape page */
+  #rr_supplementary {
+    page: appendix;
+    break-before: page;
+  }
+
+  /* Compact appendix tables */
+  #rr_supplementary table {
+    width: 100% !important;
+    font-size: 8pt;
+  }
+
+  /* Allow headings to wrap, but not within words */
+  #rr_supplementary th {
+    padding: 3px !important;
+    white-space: normal !important;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  /* Keep table values on one line */
+  #rr_supplementary td {
+    padding: 3px !important;
+    white-space: nowrap !important;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  /* Avoid splitting individual rows across printed pages */
+  #rr_supplementary tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Start the relative-risk table on a fresh printed page */
+  #kvg-rr-table {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  /* Repeat table headings on subsequent pages */
+  thead {
+    display: table-header-group;
+  }
+}
+```
+
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = "/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+knitr::opts_knit$set(root.dir = "./")
 ```
 
 **Associated manuscript: A flexible approach to sequential prediction under intervention**
 
-This document contains a number of analyses pertaining to validation of the two-component model using, as outlined by Keogh and Van Geloven.[@RN1549] This is in contrast to validating the model with a process aligned with Xu et al,[@RN1345] which was utilised in the main analysis. This document in split into three sections. [Section 1](#methodology) explains our choice of methodology. [Section 2](#simulation) implements a simulation to ensure application of the methodology of Keogh and Van Geloven[@RN1549] is being applied appropriately, given the data/setting in this study is slightly different from the referenced work. [Section 3](#validation) presents a validation of the two-component model using these approaches. [Section 4](#rr_supplementary) presents an analysis to estimate the causal effect of statin and antihypertensive use on cardiovascular risk, using artificial censoring weights. Given the causal effect of these interventions are broadly known, we can assess whether the artificial censoring weights framework allows correct recovery statin and antihypertensive use. Failure to do so may explain any differences in the validation results from section 2, and the validation results from the main paper.
+This document contains a number of analyses pertaining to validation of the two-component model using, as outlined by Keogh and Van Geloven.[@RN1549] This is in contrast to validating the model with a process aligned with Xu et al,[@RN1345] which was utilised in the main analysis. This document is split into three main sections. [Section 1](#methodology) explains our choice of methodology. [Section 2](#simulation) implements a simulation to ensure application of the methodology of Keogh and Van Geloven[@RN1549] is being applied appropriately, given the data/setting in this study is slightly different from the referenced work. [Section 3](#validation) presents a validation of the two-component model using these approaches. A summary of results in presented in [Section 4](#summary), and an appendix in [Section 6](#rr_supplementary) presents an analysis to estimate the causal effect of statin and antihypertensive use on cardiovascular risk, using artificial censoring weights. Given the causal effect of these interventions are broadly known, we can assess whether the artificial censoring weights framework allows correct recovery of the effects of statin and antihypertensive use. Failure to do so may explain any differences in the validation results from section 2, and the validation results from the main paper.
 
 # Choice of methodology when evaluating model performance using artificial censoring {#methodology}
 
 ## Motivation
 
-The work of [@RN1549] applies artificial censoring in the validation cohort when anyone deviates from the treatment strategy under which predictions are being made. Inverse probability of artificial censoring weights (IPACWs) are then estimated, and used in a weighted Kaplan-Meier estimator to estimate observed risk in the validation cohort. This observed risk is in a pseudo-population where everybody followed the assigned treatment strategy. This is then compared with the mean predicted risk under intervention. This analysis is also executed within subgroups defined by predicted risk. When using artificial censoring to assess the validation of the two-component model (see section 2), we do not follow this approach. There are a few reasons for this. 
+The work of [@RN1549] applies artificial censoring in the validation cohort when anyone deviates from the treatment strategy under which predictions are being made. Inverse probability of artificial censoring weights (IPACWs) are then estimated, and used in a weighted Kaplan-Meier estimator to estimate observed risk in the validation cohort. This observed risk is in a pseudo-population where everybody followed the assigned treatment strategy. This is then compared with the mean predicted risk under intervention. This analysis is also executed within subgroups defined by predicted risk. When using artificial censoring to assess the validation of the two-component model (see section 3), we do not follow this approach. There are a few reasons for this. 
 
 Firstly, our data is continuously observed, and 10-year risk scores contain 3652 different possible event times. Given the size of the cohort, the majority of these event times are observed. A weighted Kaplan-Meier requires time-varying weights at every possible event time using interval censored data, which presents a computational problem. One option would be to bin the data at 30/90/180 intervals, and apply weighted Kaplan-Meier estimator to this data. However, the impact of this choice, and magnitude of the bias induced by doing so, is unclear. There are alternative approaches (detailed subsequently in this document) which do not suffer this issue which we prefer.
 
@@ -75,9 +142,7 @@ For the second approach, we look in the cohort of individuals uncensored at time
 
 The third approach uses the weighted pseudo-values, again appling calibration methods that would be used for a linear model (weighted pseudo-values regressed on predictions and then estimate fitted values as a function of the predictions).
 
-We also consider the use of proportional hazards regression to estimate the calibration curve, following the work of [@RN1143]. Given that this approach regresses the observed survival outcome on the predicted risks using a cox proportional hazards model, the implementation with respect to the IP weights is less clear. This is therefore implemented as a comparator, rather than a proposed analysis when working in an artificially censored cohort.
-
-Finally, I will try and use the PH regression approach of [@RN1143]. Given that this approach regresses the observed survival outcome on the predicted risks using a cox proportional hazards model, the implementation with respect to the weights is less clear. I believe the correct thing to do would be to use the IPACWs, rather than the product of the IPCWs and IPACWs, however I am unsure. Furthermore, these weights should be time-varying.
+Finally, we use the PH regression approach of [@RN1143]. Given that this approach regresses the observed survival outcome on the predicted risks using a cox proportional hazards model, the implementation with respect to the weights is less clear. We believe the correct thing to do would be to use the IPACWs, rather than the product of the IPCWs and IPACWs, but more guidance is needed here. Furthermore, these weights should be time-varying. This is therefore implemented as a comparator, rather than a proposed analysis when working in an artificially censored cohort.
 
 We report the calibration plot and integrated calibration index (mean magnitude of bias of the calibration curve), E50 (median magnitude of bias), and E90 (90th percentile of the magnitude of bias) for each method.
 
@@ -274,9 +339,7 @@ create_ipacw_data <- function(beta_true_x, # control ipacw censoring
   df_valid <- dplyr::mutate(df_valid, 
                             ipcw_weight_cap = dplyr::case_when(ipcw_weight > weight_cap ~ weight_cap,
                                                                TRUE ~ ipcw_weight))
-  #print("compare estimated ipcw weights with true weights")
-  #print(paste(head(df_valid[,c("patid", "time", "ipcw_weight", "ipcw_weight_true", "x", "z")], 15)))
-  
+
   ###
   ### Estimate the weights for the artificial censoring mechanism
   ###
@@ -296,10 +359,6 @@ create_ipacw_data <- function(beta_true_x, # control ipacw censoring
                                                      bhaz      = bhaz_est_ipacw,
                                                      eventtime = "time_ipacw", # note time_ipacw = ipacw_time
                                                      t         = 10*365.25)
-  
-  ### Compare weights with true weights (should be the same)
-  #print("compare estimated ipacw weights with true weights")
-  #print(paste(head(df_valid[,c("patid", "time", "ipacw_weight_true", "ipacw_weight")], 15)))
   
   ### Cap weights
   df_valid <- dplyr::mutate(df_valid, 
@@ -373,8 +432,6 @@ cat("Observed Hajek:", round(weighted_subset_estimate, 3), "\n",
     "Predicted:", round(mean(1 - df_valid_ipacw$cvd_surv), 3), "\n",
     "Predicted/observed ratio:", round(mean(1 - df_valid_ipacw$cvd_surv)/weighted_subset_estimate, 3), "\n")
 ```
-
-The weighted pseudo-value estimator of observed risk also indicates the model is well calibrated:
 
 ### Moderate calibration
 
@@ -710,9 +767,9 @@ Truncating the weights to a maximum of 100, or 10, does not have a major impact 
 </div>
 </div>
 
-To investigate further, we exploit a feature of the artificial censoring approach: in estimating observed risk under a sustained treatment strategy, it implicitly recovers the effect of that strategy through the censoring weights. If those weights were adequate, it would be possible to recover the effects of statin and antihypertensive use, obtaining estimates broadly consistent with the trial evidence. If they are not, the same weights cannot support a calibration estimate either. We therefore attempt this explicitly, at the ten-year horizon and at shorter intervals where positivity violations induced by artificial censoring are less severe. The analysis is reported in [Appendix A](#rr_supplementary). The results indicate that there is not sufficient support to estimate the effect of sustaining statin or antihypertensive treatment for 10 years. Relative risk estimates indicate statins and antihypertensive use leading to higher risk of cardiovascular outcomes, in the opposite direction to the trial evidence.
+To investigate further, we exploit a feature of the artificial censoring approach: in estimating observed risk under a sustained treatment strategy, it implicitly recovers the effect of that strategy through the censoring weights. If those weights were adequate, it would be possible to recover the effects of statin and antihypertensive use, obtaining estimates broadly consistent with the trial evidence. If they are not, the same weights cannot support a calibration estimate either. We therefore attempt this explicitly, at the ten-year horizon and at shorter intervals where positivity violations induced by artificial censoring are less severe. The analysis is reported in [Appendix](#rr_supplementary). The results indicate that there is not sufficient support to estimate the effect of sustaining statin or antihypertensive treatment for 10 years. Relative risk estimates indicate statins and antihypertensive use leading to higher risk of cardiovascular outcomes, in the opposite direction to the trial evidence.
  
-# Summary
+# Summary {#summary}
 
 In summary, evaluation of calibration using the artificial censoring approach of Keogh and van Geloven indicates a miscalibrated model. There are two possible explanations: either the model is miscalibrated, or the assumptions underpinning the analysis are violated and the evaluation of calibration is not correct. The diagnostics we have examined point to clear violations in positivity, and the recovered causal effects are qualitatively reversed compared with the trial estimates. Because the assumptions required for this evaluation are not met, the exercise cannot inform us about the calibration of the model.
 
@@ -726,7 +783,7 @@ This section summarises the results of an analysis to estimate the causal effect
 
 The entire cohort (development + validation) were combined. We aimed to estimate the risk under no-intervention (p0) and risk under sustained treatment (p1). The relative risk reduction is estimated as the ratio of these (p1/p0). Values below 1 indicate a protective effect of treatment. We therefore created two cohorts. One where individuals were artificially censored as soon as they initiated treatment (instantly censoring those on treatment at baseline), and a second where individuals were artificially censored as soon as they stopped receiving treatment (instantly censoring those off treatment at baseline). We estimate the risk at 1/3/5/10 years follow-up in these two cohorts using weights via a Horvitz-Thompson style estimator, and a Hajek-style estimator.
 
-The weights used to estimate p0 and p1 were combined weights IPCW × IPACW × IPTW. The IPCWs and IPACWs were estimated as defined previously. The IPTWs are inverse probability of treatment weights when estimating p1, or inverse probability of untreated if calculating p0, and are the inverse of the probability of the receiving treatment which individuals were on at baseline. Under these weights, we can create pseudo-populations as if the whole population had either been treated, or untreated, over the follow-up horizon of interest. 
+The weights used to estimate p0 and p1 were combined weights IPCW × IPACW × IPTW. The IPCWs and IPACWs were estimated as defined previously. The IPTWs are inverse probability of treatment weights when estimating p1, or inverse probability of untreated if calculating p0, which in either case are the inverse of the probability of receiving the treatment which individuals were on at baseline. Under these combined weights, we created pseudo-populations representing sustained treatment and sustained non-treatment over the follow-up horizon of interest. 
 
 Treatment use was defined in the same way as in the main analysis with a 180 wash-out period. We used all the same predictors for estimating the weights and included splines on continuous variables. Two weighting models were used, one with no interaction terms, and another where all predictors were interacted with age.
 
@@ -746,11 +803,11 @@ library(kableExtra)
 
 data_dir   <- "data"
 meds       <- c("statins", "antihypertensives")
-genders    <- c(1, 2)
+genders    <- c(2, 1)
 t_fups     <- c(1, 3, 5, 10)
 flex_opts  <- c("linear", "flex")
 
-gender_labels <- c("1" = "Female", "2" = "Male")
+gender_labels <- c("1" = "Male", "2" = "Female")
 
 ### -----------------------------------------------------------------------
 ### HELPER FUNCTIONS
@@ -848,7 +905,7 @@ The **effective sample size (ESS)** for each treatment group is also included in
 
 $$\text{ESS} = \frac{(\sum w_i)^2}{\sum w_i^2}$$
 
-The ESS equals N when all weights are equal, and falls below N when weights are variable. A low ESS (expressed as a % of N) indicates that a small number of highly-weighted individuals are driving the analysis, which undermines the reliability of the estimates regardless of the nominal sample size. The table below shows the ESS at the final combined weighting stage (IPCW × IPACW × IPTW) alongside the actual sample size, for both cohorts. ESS% values below 10% are shown in red; below 25% in orange.
+The ESS equals N when all weights are equal, and falls below N when weights are variable. A low ESS (expressed as a % of N) indicates that a small number of highly-weighted individuals are driving the analysis, which undermines the reliability of the estimates regardless of the nominal sample size. The table below shows the Hajek (**_hajek**) and Horvitz-Thompson (**_ht**) style estimators of the relative risk (**RR = p1/p0**). Protective ratios (< 1) are highlighted in green, otherwise ratios are highlighted in red. ESS is also presented at the final combined weighting stage (IPCW × IPACW × IPTW) alongside the actual sample size, for both cohorts. ESS% values below 10% are shown in red; below 25% in orange.
 
 ```{r rr-table, echo = FALSE}
 ### Build RR summary table across all combinations
@@ -923,14 +980,13 @@ ess_tr_color <- dplyr::case_when(
 rr_df |>
   tibble::remove_rownames() |>
   kable(caption = "Relative risk estimates and ESS by cohort, medication, gender, follow-up, and model",
+	table.attr = 'id="kvg-rr-table"',
         align = c("l","l","l","c","c","r","r","r","r","r","r","r")) |>
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE) |>
   column_spec(which(names(rr_df) == "RR_hajek") ,               bold = TRUE, color = rr_hajek_color) |>
   column_spec(which(names(rr_df) == "RR_ht") ,               bold = TRUE, color = rr_ht_color) |>
   column_spec(which(names(rr_df) == "ESS% (untreated)") , bold = TRUE, color = ess_unt_color) |>
-  column_spec(which(names(rr_df) == "ESS% (treated)") ,   bold = TRUE, color = ess_tr_color) |>
-  collapse_rows(columns = 1:3, valign = "top") |>
-  scroll_box(width = "120%")
+  column_spec(which(names(rr_df) == "ESS% (treated)") ,   bold = TRUE, color = ess_tr_color)
 ```
 
 ## Diagnostics {#diagnostics}
@@ -1021,7 +1077,7 @@ for (cohort in c("full", "overlap", "overlap_comb")) {
             `P95`     = round(wq$p95, 3),
             `P99`     = round(wq$p99, 3),
             `P99.9`   = round(wq$p99.9, 3),
-            Max       = round(wq$max, 1),
+            Max       = ifelse(abs(wq$max) >= 1e6, sprintf("%.2e", wq$max), sprintf("%.1f", wq$max)),
             check.names = FALSE
           )
         }
@@ -1048,9 +1104,9 @@ for (cohort in c("full", "overlap", "overlap_comb")) {
                                 ifelse(ess_table$`ESS% (overall)` < 10, "red",
                                 ifelse(ess_table$`ESS% (overall)` < 25, "orange", "black")))) |>
             column_spec(6, bold = TRUE,
-                        color = ifelse(is.na(ess_table$`ESS% (overall)`), "black",
-                                ifelse(ess_table$`ESS% (overall)` < 10, "red",
-                                ifelse(ess_table$`ESS% (overall)` < 25, "orange", "black")))) |>
+                        color = ifelse(is.na(ess_table$`ESS% (untreated)`), "black",
+                                ifelse(ess_table$`ESS% (untreated)` < 10, "red",
+                                ifelse(ess_table$`ESS% (untreated)` < 25, "orange", "black")))) |>
             column_spec(8, bold = TRUE,
                         color = ifelse(is.na(ess_table$`ESS% (treated)`), "black",
                                 ifelse(ess_table$`ESS% (treated)` < 10, "red",
@@ -1089,7 +1145,7 @@ for (cohort in c("full", "overlap", "overlap_comb")) {
 
 We start by discussing the results for statins.
 
-* We don't have enough support to estimate the relative risk ratio of sustaining treatment for 10 years. This is highlighted by the effective sample sizes in the entire cohort for 10 years follow-up. Extreme violation of the positivity assumption.
+* We don't have enough support to estimate the relative risk ratio of sustaining treatment for 10 years. This is highlighted by the effective sample sizes in the entire cohort for 10 years follow-up. There looks to be an extreme violation of the positivity assumption.
 
 * We try to deal with violation of the positivity assumption through creating overlap cohorts. 
   + This changes the estimand to target a cohort/population where we should have better support for to estimate. The first overlap cohort filters to individuals who have >1% chance of receiving either treatment, i.e., improve overlap between treatment groups. The second overlap cohort also filters to those with > 1% chance of not being artificially censored (sustaining treatment for follow-up period), and those with > 1% chance of being censored by the normal censoring mechanism (probability of being observed for the follow-up period and therefore able to obtain an estimate). 
@@ -1116,4 +1172,4 @@ The pattern in terms of IPCW and IPACW is broadly the same for antihypertensives
 
 There is evidence of positivity violations driven by the nature of antihypertensive prescribing: treatment is determined largely by blood pressure exceeding a clinical threshold, meaning the propensity score distribution in the treated group is highly concentrated. Many treated individuals have high probabilities of being treated or untreated, producing large IPTW weights.
 
-The overlap restriction removes the most extreme propensity scores but cannot resolve the underlying heterogeneity within the overlap region. Even after restriction, the weighting procedure remains highly unstable, suggesting limitation overlap even after restriction, reflected in the persistent ESS collapse.
+The overlap restriction removes the most extreme propensity scores but cannot resolve the underlying heterogeneity within the overlap region. Even after restriction, the weighting procedure remains highly unstable, suggesting a lack of overlap even after restriction, reflected in the persistent ESS collapse.

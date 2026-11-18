@@ -516,7 +516,7 @@ est_surv_offset_prototype3_redacted_mi <- function(newdata, fit_list, bhaz_list,
 ### for ah/statins/smoking.
 ###
 ### smoking is the smoking status at baseline variable (takes values non (never), ex, light, moderate, heavy)
-### med_status_adj_smoking is the time-varying smoking status variable, takes values 1 (never), 2 (ex) or 3 (current)
+### med_status_adj_smoking is the time-varying smoking status variable, takes values 0 (never), 1 (ex) or 2 (current)
 ###
 ### Note that med_status_adj_smoking is missing at baseline, because when deriving changes in smoking status during
 ### follow-up, we did not know value at baseline for some individuals. This comes from the imputed data.
@@ -528,11 +528,35 @@ est_surv_offset_prototype3_redacted_mi <- function(newdata, fit_list, bhaz_list,
 ### During follow-up, dummy1 = 0 if no change from baseline, = 1 if individual initates smoking
 ### During follow-up, dummy2 = -1 if an ex-smoker (at baseline) starts smoking, = 1 if a smoker (at baseline) stops smoking
 ###
-### More details on the definition of the dummies is given inline
+### More details on the definition of the dummies is given inline.
+###
+### Also apply logic that a an ex-smoker or current smoker at baseline, can never
+### become a never-smoker. This could in theory happen for individuals where smoking status
+### was imputed. This will never happen for people whose smoking status was observed
+###
 create_smoking_dummies <- function(data){
   
+  ### Start by applying logic that a an ex-smoker or current smoker at baseline, can never
+  ### become a never-smoker. 
+  data <- data |>
+    dplyr::mutate(
+      med_status_adj_smoking = dplyr::case_when(
+        smoking %in% c("Current", "Current smoker", "Ex-smoker") & med_status_adj_smoking == 0 ~ 1,
+        TRUE ~ med_status_adj_smoking
+      )
+    )
+  
+  ### Confirm that no baseline ever-smoker has a later never-smoker status
+  stopifnot(
+    !any(
+      data$smoking %in% c("Current", "Current smoker", "Ex-smoker") &
+        data$med_status_adj_smoking == 0,
+      na.rm = TRUE
+    )
+  )
+  
   ###
-  ### Creation of baseline smoking variables
+  ### Creation of dummy variables
   ###
   
   ### The first dummy variable = 0 if never smoker, = 1 if current or past smoker.

@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define gender
@@ -185,8 +185,6 @@ convert_risk_HR <- function(p, change_sbp = 0, change_bmi = 0, change_nonhdl = 0
 ###
 ### Plug these changes into convert_risk_HR
 ###
-
-### Apply odds ratio to risk score to get hypothetical risk under intervention
 
 # We expect an increase in BMI of 0.33
 # We expect a reduction in nonhdl of 1.3268

@@ -3,7 +3,7 @@
 ###
 rm(list = ls())
 Sys.time()
-setwd()
+setwd("./")
 getwd()
 
 ### Settings

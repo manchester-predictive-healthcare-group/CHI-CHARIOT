@@ -3,7 +3,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd()
+setwd("./")
 getwd()
 
 ###
@@ -25,6 +25,21 @@ means_pui_female <- readRDS("data/p5/small_means_model_female.rds")
 fit_pui_male <- readRDS("data/p5/small_fits_model_male.rds")
 bhaz_pui_male <- readRDS("data/p5/small_bhaz_model_male.rds")
 means_pui_male <- readRDS("data/p5/small_means_model_male.rds")
+
+### Retain only approved model components for the application
+keep_components <- c("coefficients", "means", "terms", "xlevels", "contrasts")
+
+### Function to rebuild each fit with approved components
+prepare_app_fit <- function(fit){
+  retained_names <- intersect(keep_components, names(fit))
+  out <- setNames(lapply(retained_names, function(nm) fit[[nm, exact = TRUE]]), retained_names)
+  class(out) <- "coxph"
+  return(out)
+}
+
+### Apply the function
+fit_pui_female <- lapply(fit_pui_female, prepare_app_fit)
+fit_pui_male <- lapply(fit_pui_male, prepare_app_fit)
 
 ### Save these to Rshiny folder
 saveRDS(fit_pui_female, "code/p5/p7_rshiny/data/fit_pui_female.rds")
@@ -106,6 +121,21 @@ HR_bmi_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_bmi.rds"))
 HR_smok_init_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_smok_init.rds"))
 HR_smok_cess_direct <- exp(readRDS("data/p5/offsets_direct_lnHR_smok_cess.rds"))
 
+### slopes (mfrs -> mfrs)
+bmi_to_nonhdl <- readRDS("data/p5/slope_bmi_to_nonhdl.rds")
+bmi_to_sbp <- readRDS("data/p5/slope_bmi_to_sbp.rds")
+nonhdl_to_sbp <- readRDS("data/p5/slope_nonhdl_to_sbp.rds")
+smok_cess_to_bmi <- readRDS("data/p5/slope_smok_cess_to_bmi.rds")
+smok_cess_to_nonhdl <- readRDS("data/p5/slope_smok_cess_to_nonhdl.rds")
+smok_cess_to_sbp <- readRDS("data/p5/slope_smok_cess_to_sbp.rds")
+smok_init_to_bmi <- readRDS("data/p5/slope_smok_init_to_bmi.rds")
+smok_init_to_nonhdl <- readRDS("data/p5/slope_smok_init_to_nonhdl.rds")
+smok_init_to_sbp <- readRDS("data/p5/slope_smok_init_to_sbp.rds")
+statins_to_bmi <- readRDS("data/p5/slope_statins_to_bmi.rds")
+statins_to_nonhdl <- readRDS("data/p5/slope_statins_to_nonhdl.rds")
+statins_to_sbp <- readRDS("data/p5/slope_statins_to_sbp.rds")
+antihypertensives_to_sbp <- readRDS("data/p5/slope_antihypertensives_to_sbp.rds")
+
 ###
 ### Save HRs to shiny data folder (not log HRs)
 ### 
@@ -122,4 +152,19 @@ saveRDS(HR_nonhdl_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_nonhdl.rds")
 saveRDS(HR_bmi_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_bmi.rds")
 saveRDS(HR_smok_init_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_smok_init.rds")
 saveRDS(HR_smok_cess_direct, "code/p5/p7_rshiny/data/offsets_direct_HR_smok_cess.rds")
+
+### Slopes (total effects of mfrs and interventions on the mfrs)
+saveRDS(bmi_to_nonhdl, "code/p5/p7_rshiny/data/slope_bmi_to_nonhdl.rds")
+saveRDS(bmi_to_sbp, "code/p5/p7_rshiny/data/slope_bmi_to_sbp.rds")
+saveRDS(nonhdl_to_sbp, "code/p5/p7_rshiny/data/slope_nonhdl_to_sbp.rds")
+saveRDS(smok_cess_to_bmi, "code/p5/p7_rshiny/data/slope_smok_cess_to_bmi.rds")
+saveRDS(smok_cess_to_nonhdl, "code/p5/p7_rshiny/data/slope_smok_cess_to_nonhdl.rds")
+saveRDS(smok_cess_to_sbp, "code/p5/p7_rshiny/data/slope_smok_cess_to_sbp.rds")
+saveRDS(smok_init_to_bmi, "code/p5/p7_rshiny/data/slope_smok_init_to_bmi.rds")
+saveRDS(smok_init_to_nonhdl, "code/p5/p7_rshiny/data/slope_smok_init_to_nonhdl.rds")
+saveRDS(smok_init_to_sbp, "code/p5/p7_rshiny/data/slope_smok_init_to_sbp.rds")
+saveRDS(statins_to_bmi, "code/p5/p7_rshiny/data/slope_statins_to_bmi.rds")
+saveRDS(statins_to_nonhdl, "code/p5/p7_rshiny/data/slope_statins_to_nonhdl.rds")
+saveRDS(statins_to_sbp, "code/p5/p7_rshiny/data/slope_statins_to_sbp.rds")
+saveRDS(antihypertensives_to_sbp, "code/p5/p7_rshiny/data/slope_antihypertensives_to_sbp.rds")
 print("FINISHED")

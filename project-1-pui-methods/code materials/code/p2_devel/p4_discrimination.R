@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -34,9 +34,6 @@ lnHR_nonhdl <- readRDS("data/offsets_direct_lnHR_nonhdl.rds")
 ### Write a function that will produce a calibration curve for a given development and validation dataset
 ###
 est_discrimination <- function(gender, model){
-  
-  # gender <- 2
-  # plot.range = NULL
   
   ### Read in model
   fit <- readRDS(paste("data/fit_", gender, "_model", model, ".rds", sep = ""))

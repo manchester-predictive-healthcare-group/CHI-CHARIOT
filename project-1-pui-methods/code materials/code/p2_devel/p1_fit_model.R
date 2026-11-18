@@ -1,5 +1,5 @@
 ###
-### Program to fit models 0 - 4
+### Program to fit models 0 - 7
 ###
 
 ### Clear workspace
@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Extract model number from command line
@@ -33,7 +33,7 @@ fit_model <- function(gender){
   ### Read in development data
   df_devel <- readRDS(paste("data/df_imp_devel_", gender, sep = ""))
   
-  ### Read in the interval censored outcome times NB CHANGE WHEN FINISHED
+  ### Read in the interval censored outcome times
   ### Note the time varying medication status variables are defined differently for models 1 and 2 compared to models 3 and 4.
   if (model %in% c(0,1,2)){
     cohort_split_times <- readRDS(paste("data/cohort_split_times_burnout", burnout, ".rds", sep = ""))
@@ -53,14 +53,15 @@ fit_model <- function(gender){
   ### Create offset terms
   ###
   
-  ###
-  ### For statin and antihypertensive use, we multiply the indicator by the log-hazard ratio
-  ### This is used in all four models (noting that the indicators are different for models 1 and 2, compared to 3 and 4)
+  ### Create treatment offsets by multiplying medication status indicators by the corresponding log-hazard ratios
+  ### Models 1 and 2 use the antihypertensive offset only, with 0 = off treatment and 1 = on treatment
+  ### Models 3 to 7 use both offsets, with medication status defined relative to baseline
+  ### Model 0 does not include treatment offsets
   df_devel$offset_statins_timevar_lnHR <- lnHR_statins*df_devel$med_status_statins
   df_devel$offset_ah_timevar_lnHR <- lnHR_ah*df_devel$med_status_ah
   
   ###
-  ### For model model 3, apply an offset for differences in sbp, nonhdl and BMI.
+  ### For model 3, apply an offset for differences in sbp, nonhdl and BMI.
   ### We create adjusted versions of SBP, nonhdl and BMI to be relative to some baseline, to apply the offsets
   ### These are also capped:
   ### Assume no benefit for SBP below 120, so it is capped there
@@ -69,7 +70,7 @@ fit_model <- function(gender){
   
   ### SBP relative to 120 (no benefit for being lower than 120)
   ### BMI relative to 25 (no benefit for being lower than 25)
-  ### nonhdl relative to 4
+  ### nonhdl relative to 2.6
   df_devel <- dplyr::mutate(df_devel,
                             sbp_adj = dplyr::case_when(sbp < 120 ~ 0,
                                                        TRUE ~ sbp - 120),

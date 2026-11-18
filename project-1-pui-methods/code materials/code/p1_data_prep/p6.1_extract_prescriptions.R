@@ -8,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("/mnt/bmh01-rds/Sperrin_CHARIOT_CPRD/alex/projectM1/")
+setwd("./")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -38,13 +38,11 @@ extract_pres <- function(med){
                      codelist.vector = codelist$prodcodeid)
   
   print(paste("query complete", Sys.time()))
-  str(db_qry)
   
   ### Reduce db_qry to observations in cohort and get rid of unneccesary variables
   db_qry <- db_qry[!is.na(fastmatch::fmatch(db_qry$patid, cohort$patid)), ]
   db_qry <- dplyr::select(db_qry, patid, issuedate)
   print(paste("reduced to cohort", Sys.time()))
-  str(db_qry)
   
   saveRDS(db_qry, paste("data/db_qry_", med, ".rds", sep = ""))
   print(paste("saved query", Sys.time()))
