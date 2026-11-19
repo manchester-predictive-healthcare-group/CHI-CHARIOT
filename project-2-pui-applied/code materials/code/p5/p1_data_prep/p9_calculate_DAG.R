@@ -13,7 +13,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 #################################################

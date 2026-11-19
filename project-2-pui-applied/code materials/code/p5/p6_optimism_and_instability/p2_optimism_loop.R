@@ -13,7 +13,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
@@ -152,7 +152,6 @@ dry <- mice(cohort, maxit = 0, formulas = mice.formulas, method = meth)
 print(paste("REAL RUN 1", Sys.time()))
 time.in <- Sys.time()
 imp <- mice(cohort, maxit = 10, m = 1, formulas = mice.formulas, method = meth)
-# imp <- mice(cohort, maxit = 3, m = 1, formulas = mice.formulas, method = meth) xx
 time.out <- Sys.time()
 time.out - time.in
 
@@ -247,9 +246,10 @@ data_devel <- dplyr::left_join(dplyr::select(imp, -c("cvd_time", "cvd_indicator"
 ### NB: This dummy effect (HR2) is the effect of smoking cessation (stopping smoking, past smoker vs current smoker)
 ###
 ### These dummies are only appropriate when applied in tandem.
-### A never smoker will have: LP*1*1
-### A current smoker will have: LP*HR1*1
-### A past smoker will have: LP*HR1*HR2, i.e., the effect of initiating smoking, then the effect of stopping
+### On the hazard scale, over each interval:
+### A never smoker will have: exp(LP)*1*1
+### A current smoker will have: exp(LP)*HR1*1
+### A past smoker will have: exp(LP)*HR1*HR2, i.e., the effect of initiating smoking, then the effect of stopping
 data_devel <- create_smoking_dummies(data_devel)
 
 ### Sort by patid and tstart, just for when looking at the dataset
@@ -295,7 +295,6 @@ if (gender == 2){
 } else if (gender == 1){
   df_orig <- readRDS(paste0("data/p5/dfs_all_male", (((iter - 1) %% 10) + 1), ".rds"))
 }
-# df_orig <- df_orig[1:200000, ] xx
 
 ### Read in the outcome data, which contains the split survival times
 cohort_split_times <- readRDS(paste("data/p5/cohort_split_times_smoking_statins_antihypertensives_burnout", burnout, ".rds", sep = ""))
@@ -694,3 +693,5 @@ saveRDS(fit, paste0("data/p5/optimism_boot_reduced_cox_", gender, "_iter", iter,
 saveRDS(bhaz, paste0("data/p5/optimism_boot_cox_bhaz_", gender, "_iter", iter, ".rds"))
 saveRDS(bhaz_reduced, paste0("data/p5/optimism_boot_reduced_cox_bhaz_", gender, "_iter", iter, ".rds"))
 saveRDS(offset_means, paste0("data/p5/optimism_boot_reduced_cox_offset_means_", gender, "_iter", iter, ".rds"))
+
+print(paste("FINISHED", Sys.time()))

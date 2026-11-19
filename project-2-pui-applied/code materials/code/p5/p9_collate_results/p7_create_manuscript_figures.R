@@ -6,7 +6,7 @@
 rm(list = ls())
 Sys.time()
 
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 results_dir <- "data/p5"

@@ -3,7 +3,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
@@ -113,8 +113,6 @@ mice.formulas
 ###
 print(paste("DRY RUN 1", Sys.time()))
 dry <- mice(cohort, formulas = mice.formulas, maxit = 0)
-str(dry)
-names(dry)
 
 ### Choose methods for imputation
 ### Use predictive mean matching for all variables(including discrete)

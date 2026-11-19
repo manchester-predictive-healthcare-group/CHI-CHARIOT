@@ -12,10 +12,10 @@
 ### non-split survival data.
 ###
 ### The split survival times were derived in :
-### /project2/code/p5/p5_temporal_validation/p2_temporalv_recalculate_cohort_split_times.R
+### /code/p5/p5_validate_temporal/p2_temporalv_recalculate_cohort_split_times.R
 ###
 ### The predictors at the relevant index dates were derived in:
-### /project2/code/p5/p5_temporal_validation/p1_temporalv_create_individual_cohorts.R
+### /code/p5/p5_validate_temporal/p1_temporalv_create_individual_cohorts.R
 ###
 
 ### Clear workspace
@@ -23,7 +23,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Define burnout
@@ -65,7 +65,7 @@ runtest <- function(gender_in, t_fup_int){
   
 }
 
-### ADD SOME TESTS THAT CVD_TIME MATCHES THAT FROM DF_VALID?
+### Run tests
 runtest(2,1)
 runtest(2,2)
 runtest(2,3)

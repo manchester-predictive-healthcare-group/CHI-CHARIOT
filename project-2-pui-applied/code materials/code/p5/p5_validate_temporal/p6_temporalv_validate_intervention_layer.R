@@ -8,7 +8,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Define filepath to file directory system containing extracted data, and functions for extracting.
@@ -130,13 +130,13 @@ est_validate_interventional_wrapper <- function(gender,
                                                                                     baseline_mfr == "Current" & followup_mfr == "Ex-smoker" ~ 0,
                                                                                     baseline_mfr == "Non-smoker" & followup_mfr == "Current" ~ 1,
                                                                                     baseline_mfr == "Non-smoker" & followup_mfr == "Ex-smoker" ~ 1,
-                                                                                    TRUE ~ 0),###NB: THIS SHOULD BE ~ NA, AND THERE SHOULD BE NO NA's, I AS GETTING ABOUT 800, FIXING BUG BUT LEAVING LIKE THIS FOR NOW
+                                                                                    TRUE ~ NA),
                                        change_smoking_cessation = dplyr::case_when(baseline_mfr == followup_mfr ~ 0,
                                                                                    baseline_mfr == "Ex-smoker" & followup_mfr == "Current" ~ -1,
                                                                                    baseline_mfr == "Current" & followup_mfr == "Ex-smoker" ~ 1,
                                                                                    baseline_mfr == "Non-smoker" & followup_mfr == "Current" ~ 0,
                                                                                    baseline_mfr == "Non-smoker" & followup_mfr == "Ex-smoker" ~ 1,
-                                                                                   TRUE ~ 0))
+                                                                                   TRUE ~ NA))
   }
   
   ### Cap the reduction at 40 if variable is SBP

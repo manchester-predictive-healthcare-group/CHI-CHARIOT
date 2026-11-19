@@ -6,7 +6,7 @@ rm(list = ls())
 library(data.table)
 
 ### Locate the input files
-project_dir <- "./"
+project_dir <- "PATH/TO/ROOT"
 data_dir <- file.path(project_dir, "data/p5")
 results <- list()
 

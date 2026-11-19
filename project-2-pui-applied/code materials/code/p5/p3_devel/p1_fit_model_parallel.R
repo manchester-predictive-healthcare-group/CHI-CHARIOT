@@ -7,7 +7,7 @@ rm(list = ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Load packages
@@ -54,9 +54,10 @@ fit_model <- function(imp_num, imp, model_formula_full, knot_loc_sbp, knot_loc_n
   ### NB: This dummy effect (HR2) is the effect of smoking cessation (stopping smoking, past smoker vs current smoker)
   ###
   ### These dummies are only appropriate when applied in tandem.
-  ### A never smoker will have: LP*1*1
-  ### A current smoker will have: LP*HR1*1
-  ### A past smoker will have: LP*HR1*HR2, i.e., the effect of initiating smoking, then the effect of stopping
+  ### On the hazard scale, over each interval:
+  ### A never smoker will have: exp(LP)*1*1
+  ### A current smoker will have: exp(LP)*HR1*1
+  ### A past smoker will have: exp(LP)*HR1*HR2, i.e., the effect of initiating smoking, then the effect of stopping
   data_devel <- create_smoking_dummies(data_devel)
   
   ### Sort by patid and tstart, just for when looking at the dataset

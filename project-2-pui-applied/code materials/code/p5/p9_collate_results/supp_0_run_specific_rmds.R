@@ -2,7 +2,7 @@
 # Knits all .Rmd files in a specified directory
 
 # Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 # ---- Locate pandoc

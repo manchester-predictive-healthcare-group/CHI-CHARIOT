@@ -98,7 +98,7 @@ est_calib_ph <- function(data,
   data$cloglog <- log(-log(data$surv))
   
   ### ------------------------------------------------------------------
-  ### NEW: Data-driven knot selection for the RCS calibration model
+  ### Data-driven knot selection for the RCS calibration model
   ###
   ### Follows the procedure described by van Calster's group (e.g. the
   ### clustered/meta-analytic calibration paper, and the CalibrationCurves
@@ -108,7 +108,8 @@ est_calib_ph <- function(data,
   ### significantly outperformed by any larger candidate.
   ###
   ### Note: RCS bases with different nk use different quantile-based knot locations, so the
-  ### candidate models are not strictly likelihood ratio tests for nested designs.
+  ### candidate models are not strictly likelihood ratio tests for nested designs. LRT is used
+  ### in the code, but really its a heuristic partial log-likelihood comparison
   ### ------------------------------------------------------------------
   if (select_knots) {
     
@@ -142,7 +143,7 @@ est_calib_ph <- function(data,
     } else if (length(available_nk) == 1) {
       # Only one candidate survived -- nothing to compare, just use it
       nk <- available_nk
-      message(sprintf("Only nk = %d converged; using it without an LRT comparison.", nk))
+      message(sprintf("Only nk = %d converged; using it without an heuristic partial log-likelihood comparison.", nk))
     } else {
       
       # All pairwise comparisons among the surviving candidates.
@@ -184,7 +185,7 @@ est_calib_ph <- function(data,
       
       # Define nk
       nk <- chosen_nk
-      message(sprintf("Selected nk = %d via all-pairs LRT (alpha = %.2f).", nk, alpha_lrt))
+      message(sprintf("Selected nk = %d via all-pairs heuristic partial log-likelihood comparison (alpha = %.2f).", nk, alpha_lrt))
       print(lrt_table)
     }
   } else {
@@ -507,7 +508,7 @@ est_surv_offset_prototype3_redacted_mi <- function(newdata, fit_list, bhaz_list,
 
 
 ###
-### Create dummy variables for smoking (at baseline, and during follow-up)
+### Create dummy variables for smoking (at baseline, and time varying variables during follow-up)
 ### This function is utilised in programs p4/p5.1 and p4/p6.1 (both prototype 3)
 ### The 'data' argument must contain "smoking" and "med_status_adj_smoking" variables
 ###
@@ -515,7 +516,7 @@ est_surv_offset_prototype3_redacted_mi <- function(newdata, fit_list, bhaz_list,
 ### with cohort.split.times, which is the interval censored outcome data with time-varying variables
 ### for ah/statins/smoking.
 ###
-### smoking is the smoking status at baseline variable (takes values non (never), ex, light, moderate, heavy)
+### smoking is the smoking status at baseline variable, takes values 0 (never), 1 (ex) or 2 (current)
 ### med_status_adj_smoking is the time-varying smoking status variable, takes values 0 (never), 1 (ex) or 2 (current)
 ###
 ### Note that med_status_adj_smoking is missing at baseline, because when deriving changes in smoking status during
@@ -531,8 +532,7 @@ est_surv_offset_prototype3_redacted_mi <- function(newdata, fit_list, bhaz_list,
 ### More details on the definition of the dummies is given inline.
 ###
 ### Also apply logic that a an ex-smoker or current smoker at baseline, can never
-### become a never-smoker. This could in theory happen for individuals where smoking status
-### was imputed. This will never happen for people whose smoking status was observed
+### become a never-smoker.
 ###
 create_smoking_dummies <- function(data){
   
@@ -566,9 +566,10 @@ create_smoking_dummies <- function(data){
   ### NB: This dummy effect (HR2) is the effect of smoking cessation (stopping smoking, past smoker vs current smoker)
   ###
   ### These dummies are only appropriate when applied in tandem.
-  ### A never smoker will have: LP*1*1
-  ### A current smoker will have: LP*HR1*1
-  ### A past smoker will have: LP*HR1*HR2, i.e., the effect of initiating smoking, then the effect of stopping
+  ### On the hazard scale, over each interval:
+  ### A never smoker will have: exp(LP)*1*1
+  ### A current smoker will have: exp(LP)*HR1*1
+  ### A past smoker will have: exp(LP)*HR1*HR2, i.e., the effect of initiating smoking, then the effect of stopping
   ###
   data <-
     dplyr::mutate(data,
@@ -647,7 +648,7 @@ create_smoking_dummies <- function(data){
   ### If they start smoking again, we set med_status_adj_smoking_dummy2 = -1. If they stop, we set med_status_adj_smoking_dummy2 = 0. 
   ###
   ### If an individual is an smoker at baseline, they have
-  ### smoking_baseline == 1 (smoking_baseline_dummy2 = 0).
+  ### smoking_baseline == 2 (smoking_baseline_dummy2 = 0).
   ### If they stop smoking again, we set med_status_adj_smoking_dummy2 = 1. If they start again, we set med_status_adj_smoking_dummy2 = 0.
   ### 
   ### Note that his means the sum of med_status_adj_smoking_dummy2 and smoking_baseline_dummy2 will always be either 0 or 1.

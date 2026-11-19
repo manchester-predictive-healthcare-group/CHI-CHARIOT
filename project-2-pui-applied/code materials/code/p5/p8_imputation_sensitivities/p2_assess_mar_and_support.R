@@ -6,7 +6,7 @@ rm(list = ls())
 Sys.time()
 
 ### Set working directory
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Load packages
@@ -140,7 +140,6 @@ for (gender in c(2, 1)) {
   ### Load and restrict the cohort
   cohort <- readRDS("data/p5/cohort_prototype3.rds")
   cohort <- cohort[cohort$gender == gender, ]
-  # cohort <- cohort[sample(1:nrow(cohort), 100000), ] # xx
 
   ### Match variables removed before imputation
   cohort <- dplyr::select(
@@ -254,17 +253,6 @@ for (gender in c(2, 1)) {
     missing_variables
   )
   print(paste("Missingness tables finished for", gender_char, Sys.time()))
-
-  # ### Assess observed-data support across age twentieths
-  # age_support <- dplyr::bind_rows(
-  #   lapply(
-  #     missing_variables,
-  #     summarise_missingness_by_group,
-  #     data = cohort,
-  #     predictor = "age"
-  #   )
-  # ) |>
-  #   dplyr::mutate(gender = gender_char, .before = 1)
 
   ### Save compact sex-specific descriptive tables under the original filename
   saveRDS(missingness_tables, paste0("data/p5/sens_imputation_missingness_summary_tables_", gender, ".rds"))

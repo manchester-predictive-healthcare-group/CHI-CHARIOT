@@ -7,7 +7,7 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
@@ -29,7 +29,6 @@ for (gender in 1:2){
   
   ### Create a stacked dataset
   imp.comb <- do.call("rbind", imp.comb)
-  str(imp.comb)
   
   ### Write a function to extract the knot locations for a variable
   get_knot_loc <- function(varname){

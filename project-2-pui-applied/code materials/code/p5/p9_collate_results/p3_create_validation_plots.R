@@ -3,7 +3,7 @@
 ###
 rm(list = ls())
 Sys.time()
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Load package used for arranging the plots

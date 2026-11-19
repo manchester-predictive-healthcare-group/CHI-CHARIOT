@@ -1,6 +1,6 @@
 #!/bin/bash --login
 #SBATCH -p himem
-#SBATCH -t 1-06:00:00
+#SBATCH -t 2-00:00:00
 #SBATCH -a 1-2000
 #SBATCH -n 1
 #SBATCH --mem=250G
@@ -11,7 +11,7 @@ module load apps/gcc/R/4.5.0
 ### Map task ID to parameter combinations
 
 genders=(1 2)
-iters=({1..10000})
+iters=({1..1000})
 
 ### Convert SLURM_ARRAY_TASK_ID (1-based) to 0-based index
 idx=$((SLURM_ARRAY_TASK_ID - 1))

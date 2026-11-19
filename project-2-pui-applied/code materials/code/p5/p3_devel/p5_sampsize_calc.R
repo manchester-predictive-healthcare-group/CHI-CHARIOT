@@ -7,15 +7,11 @@ rm(list=ls())
 Sys.time()
 
 ### Set wd
-setwd("./")
+setwd("PATH/TO/ROOT")
 getwd()
 
 ### Define filepath to file directory system containing extracted data.
 common.data.dir <- file.path("..", "..")
-
-### Source functions
-R.func.sources = list.files("Aurum_Jun2021_extract/R", full.names = TRUE)
-sapply(R.func.sources, source)
 
 ###
 ### Write a function to get required number of variables for female or male models
